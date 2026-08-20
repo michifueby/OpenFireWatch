@@ -78,9 +78,16 @@ export class MapComponent implements AfterViewInit, OnDestroy {
 
   private map!: MapLibreMap;
   private readonly subscriptions = new Subscription();
-  /** Live markers we created — tracked so ngOnDestroy can remove them all. */
-  private readonly criticalMarkers: maplibregl.Marker[] = [];
+  /** Pulsing markers by anomaly id, so the set can be reconciled and torn down. */
+  private readonly criticalMarkers = new Map<number, maplibregl.Marker>();
   private readonly anomalyFeatures: GeoJSON.Feature[] = [];
+  /**
+   * Anomaly ids already on the circle layer. The live stream and the REST
+   * history overlap — an anomaly is persisted before it is broadcast, so one
+   * that arrives while the history request is in flight comes down both
+   * paths — and stacking two identical circles is invisible but dishonest.
+   */
+  private readonly plottedAnomalyIds = new Set<number>();
   /** Zone ids the overlay currently reflects, to detect changes cheaply. */
   private knownZoneIds = '';
 
@@ -131,6 +138,14 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     });
     this.map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
+    // Subscribed here rather than inside the load handler below. The style
+    // sheet is fetched over the network and takes a second or two; an alert
+    // that arrived in that window used to find nobody listening, and its
+    // marker was lost for good — the panel listed the alarm, the map showed
+    // nothing. Markers and camera moves need the map object, which exists
+    // now; only sources and layers have to wait for the style.
+    this.subscribeToRealtimeAlerts();
+
     // Sources/layers can only be added once the style has loaded.
     this.map.on('load', () => {
       this.drawRiskZones();
@@ -139,7 +154,9 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       this.draw.attach(this.map);
       void this.loadRiskZones();
       void this.loadAnomalyHistory();
-      this.subscribeToRealtimeAlerts();
+      // Anything that streamed in while the style was still loading is
+      // already collected; this is the first moment it can be painted.
+      this.refreshAnomalySource();
     });
   }
 
@@ -243,7 +260,12 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       const response = await fetch('/api/anomalies?limit=1000');
       if (!response.ok) return;
       const collection = (await response.json()) as GeoJSON.FeatureCollection;
-      this.anomalyFeatures.push(...collection.features);
+      for (const feature of collection.features) {
+        const id = Number(feature.properties?.['id']);
+        if (this.plottedAnomalyIds.has(id)) continue;
+        this.plottedAnomalyIds.add(id);
+        this.anomalyFeatures.push(feature);
+      }
       this.refreshAnomalySource();
     } catch {
       // History is a nice-to-have; live alerts still work without it.
@@ -251,12 +273,14 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Task 3: live updates. Every broadcast alert extends the circle layer;
-   * CRITICAL escalations additionally get a prominent pulsing marker.
+   * Live updates. Every broadcast alert extends the circle layer; every
+   * outstanding critical warning gets a prominent pulsing marker.
    */
   private subscribeToRealtimeAlerts(): void {
     this.subscriptions.add(
       this.alerts.anomalies$.subscribe((alert) => {
+        if (this.plottedAnomalyIds.has(alert.id)) return;
+        this.plottedAnomalyIds.add(alert.id);
         this.anomalyFeatures.push({
           type: 'Feature',
           geometry: {
@@ -269,13 +293,43 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       }),
     );
 
+    // Markers mirror the list of unacknowledged warnings rather than the
+    // stream of new ones. That list is rebuilt from the REST history on
+    // startup, so markers survive a reload, and it shrinks on acknowledgement,
+    // so a dot stops pulsing once somebody has taken the alarm — the map and
+    // the panel can no longer disagree about what is still outstanding.
     this.subscriptions.add(
-      this.alerts.criticalAlerts$.subscribe((alert) => this.addCriticalMarker(alert)),
+      this.alerts.activeWarnings$.subscribe((warnings) =>
+        this.syncCriticalMarkers(warnings),
+      ),
+    );
+
+    // The camera reacts to news, not to state: flying on the warning list
+    // would yank the view somewhere every time the history is restored or an
+    // unrelated alarm is acknowledged.
+    this.subscriptions.add(
+      this.alerts.criticalAlerts$.subscribe((alert) => this.flyToIncident(alert)),
     );
   }
 
+  /** Bring the markers on the map in line with the outstanding warnings. */
+  private syncCriticalMarkers(warnings: readonly AnomalyAlert[]): void {
+    const outstanding = new Set(warnings.map((warning) => warning.id));
+
+    for (const [id, marker] of this.criticalMarkers) {
+      if (outstanding.has(id)) continue;
+      marker.remove();
+      this.criticalMarkers.delete(id);
+    }
+
+    for (const warning of warnings) {
+      if (this.criticalMarkers.has(warning.id)) continue;
+      this.criticalMarkers.set(warning.id, this.addCriticalMarker(warning));
+    }
+  }
+
   /** Drop a pulsing red marker with a detail popup at the exact coordinates. */
-  private addCriticalMarker(alert: AnomalyAlert): void {
+  private addCriticalMarker(alert: AnomalyAlert): maplibregl.Marker {
     // Custom DOM element — the pulse animation lives in global styles.css
     // because Marker elements are attached outside Angular's view tree.
     const element = document.createElement('div');
@@ -287,13 +341,14 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     core.className = 'ofw-critical-marker__core';
     element.appendChild(core);
 
-    const marker = new maplibregl.Marker({ element })
+    return new maplibregl.Marker({ element })
       .setLngLat([alert.longitude, alert.latitude])
       .setPopup(this.buildPopup(alert))
       .addTo(this.map);
-    this.criticalMarkers.push(marker);
+  }
 
-    // Pull the operator's eyes to the incident without yanking the zoom out.
+  /** Pull the operator's eyes to an incident without yanking the zoom out. */
+  private flyToIncident(alert: AnomalyAlert): void {
     this.map.flyTo({
       center: [alert.longitude, alert.latitude],
       zoom: Math.max(this.map.getZoom(), 12),
@@ -378,7 +433,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     this.draw.detach();
     this.subscriptions.unsubscribe();
     this.criticalMarkers.forEach((marker) => marker.remove());
-    this.criticalMarkers.length = 0;
+    this.criticalMarkers.clear();
     this.map?.remove();
   }
 }
