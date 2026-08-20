@@ -8,6 +8,10 @@
   <strong>Open-source geospatial early warning for thermal anomalies — from satellite pass to map alert in seconds.</strong>
 </p>
 
+<p align="center">
+  <a href="https://openfirewatch.org"><strong>▶ Live instance — openfirewatch.org</strong></a>
+</p>
+
 OpenFireWatch is an event-driven early warning system that detects and alerts on thermal anomalies — wildfires, industrial fires, or self-igniting phosphorus ammunition — in near real-time. It continuously ingests satellite hotspot data (NASA FIRMS) and local weather conditions, evaluates every detection against predefined high-risk geographical zones using true spatial queries (PostGIS `ST_Intersects`), and pushes alerts to a live map over WebSockets — no page reloads, no polling.
 
 Built on a **pure TypeScript stack**: Node.js + BullMQ workers, a NestJS API, and an Angular + MapLibre GL JS frontend.
@@ -18,10 +22,12 @@ Built on a **pure TypeScript stack**: Node.js + BullMQ workers, a NestJS API, an
 
 <p align="center">
   <em>A smouldering nest detected inside a monitored forest — the alert carries the
-  evidence behind it: five satellite passes over 72 h, peaking at 1.4 MW.</em>
+  evidence behind it: five satellite passes over 72 h, peaking at 1.4 MW.
+  <a href="https://openfirewatch.org">See it live →</a></em>
 </p>
 
 <p align="center">
+  <a href="https://openfirewatch.org"><img alt="Live instance" src="https://img.shields.io/badge/live-openfirewatch.org-ff2d1a" /></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
   <a href="#-architecture"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" /></a>
   <a href="#-quick-start"><img alt="Docker Compose" src="https://img.shields.io/badge/docker--compose-ready-2496ED?logo=docker&logoColor=white" /></a>
@@ -95,6 +101,11 @@ OpenFireWatch is **fault-tolerant and event-driven by design**. Every layer is d
 - 🐳 **One-command dev environment** — the entire stack (DB, broker, API, workers, frontend) via a single `docker compose up`.
 
 ## 🚀 Quick Start
+
+> Just want to look first? The live instance at
+> **[openfirewatch.org](https://openfirewatch.org)** runs this exact code,
+> monitoring the Föhrenwald and the forest around St. Egyden am Steinfeld in
+> Lower Austria.
 
 **Prerequisites:** Docker and Docker Compose (v2+). Nothing else — no local Node.js or PostgreSQL required.
 
