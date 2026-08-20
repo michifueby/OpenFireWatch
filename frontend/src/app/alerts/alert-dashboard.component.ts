@@ -80,17 +80,26 @@ import {
             <p class="empty" *ngIf="!c.available">{{ i18n.t('conditionsUnavailable') }}</p>
 
             <ng-container *ngIf="c.available">
-              <div class="cond-readings">
-                <span class="c-temp">{{ c.temperatureC | number: '1.0-1' }}&nbsp;°C</span>
-                <span class="c-soil">{{ c.soilMoisturePct | number: '1.0-1' }}&nbsp;%</span>
-                <span class="c-hum">
-                  {{ i18n.t('conditionsHumidity') }} {{ c.relativeHumidityPct | number: '1.0-0' }}&nbsp;%
-                </span>
-                <span class="c-meta">
-                  {{ i18n.t('conditionsStation') }} {{ c.stationId }} ·
-                  {{ c.observedAt | date: 'HH:mm' }}
-                </span>
-              </div>
+              <!-- Same labelled layout as the alert cards: a bare "35.4 %"
+                   reads as noise to anyone who did not build the system. -->
+              <dl class="cond-readings">
+                <div class="cond">
+                  <dt>{{ i18n.t('conditionsTemp') }}</dt>
+                  <dd class="c-temp">{{ c.temperatureC | number: '1.0-1' }}&nbsp;°C</dd>
+                </div>
+                <div class="cond">
+                  <dt>{{ i18n.t('conditionsSoil') }}</dt>
+                  <dd class="c-soil">{{ c.soilMoisturePct | number: '1.0-1' }}&nbsp;%</dd>
+                </div>
+                <div class="cond">
+                  <dt>{{ i18n.t('conditionsHumidity') }}</dt>
+                  <dd class="c-hum">{{ c.relativeHumidityPct | number: '1.0-0' }}&nbsp;%</dd>
+                </div>
+              </dl>
+              <p class="c-meta">
+                {{ i18n.t('conditionsStation') }} {{ c.stationId }} ·
+                {{ i18n.t('conditionsAsOf') }} {{ c.observedAt | date: 'HH:mm' }}
+              </p>
 
               <ul class="readiness">
                 <li
@@ -358,12 +367,24 @@ import {
       }
 
       .cond-readings {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.15rem 0.7rem;
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(3, auto);
+        justify-content: start;
+        gap: 0.45rem 1.1rem;
         font-family: $font-mono;
         font-variant-numeric: tabular-nums;
-        font-size: 0.78rem;
+
+        dt {
+          font-size: 0.56rem;
+          letter-spacing: 0.1em;
+          color: #6b7688;
+        }
+
+        dd {
+          margin: 0.1rem 0 0;
+          font-size: 0.78rem;
+        }
 
         .c-temp {
           color: #ff8b5e;
@@ -371,15 +392,16 @@ import {
         .c-soil {
           color: #ffd166;
         }
-        .c-hum,
-        .c-meta {
-          font-size: 0.62rem;
-          color: #6b7688;
-          align-self: center;
+        .c-hum {
+          color: #9aa4b2;
         }
-        .c-meta {
-          flex-basis: 100%;
-        }
+      }
+
+      .c-meta {
+        margin: 0.35rem 0 0;
+        font-family: $font-mono;
+        font-size: 0.62rem;
+        color: #6b7688;
       }
 
       .readiness {

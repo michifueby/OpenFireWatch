@@ -42,7 +42,10 @@ export interface TranslationDict {
   conditionsGap: string;
   conditionsGapTempOnly: string;
   conditionsGapSoilOnly: string;
+  conditionsTemp: string;
+  conditionsSoil: string;
   conditionsHumidity: string;
+  conditionsAsOf: string;
   ack: string;
   ackAria: string;
   /** Acknowledging is a guarded write; these explain that and record it. */
@@ -148,7 +151,10 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsGap: '{temp} °C and {soil} % from the ignition window',
     conditionsGapTempOnly: 'soil already dry enough — {temp} °C short of ignition',
     conditionsGapSoilOnly: 'temperature reached — soil still {soil} % too moist',
-    conditionsHumidity: 'humidity',
+    conditionsTemp: 'AIR TEMPERATURE',
+    conditionsSoil: 'SOIL MOISTURE',
+    conditionsHumidity: 'HUMIDITY',
+    conditionsAsOf: 'as of',
     ack: 'ACK',
     sheetAlert: 'ACTIVE ALERT',
     sheetAlerts: 'ACTIVE ALERTS',
@@ -159,8 +165,8 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     ackNeedsKey:
       'Acknowledging clears the alarm for everyone, so it needs the operator key. Unlock it in the Hazard zones panel.',
     ackedAt: 'Acknowledged',
-    labelTemp: 'TEMP',
-    labelSoil: 'SOIL H₂O',
+    labelTemp: 'TEMPERATURE',
+    labelSoil: 'SOIL MOISTURE',
     labelCoords: 'LAT / LON',
     labelAcquired: 'ACQUIRED',
 
@@ -262,7 +268,10 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsGap: '{temp} °C und {soil} % vom Zündfenster entfernt',
     conditionsGapTempOnly: 'Boden bereits trocken genug — nur noch {temp} °C bis zur Zündung',
     conditionsGapSoilOnly: 'Temperatur erreicht — Boden noch {soil} % zu feucht',
-    conditionsHumidity: 'Luftfeuchte',
+    conditionsTemp: 'LUFTTEMPERATUR',
+    conditionsSoil: 'BODENFEUCHTE',
+    conditionsHumidity: 'LUFTFEUCHTE',
+    conditionsAsOf: 'Stand',
     ack: 'QUITT',
     sheetAlert: 'AKTIVER ALARM',
     sheetAlerts: 'AKTIVE ALARME',
@@ -273,8 +282,8 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     ackNeedsKey:
       'Quittieren löscht den Alarm für alle und erfordert deshalb den Betreiber-Schlüssel. Im Panel „Gefahrenzonen“ entsperren.',
     ackedAt: 'Quittiert',
-    labelTemp: 'TEMP',
-    labelSoil: 'BODEN H₂O',
+    labelTemp: 'TEMPERATUR',
+    labelSoil: 'BODENFEUCHTE',
     labelCoords: 'LAT / LON',
     labelAcquired: 'ERFASST',
 
