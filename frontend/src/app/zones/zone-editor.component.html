@@ -1,0 +1,181 @@
+<!-- Collapsed: a single unobtrusive button, so the map stays the focus. -->
+<button
+  *ngIf="!open()"
+  type="button"
+  class="launcher"
+  (click)="toggle()"
+  [attr.aria-label]="i18n.t('zonesOpen')"
+  [attr.title]="i18n.t('zonesOpen')"
+>
+  ✎ {{ i18n.t('zonesTitle') }}
+</button>
+
+<section class="panel" *ngIf="open()" [attr.aria-label]="i18n.t('zonesTitle')">
+  <header class="panel-header">
+    <h2>✎ {{ i18n.t('zonesTitle') }}</h2>
+    <div class="header-actions">
+      <button
+        *ngIf="api.unlocked()"
+        type="button"
+        class="ghost"
+        (click)="lock()"
+        [attr.title]="i18n.t('zonesLock')"
+      >
+        🔒 {{ i18n.t('zonesLock') }}
+      </button>
+      <button
+        type="button"
+        class="ghost"
+        (click)="toggle()"
+        [attr.aria-label]="i18n.t('zonesClose')"
+      >
+        ✕
+      </button>
+    </div>
+  </header>
+
+  <!-- Locked: explain what is needed instead of failing later. -->
+  <div class="body" *ngIf="!api.unlocked()">
+    <p class="hint">{{ i18n.t('zonesUnlockHint') }}</p>
+    <label class="field">
+      <span>{{ i18n.t('zonesApiKey') }}</span>
+      <input
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        (input)="onKeyInput($any($event.target).value)"
+        (keyup.enter)="unlock()"
+      />
+    </label>
+    <button type="button" class="primary" (click)="unlock()" [disabled]="busy()">
+      {{ i18n.t('zonesUnlock') }}
+    </button>
+    <p class="error" *ngIf="error()">{{ error() }}</p>
+  </div>
+
+  <!-- Unlocked, list view -->
+  <div class="body" *ngIf="api.unlocked() && !draft()">
+    <button type="button" class="primary" (click)="startNew()">
+      {{ i18n.t('zonesNew') }}
+    </button>
+
+    <p class="hint" *ngIf="zones().length === 0">{{ i18n.t('zonesEmpty') }}</p>
+
+    <ul class="zone-list">
+      <li class="zone" *ngFor="let zone of zones()">
+        <div class="zone-name">{{ label(zone) }}</div>
+        <div class="zone-meta">{{ hazardLabel(zone.hazardType) }}</div>
+        <div class="zone-actions" *ngIf="confirmingRetire() !== zone.id">
+          <button type="button" class="ghost" (click)="startEdit(zone)">
+            {{ i18n.t('zonesEdit') }}
+          </button>
+          <button type="button" class="danger" (click)="askRetire(zone)" [disabled]="busy()">
+            {{ i18n.t('zonesRetire') }}
+          </button>
+        </div>
+
+        <!-- Inline confirmation: destructive actions never fire on one click. -->
+        <div class="retire-confirm" *ngIf="confirmingRetire() === zone.id">
+          <p>{{ i18n.t('zonesRetireConfirm') }}</p>
+          <div class="zone-actions">
+            <button type="button" class="ghost" (click)="abortRetire()">
+              {{ i18n.t('zonesCancel') }}
+            </button>
+            <button type="button" class="danger" (click)="retire(zone)" [disabled]="busy()">
+              {{ i18n.t('zonesRetire') }}
+            </button>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <p class="notice" *ngIf="notice()">{{ notice() }}</p>
+    <p class="error" *ngIf="error()">{{ error() }}</p>
+  </div>
+
+  <!-- Unlocked, draft view -->
+  <div class="body" *ngIf="api.unlocked() && draft() as d">
+    <!-- Drawing in progress -->
+    <div class="drawing" *ngIf="draw.drawing()">
+      <p class="hint">{{ i18n.t('zonesDrawHint') }}</p>
+      <p class="counter">
+        {{ draw.corners().length }} {{ i18n.t('zonesDrawPoints') }}
+      </p>
+      <div class="row">
+        <button
+          type="button"
+          class="ghost"
+          (click)="draw.undo()"
+          [disabled]="draw.corners().length === 0"
+        >
+          ↶ {{ i18n.t('zonesUndo') }}
+        </button>
+        <button
+          type="button"
+          class="primary"
+          (click)="finishDrawing()"
+          [disabled]="draw.corners().length < 3"
+        >
+          ✓ {{ i18n.t('zonesFinish') }}
+        </button>
+      </div>
+      <button type="button" class="ghost wide" (click)="cancelDrawing()">
+        {{ i18n.t('zonesCancel') }}
+      </button>
+    </div>
+
+    <!-- Outline captured → the form -->
+    <div class="form" *ngIf="!draw.drawing()">
+      <p class="outline-ok" *ngIf="d.geometry">
+        ✓ {{ cornerCount(d.geometry) }} {{ i18n.t('zonesDrawPoints') }}
+        <button type="button" class="link" (click)="redraw()">
+          {{ i18n.t('zonesRedraw') }}
+        </button>
+      </p>
+
+      <label class="field">
+        <span>{{ i18n.t('zonesNameDe') }}</span>
+        <input
+          type="text"
+          [ngModel]="d.nameDe"
+          (ngModelChange)="setNameDe($event)"
+          name="nameDe"
+        />
+      </label>
+
+      <label class="field">
+        <span>{{ i18n.t('zonesNameEn') }}</span>
+        <input
+          type="text"
+          [ngModel]="d.nameEn"
+          (ngModelChange)="setNameEn($event)"
+          name="nameEn"
+        />
+      </label>
+
+      <label class="field">
+        <span>{{ i18n.t('zonesHazard') }}</span>
+        <select
+          [ngModel]="d.hazardType"
+          (ngModelChange)="setHazard($event)"
+          name="hazardType"
+        >
+          <option *ngFor="let option of hazardOptions" [value]="option.value">
+            {{ i18n.t(option.key) }}
+          </option>
+        </select>
+      </label>
+
+      <p class="error" *ngIf="error()">{{ error() }}</p>
+
+      <div class="row">
+        <button type="button" class="ghost" (click)="cancelDraft()">
+          {{ i18n.t('zonesCancel') }}
+        </button>
+        <button type="button" class="primary" (click)="save()" [disabled]="busy()">
+          {{ busy() ? i18n.t('zonesSaving') : i18n.t('zonesSave') }}
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="ofw-logo-title">
+  <title id="ofw-logo-title">OpenFireWatch</title>
+  <!--
+    OpenFireWatch brand mark.
+    Line-art map pin with a flame core, surrounded by radar arcs whose
+    upper-right sweep gap suggests an active scan. Authored as vector art so
+    the same file serves the app UI, the README and (via favicon.svg) the
+    browser tab, crisp at every size.
+  -->
+  <defs>
+    <!-- Signal gradient: amber (detection) into alert red (escalation). -->
+    <linearGradient id="ofw-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffa023" />
+      <stop offset="0.55" stop-color="#ff6a1f" />
+      <stop offset="1" stop-color="#ff2d1a" />
+    </linearGradient>
+
+    <!-- Subtle neon halo: one soft blur behind the crisp line art. -->
+    <filter id="ofw-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.6" result="blur" />
+      <feComponentTransfer in="blur" result="halo">
+        <feFuncA type="linear" slope="0.55" />
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode in="halo" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Radar sweep: a rotated bar knocks a diagonal gap out of the arcs. -->
+    <mask id="ofw-sweep">
+      <rect width="128" height="128" fill="#fff" />
+      <rect x="59" y="-2" width="10" height="60" fill="#000" transform="rotate(42 64 56)" />
+    </mask>
+  </defs>
+
+  <g fill="none" stroke="url(#ofw-grad)" stroke-linecap="round" filter="url(#ofw-glow)">
+    <!-- Radar arcs (200° each), interrupted by the sweep mask. -->
+    <g stroke-width="4" mask="url(#ofw-sweep)">
+      <path d="M31.50 61.73 A33 33 0 1 1 96.50 61.73" />
+      <path d="M21.65 63.47 A43 43 0 1 1 106.35 63.47" />
+      <path d="M11.81 65.20 A53 53 0 1 1 116.19 65.20" />
+    </g>
+
+    <!-- Map pin: teardrop outline over the arcs. -->
+    <path stroke-width="4.5" stroke-linejoin="round"
+          d="M64 116 C53 98 39 77 39 56 A25 25 0 1 1 89 56 C89 77 75 98 64 116 Z" />
+
+    <!-- Inner ring framing the flame core. -->
+    <circle cx="64" cy="56" r="16" stroke-width="3" />
+
+    <!-- Flame: outer body plus inner tongue. -->
+    <path stroke-width="3.2" stroke-linejoin="round"
+          d="M64 42 C68 49.5 74 54 74 61 C74 67.5 69.5 71.5 64 71.5
+             C58.5 71.5 54 67.5 54 61 C54 55.5 57.5 51.5 60 47.5
+             C60.7 53 63.5 54.5 63.5 50.5 C63.5 47 63.3 44.5 64 42 Z" />
+    <path stroke-width="2.2" stroke-linejoin="round"
+          d="M64 55 C66.5 58.5 68 60.5 68 63 C68 65.8 66.2 67.5 64 67.5
+             C61.8 67.5 60 65.8 60 63 C60 60.5 61.5 58.5 64 55 Z" />
+  </g>
+</svg>

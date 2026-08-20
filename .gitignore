@@ -1,0 +1,23 @@
+# Environment — never commit secrets
+.env
+
+# Dependencies
+node_modules/
+
+# Build/tool caches (npm cache dirs appear when installing inside containers
+# with the project mounted; .angular is the Angular CLI build cache)
+npm-cache/
+.angular/
+*.tsbuildinfo
+
+# Build output
+dist/
+out-tsc/
+
+# Logs & OS noise
+*.log
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

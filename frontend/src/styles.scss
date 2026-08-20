@@ -1,0 +1,104 @@
+// =============================================================================
+// OpenFireWatch — global command-center theme (dark).
+//
+// Component-scoped styles live in each standalone component; this file holds
+// only what MUST be global: the base theme, and everything MapLibre attaches
+// OUTSIDE Angular's view encapsulation (markers, popups).
+// =============================================================================
+
+// --- Design tokens -----------------------------------------------------------
+$bg-deep: #05070c; // page background behind the map
+$panel-bg: rgba(7, 12, 20, 0.88); // floating panels
+$alert-red: #ff2d1a; // critical accent
+$text-main: #e6e8ee;
+$font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas,
+  monospace;
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: $bg-deep;
+  color: $text-main;
+}
+
+// -----------------------------------------------------------------------------
+// Radar marker — the pulsating critical-alert dot.
+//
+// Anatomy: the element itself is the solid red core (with a static glow);
+// ::before and ::after are two expanding, fading rings whose animations are
+// offset by half a period, producing a continuous radar sweep. Lives in the
+// GLOBAL stylesheet on purpose: MapLibre Marker elements are appended to the
+// map container outside any Angular component's view encapsulation.
+// -----------------------------------------------------------------------------
+.ofw-critical-marker {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: $alert-red;
+  border: 2px solid #fff;
+  box-shadow: 0 0 12px 2px rgba($alert-red, 0.9); // static glow on the core
+  cursor: pointer;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -2px; // align rings with the bordered core
+    border-radius: 50%;
+    border: 2px solid rgba($alert-red, 0.85);
+    animation: ofw-radar 2.4s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  }
+
+  // Second ring, half a period behind → seamless continuous pulse.
+  &::after {
+    animation-delay: 1.2s;
+  }
+}
+
+@keyframes ofw-radar {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(3.4);
+    opacity: 0;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// MapLibre popup, restyled for the dark theme (also outside Angular's scope).
+// -----------------------------------------------------------------------------
+.maplibregl-popup-content {
+  background: $panel-bg;
+  color: $text-main;
+  border: 1px solid rgba($alert-red, 0.45);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+  font-family: $font-mono;
+  font-size: 0.75rem;
+
+  .ofw-popup {
+    display: grid;
+    gap: 0.25rem;
+
+    strong {
+      color: $alert-red;
+      letter-spacing: 0.03em;
+    }
+  }
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: rgba(7, 12, 20, 0.88);
+}
+.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: rgba(7, 12, 20, 0.88);
+}
+
+.maplibregl-popup-close-button {
+  color: $text-main;
+}

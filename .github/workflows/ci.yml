@@ -1,0 +1,126 @@
+# =============================================================================
+# OpenFireWatch — Continuous Integration
+#
+# Runs on every push and pull request targeting `main`. Two parallel jobs:
+#
+#   e2e-tests   Boots REAL infrastructure as GitHub Actions service
+#               containers (PostGIS + Redis) and runs the NestJS end-to-end
+#               suite — the full pipeline from HTTP POST through BullMQ,
+#               PostGIS ST_Intersects and the phosphorus rule down to the
+#               (spied) Socket.IO emission. No broken pipeline can merge.
+#
+#   build       Typechecks the workers and production-builds the Angular
+#               frontend, so compile errors in any package block the PR.
+#
+# How service containers reach the test runner: the job's steps execute
+# directly on the runner VM (not in a container), while each service runs in
+# its own Docker container with its ports PUBLISHED to the runner's
+# localhost. The test suite therefore connects to 127.0.0.1:5432 / :6379 —
+# identical to local development against docker-compose. The `options`
+# health checks make GitHub delay the first step until both services are
+# actually accepting connections, eliminating boot-race flakiness.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e-tests:
+    name: Backend E2E tests (PostGIS + Redis)
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_DB: openfirewatch
+          POSTGRES_USER: openfirewatch
+          POSTGRES_PASSWORD: ci-test-password
+        ports:
+          - 5432:5432 # published to the runner's localhost
+        options: >-
+          --health-cmd "pg_isready -U openfirewatch -d openfirewatch"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379 # published to the runner's localhost
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Node 22 to match the project's engines field and the node:22-alpine
+      # runtime images — CI must test what production actually runs.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      # The suite creates its own isolated database (openfirewatch_e2e) and
+      # uses Redis logical DB 15 — see backend/test/setup-env.ts.
+      - name: Run E2E tests
+        working-directory: backend
+        env:
+          POSTGRES_HOST: 127.0.0.1
+          POSTGRES_PORT: "5432"
+          POSTGRES_USER: openfirewatch
+          POSTGRES_PASSWORD: ci-test-password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: "6379"
+        run: npm run test:e2e
+
+  build:
+    name: Typecheck & build all packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            workers/package-lock.json
+            frontend/package-lock.json
+
+      - name: Typecheck backend
+        working-directory: backend
+        run: |
+          npm ci
+          npx tsc -p tsconfig.json --noEmit
+
+      - name: Typecheck workers
+        working-directory: workers
+        run: |
+          npm ci
+          npx tsc -p tsconfig.json --noEmit
+
+      - name: Build frontend (production)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build

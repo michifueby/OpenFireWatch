@@ -1,0 +1,254 @@
+// Operator panel — same dark command-center language as the alert dashboard,
+// but visually secondary: this is a tool, not the live situation.
+$alert-red: #ff2d1a;
+$amber: #ffd166;
+$panel-bg: rgba(7, 12, 20, 0.9);
+$border: rgba(230, 232, 238, 0.18);
+$muted: #8b95a7;
+$font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+:host {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 2;
+}
+
+.launcher {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid $border;
+  border-radius: 999px;
+  background: $panel-bg;
+  backdrop-filter: blur(6px);
+  color: #e6e8ee;
+  font-family: $font-mono;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+
+  &:hover {
+    border-color: $amber;
+    color: $amber;
+  }
+}
+
+.panel {
+  width: 20rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  border: 1px solid $border;
+  border-radius: 8px;
+  background: $panel-bg;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  color: #e6e8ee;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid $border;
+
+  h2 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: $amber;
+  }
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.body {
+  padding: 0.8rem 0.9rem;
+  display: grid;
+  gap: 0.7rem;
+  font-size: 0.8rem;
+}
+
+.hint {
+  margin: 0;
+  color: $muted;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.counter,
+.outline-ok {
+  margin: 0;
+  font-family: $font-mono;
+  font-size: 0.72rem;
+  color: $amber;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+
+  span {
+    font-size: 0.62rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: $muted;
+  }
+
+  input,
+  select {
+    padding: 0.4rem 0.5rem;
+    border: 1px solid $border;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.35);
+    color: #e6e8ee;
+    font-family: inherit;
+    font-size: 0.78rem;
+
+    &:focus {
+      outline: none;
+      border-color: $amber;
+    }
+  }
+}
+
+button {
+  border-radius: 4px;
+  font-family: $font-mono;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.primary {
+  border: 1px solid $amber;
+  background: rgba(255, 209, 102, 0.12);
+  color: $amber;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 209, 102, 0.22);
+  }
+}
+
+.ghost {
+  border: 1px solid $border;
+  background: transparent;
+  color: #e6e8ee;
+
+  &:hover:not(:disabled) {
+    border-color: $amber;
+    color: $amber;
+  }
+}
+
+.danger {
+  border: 1px solid rgba($alert-red, 0.5);
+  background: transparent;
+  color: #ff9d8f;
+
+  &:hover:not(:disabled) {
+    border-color: $alert-red;
+    color: $alert-red;
+  }
+}
+
+.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: $muted;
+  text-decoration: underline;
+
+  &:hover {
+    color: $amber;
+  }
+}
+
+.wide {
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  gap: 0.4rem;
+
+  button {
+    flex: 1;
+  }
+}
+
+.zone-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.zone {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid $border;
+  border-left: 3px solid $amber;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.zone-name {
+  font-size: 0.78rem;
+}
+
+.zone-meta {
+  margin-top: 0.15rem;
+  font-family: $font-mono;
+  font-size: 0.62rem;
+  color: $muted;
+}
+
+.zone-actions {
+  margin-top: 0.45rem;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.error {
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(120, 12, 12, 0.5);
+  border: 1px solid rgba($alert-red, 0.5);
+  color: #ffd7d0;
+  font-size: 0.72rem;
+}
+
+.notice {
+  margin: 0;
+  color: #7ee2a8;
+  font-size: 0.72rem;
+}
+
+.drawing,
+.form {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.retire-confirm {
+  margin-top: 0.45rem;
+
+  p {
+    margin: 0 0 0.4rem;
+    font-size: 0.7rem;
+    color: #ff9d8f;
+    line-height: 1.4;
+  }
+}

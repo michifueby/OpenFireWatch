@@ -1,0 +1,22 @@
+# =============================================================================
+# LOCAL DEVELOPMENT overrides — applied automatically by `docker compose up`.
+#
+# Publishes the database and the broker on localhost so that on-host tooling
+# can reach them: `npm run test:e2e`, psql, redis-cli, an IDE database client.
+#
+# A PRODUCTION run must NOT expose these. Start it with the base file only:
+#
+#     docker compose -f docker-compose.yml up -d
+#
+# Then Postgres and Redis are reachable solely on the private compose network,
+# and the only ports on the host are the API and the web UI.
+# =============================================================================
+
+services:
+  db:
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_PORT:-6379}:6379"

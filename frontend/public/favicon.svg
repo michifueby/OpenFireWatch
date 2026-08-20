@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="OpenFireWatch">
+  <!--
+    Favicon variant of the brand mark: the radar arcs and the neon glow are
+    dropped and the pin is filled solid, because thin strokes turn to mush at
+    16 px. Same gradient, same silhouette — recognisable in a browser tab.
+  -->
+  <defs>
+    <linearGradient id="ofw-fav-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffa023" />
+      <stop offset="0.55" stop-color="#ff6a1f" />
+      <stop offset="1" stop-color="#ff2d1a" />
+    </linearGradient>
+  </defs>
+
+  <!-- Solid pin silhouette. -->
+  <path fill="url(#ofw-fav-grad)"
+        d="M32 61 C24.5 48.5 13 36 13 26 A19 19 0 1 1 51 26 C51 36 39.5 48.5 32 61 Z" />
+
+  <!-- Flame in a warm off-white: contrasts on both light and dark tab bars. -->
+  <path fill="#fff4e6"
+        d="M32 13 C34.5 18.5 39.5 21.5 39.5 27 C39.5 31.7 36.2 35 32 35
+           C27.8 35 24.5 31.7 24.5 27 C24.5 22.7 27.2 19.8 29.4 16.8
+           C30 21 32 22 32 19.3 C32 17 31.8 15 32 13 Z" />
+</svg>

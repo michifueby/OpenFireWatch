@@ -1,0 +1,148 @@
+# =============================================================================
+# OpenFireWatch — full local stack (pure TypeScript)
+#
+#   docker compose up --build
+#
+# Services:
+#   db        PostgreSQL 16 + PostGIS 3.4   (single source of truth)
+#   redis     Redis 7                       (event bus: BullMQ + pub/sub)
+#   backend   NestJS + Socket.IO            (stateless API layer)
+#   workers   Node.js + BullMQ              (ingestion + persistence)
+#   frontend  Angular + MapLibre GL JS      (served by nginx)
+#
+# All services share the private `openfirewatch` bridge network. Only the
+# backend API and the frontend are exposed to the host.
+#
+# This file is the PRODUCTION topology: the database and the broker are not
+# published. `docker-compose.override.yml` adds host port publishing for local
+# development and is applied automatically, so:
+#
+#   docker compose up -d                      -> development (db/redis on localhost)
+#   docker compose -f docker-compose.yml up -d -> production  (internal only)
+# =============================================================================
+
+name: openfirewatch
+
+services:
+  # ---------------------------------------------------------------------------
+  # Storage layer — PostgreSQL with the PostGIS extension.
+  # `deploy/db/init.sql` runs automatically on first startup (empty volume).
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-openfirewatch}
+      POSTGRES_USER: ${POSTGRES_USER:-openfirewatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./deploy/db/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - openfirewatch
+
+  # ---------------------------------------------------------------------------
+  # Message broker — Redis as the event bus (BullMQ queues + pub/sub).
+  # AOF persistence is enabled so queued jobs survive a broker restart.
+  # NOTE: BullMQ requires `maxmemory-policy noeviction` to never lose jobs.
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      [
+        "redis-server",
+        "--appendonly", "yes",
+        "--maxmemory-policy", "noeviction",
+      ]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - openfirewatch
+
+  # ---------------------------------------------------------------------------
+  # Business logic & API layer — stateless NestJS service.
+  # Relays Redis alert events to browsers via Socket.IO and serves
+  # REST + OpenAPI/Swagger with class-validator guarding every DTO.
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # In-network hostnames override any host-oriented values from .env
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - openfirewatch
+
+  # ---------------------------------------------------------------------------
+  # Data ingestion layer — isolated Node.js BullMQ workers.
+  # Polls NASA FIRMS with exponential backoff, enqueues detection events,
+  # persists them to PostGIS, and raises alerts on risk-zone intersection.
+  # ---------------------------------------------------------------------------
+  workers:
+    build:
+      context: ./workers
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - openfirewatch
+
+  # ---------------------------------------------------------------------------
+  # Presentation layer — Angular + MapLibre GL live map, built once and
+  # served as static assets by nginx (which also proxies /api and /socket.io
+  # to the backend so the browser only ever talks to one origin).
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    depends_on:
+      - backend
+    networks:
+      - openfirewatch
+
+networks:
+  openfirewatch:
+    driver: bridge
+
+volumes:
+  db-data:
+  redis-data:
