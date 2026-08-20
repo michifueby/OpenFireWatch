@@ -19,6 +19,23 @@ FROM node:22-alpine
 ENV NODE_ENV=production
 WORKDIR /app
 
+# Build identity. The release version comes from package.json, which is copied
+# in below and read at runtime; the commit cannot be — git is not in the image
+# — so it is passed in. Both default to nothing, which keeps a plain
+# `docker compose build` working and simply reports the revision as unknown.
+ARG APP_VERSION=0.0.0-dev
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
+# Standard OCI labels: `docker inspect` answers what an image is without
+# having to start it or guess from the tag.
+LABEL org.opencontainers.image.title="OpenFireWatch API" \
+      org.opencontainers.image.description="NestJS API: evaluation, alert relay and read models" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.source="https://github.com/michifueby/OpenFireWatch" \
+      org.opencontainers.image.licenses="MIT"
+
 COPY package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi \
     && npm cache clean --force

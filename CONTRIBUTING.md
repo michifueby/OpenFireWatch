@@ -85,6 +85,62 @@ present derived geometry as an authoritative boundary.
 See [docs/monitoring-areas.md](docs/monitoring-areas.md) for how zones and the
 monitored satellite area relate.
 
+## Versioning and releases
+
+The root `VERSION` file is the single source of truth. Three `package.json`
+manifests, the OpenAPI document, the about panel and the image labels all
+derive from it — never edit any of them by hand. CI fails the build if they
+drift apart.
+
+```bash
+scripts/version.sh --check   # verify every copy agrees
+scripts/version.sh 0.2.0     # set a new version everywhere
+```
+
+The project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Below `1.0.0` the HTTP API, the WebSocket payloads and the database schema may
+still change between minor releases, so:
+
+| Change | Bump |
+| --- | --- |
+| A new detection rule, endpoint, or panel | minor (`0.1.0` → `0.2.0`) |
+| A fix that changes no interface | patch (`0.1.0` → `0.1.1`) |
+| A renamed field, removed endpoint, or altered alert semantics | minor, until `1.0.0` — and say so plainly in the changelog |
+
+`1.0.0` is reserved for the point at which the hazard zones have been reviewed
+by the fire service that would rely on them. Until then the shape of the data
+is still a question rather than a commitment.
+
+### Cutting a release
+
+```bash
+scripts/version.sh 0.2.0
+# move the Unreleased entries in CHANGELOG.md under [0.2.0] with today's date
+git commit -am "release: v0.2.0"
+git tag -a v0.2.0 -m "OpenFireWatch v0.2.0"
+git push --follow-tags
+```
+
+### Deploying
+
+On the server, use the deploy script rather than `docker compose` directly:
+
+```bash
+cd /opt/openfirewatch && git pull && deploy/deploy.sh
+```
+
+It passes the version and the exact commit into the build, so the images carry
+standard OCI labels and the running services can say what they are:
+
+```bash
+curl -s https://openfirewatch.org/api/health
+# {"status":"ok","version":"0.2.0","revision":"a1b2c3d"}
+```
+
+That `revision` is the field worth checking after a deploy. The version only
+moves on a release, so between releases it cannot tell you whether the fix you
+just pushed is the one that is running — the commit can.
+
 ## Reporting problems
 
 Open an issue for anything larger than a quick fix so the approach can be

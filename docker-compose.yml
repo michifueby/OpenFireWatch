@@ -78,6 +78,14 @@ services:
   backend:
     build:
       context: ./backend
+      args:
+        # Supplied by deploy/deploy.sh, which reads them out of the repository
+        # itself. The fallbacks mark an image as "not built through the
+        # release path" rather than letting it claim a version it cannot
+        # prove — what the API and the UI report at runtime always comes from
+        # package.json and is correct either way.
+        APP_VERSION: "${APP_VERSION:-0.0.0-dev}"
+        GIT_SHA: "${GIT_SHA:-unknown}"
     restart: unless-stopped
     env_file: .env
     environment:
@@ -114,6 +122,14 @@ services:
   workers:
     build:
       context: ./workers
+      args:
+        # Supplied by deploy/deploy.sh, which reads them out of the repository
+        # itself. The fallbacks mark an image as "not built through the
+        # release path" rather than letting it claim a version it cannot
+        # prove — what the API and the UI report at runtime always comes from
+        # package.json and is correct either way.
+        APP_VERSION: "${APP_VERSION:-0.0.0-dev}"
+        GIT_SHA: "${GIT_SHA:-unknown}"
     restart: unless-stopped
     env_file: .env
     environment:
@@ -136,6 +152,14 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        # Supplied by deploy/deploy.sh, which reads them out of the repository
+        # itself. The fallbacks mark an image as "not built through the
+        # release path" rather than letting it claim a version it cannot
+        # prove — what the API and the UI report at runtime always comes from
+        # package.json and is correct either way.
+        APP_VERSION: "${APP_VERSION:-0.0.0-dev}"
+        GIT_SHA: "${GIT_SHA:-unknown}"
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-4200}:80"

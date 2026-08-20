@@ -34,6 +34,7 @@ import {
   ingestDetections,
 } from './ingestion/ingest.task';
 import { createRedisConnection } from './redis';
+import { APP_VERSION, GIT_REVISION } from './version';
 
 async function main(): Promise<void> {
   // --- Dead letter queue ------------------------------------------------------
@@ -105,7 +106,8 @@ async function main(): Promise<void> {
     return null;
   });
   console.log(
-    `OpenFireWatch workers up — FIRMS ${config.FIRMS_SOURCE} every ${config.FIRMS_POLL_INTERVAL}s, ` +
+    `OpenFireWatch workers v${APP_VERSION} (${GIT_REVISION}) up — ` +
+      `FIRMS ${config.FIRMS_SOURCE} every ${config.FIRMS_POLL_INTERVAL}s, ` +
       `weather from TAWES station ${config.GEOSPHERE_STATION_ID}, ` +
       (area
         ? `area [${area.bbox}] (${area.origin === 'zones' ? 'derived from active zones' : 'FIRMS_AREA override'})`

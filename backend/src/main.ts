@@ -6,11 +6,12 @@
  * PostGIS. Any number of replicas can run behind a load balancer.
  */
 
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
+import { APP_VERSION, GIT_REVISION } from './version';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -39,7 +40,9 @@ async function bootstrap(): Promise<void> {
   const openApiConfig = new DocumentBuilder()
     .setTitle('OpenFireWatch API')
     .setDescription('Geospatial early warning system for thermal anomalies')
-    .setVersion('0.1.0')
+    // From the manifest, so the documented version cannot claim to be a
+    // release the running code is not.
+    .setVersion(APP_VERSION)
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, openApiConfig));
 
@@ -51,6 +54,14 @@ async function bootstrap(): Promise<void> {
   const rawPort = process.env.API_PORT?.split(':').pop() ?? '';
   const port = Number.parseInt(rawPort, 10);
   await app.listen(Number.isInteger(port) && port > 0 && port < 65536 ? port : 8000, '0.0.0.0');
+
+  // Logged on the first line of every container start, so `docker compose
+  // logs backend | head` answers "what is deployed right now" without
+  // reaching for the API.
+  Logger.log(
+    `OpenFireWatch API v${APP_VERSION} (${GIT_REVISION})`,
+    'Bootstrap',
+  );
 }
 
 void bootstrap();

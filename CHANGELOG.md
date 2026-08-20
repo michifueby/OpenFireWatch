@@ -1,0 +1,74 @@
+# Changelog
+
+All notable changes to OpenFireWatch are recorded here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+While the version is below `1.0.0`, the HTTP API, the WebSocket payloads and
+the database schema may still change between minor releases. `1.0.0` is
+reserved for the point at which the hazard zones have been reviewed by the
+fire service that would rely on them — until then, the shape of the data is
+still a question, not a commitment.
+
+## [Unreleased]
+
+## [0.1.0] — 2026-08-20
+
+First tagged release. The system has been running publicly at
+<https://openfirewatch.org> and is in use as a demonstration; everything below
+describes what that deployment does.
+
+### Added
+
+- **Satellite ingestion.** NASA FIRMS (VIIRS) hotspots polled on a schedule
+  into durable BullMQ queues, correlated at ingestion time with air
+  temperature and humidity from GeoSphere Austria (TAWES) and topsoil
+  moisture from Open-Meteo. Failed cycles retry with exponential backoff and
+  land on a dead letter queue rather than being dropped.
+- **The phosphorus rule.** A detection inside a white-phosphorus zone
+  escalates when the ground is above 30 °C and topsoil moisture is below
+  20 % — the conditions under which cracked, dry ground exposes buried
+  WWII ordnance to oxygen.
+- **Per-hazard escalation.** Wildfire, ammunition-depot and generic zones
+  each carry their own criteria, so a zone is not judged by rules written for
+  a different danger.
+- **Smouldering nest detection.** Repeated weak detections in the same place
+  across separate satellite passes are escalated on the evidence, which
+  outranks the predictive weather gates.
+- **Hazard zones in PostGIS.** `ST_Intersects` against GiST-indexed polygons,
+  editable from the map without a redeploy, retired rather than deleted so
+  their alert history survives.
+- **Live situation map.** MapLibre GL, dark command-centre styling, pulsing
+  markers for critical escalations, alerts pushed over Socket.IO from a Redis
+  fan-out.
+- **Alert history.** Every verdict since the first deployment is readable
+  back, so a reload no longer wipes the picture.
+- **Current conditions and per-zone readiness.** How far each zone is from
+  its own threshold, in the operator's terms ("only 4 °C from ignition").
+- **Acknowledgements.** Recorded in the database, shared across every device
+  live, guarded by the operator key so a passer-by cannot silence an alarm.
+- **Bilingual interface** (German and English), following the browser
+  language, with an explicit switch.
+- **Phone layout.** Bottom-sheet situation panel, touch-sized controls and
+  safe-area handling, so the map is usable on the device people carry.
+- **Operator API key** on every write, failing closed when unset.
+- **German manual** for responders, residents and developers
+  (`docs/handbuch/handbuch.pdf`).
+- **Production deployment** with Caddy, automatic TLS, backups and hardening
+  notes.
+- **End-to-end tests** against real PostGIS and Redis, run in CI on every
+  push.
+
+### Fixed
+
+- The API crashed at startup when `API_PORT` carried a host-interface prefix.
+- The map overlay only followed zone changes made through the editor, not
+  those made in SQL.
+- The situation panel coloured detection-gated zones permanently red,
+  spending the alarm colour on a property rather than a state.
+- Critical markers were lost if an alert arrived while the map style was
+  still loading, and were never restored after a reload.
+
+[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/michifueby/OpenFireWatch/releases/tag/v0.1.0

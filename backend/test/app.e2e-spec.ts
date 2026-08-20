@@ -447,6 +447,24 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('build identity', () => {
+    it('reports the version from the manifest, not a hard-coded string', async () => {
+      const res = await request(app.getHttpServer()).get('/api/health').expect(200);
+
+      expect(res.body.status).toBe('ok');
+      // The version is read relative to the compiled file's own location, so
+      // this fails the moment the build layout moves package.json out of
+      // reach — which would otherwise only surface as "unknown" on a server
+      // after a deploy, exactly when the answer is needed.
+      expect(res.body.version).toMatch(/^\d+\.\d+\.\d+/);
+      expect(res.body.version).toBe(
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        (require('../package.json') as { version: string }).version,
+      );
+      expect(typeof res.body.revision).toBe('string');
+    });
+  });
+
   describe('acknowledgement', () => {
     /** Raise a real critical alert and return the anomaly id it produced. */
     async function raiseCriticalAlert(): Promise<number> {

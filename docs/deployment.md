@@ -108,12 +108,21 @@ FRONTEND_PORT=127.0.0.1:4200
 ## 6. Start it
 
 ```bash
+deploy/deploy.sh
+```
+
+That is a thin wrapper around:
+
+```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
 Naming the base file explicitly is deliberate: it skips
 `docker-compose.override.yml`, which exists only to publish the database and
-broker on localhost for development.
+broker on localhost for development. The wrapper adds one thing on top: it
+reads the release version and the exact commit out of the repository and
+passes them into the build, so the images carry standard OCI labels and the
+running services can tell you what they are.
 
 The first build takes a few minutes. Verify the exposure is what you expect:
 
@@ -172,11 +181,23 @@ gunzip -c backups/openfirewatch_<stamp>.sql.gz | \
 ## 9. Updating
 
 ```bash
-cd /opt/openfirewatch && git pull
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+cd /opt/openfirewatch && git pull && deploy/deploy.sh
 ```
 
 Only rebuilt services restart; the database and its volume are untouched.
+
+Then confirm that what you pushed is what is running:
+
+```bash
+curl -s https://openfirewatch.org/api/health
+# {"status":"ok","version":"0.1.0","revision":"a1b2c3d"}
+```
+
+`revision` is the field that matters here. The version only moves when a
+release is cut, so between releases it cannot tell you whether the fix you
+just deployed is live; the commit can. A `-dirty` suffix means the image was
+built from a working tree with uncommitted edits — on a server, that is
+usually a mistake worth looking into.
 
 ## Recurring costs
 

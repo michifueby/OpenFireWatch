@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 
 import { TranslationService } from '../core/i18n/translation.service';
+import { APP_VERSION } from '../core/version';
 
 @Component({
   selector: 'ofw-about-panel',
@@ -50,6 +51,9 @@ import { TranslationService } from '../core/i18n/translation.service';
         </li>
       </ol>
       <p class="credit-line">
+        <!-- Version first: it is the one line worth quoting back when
+             something looks wrong. -->
+        <span class="version">v{{ version }}</span> ·
         {{ i18n.t('developedBy') }} <strong>Michael Fueby</strong> ·
         <a
           href="https://github.com/michifueby"
@@ -257,6 +261,10 @@ import { TranslationService } from '../core/i18n/translation.service';
           }
         }
 
+        .version {
+          color: #e6e8ee;
+        }
+
         .credit-line {
           margin: 0.8rem 0 0;
           padding-top: 0.6rem;
@@ -333,6 +341,9 @@ import { TranslationService } from '../core/i18n/translation.service';
 export class AboutPanelComponent {
   /** Whether the explainer panel is expanded. */
   open = false;
+
+  /** Compiled-in release version — see scripts/version.sh. */
+  readonly version = APP_VERSION;
 
   constructor(readonly i18n: TranslationService) {}
 }

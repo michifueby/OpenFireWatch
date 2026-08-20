@@ -12,6 +12,11 @@
 #   build       Typechecks the workers and production-builds the Angular
 #               frontend, so compile errors in any package block the PR.
 #
+#   version     Verifies that every copy of the version number still agrees
+#               with the root VERSION file. Without this the single source of
+#               truth is only an intention: a hand-edited manifest would ship
+#               a build claiming to be a release it is not.
+#
 # How service containers reach the test runner: the job's steps execute
 # directly on the runner VM (not in a container), while each service runs in
 # its own Docker container with its ports PUBLISHED to the runner's
@@ -30,6 +35,20 @@ on:
     branches: [main]
 
 jobs:
+  version:
+    name: Version consistency
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Deliberately the cheapest job in the workflow: it needs no
+      # dependencies and fails in seconds, so drift is reported before the
+      # test and build jobs have finished spinning up.
+      - name: Check VERSION against every manifest
+        run: scripts/version.sh --check
+
   e2e-tests:
     name: Backend E2E tests (PostGIS + Redis)
     runs-on: ubuntu-latest
