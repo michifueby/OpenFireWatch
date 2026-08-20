@@ -3,8 +3,8 @@
 $alert-red: #ff2d1a;
 $amber: #ffd166;
 $panel-bg: rgba(7, 12, 20, 0.9);
-$border: rgba(230, 232, 238, 0.18);
-$muted: #8b95a7;
+$border: rgba(230, 232, 238, 0.26);
+$muted: #97a1b3;
 $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
 :host {
@@ -22,7 +22,7 @@ $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospac
   backdrop-filter: blur(6px);
   color: #e6e8ee;
   font-family: $font-mono;
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   letter-spacing: 0.1em;
   cursor: pointer;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
@@ -34,7 +34,7 @@ $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospac
 }
 
 .panel {
-  width: 20rem;
+  width: 21rem;
   max-height: calc(100vh - 2rem);
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
@@ -77,15 +77,15 @@ $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospac
 .hint {
   margin: 0;
   color: $muted;
-  font-size: 0.72rem;
-  line-height: 1.45;
+  font-size: 0.78rem;
+  line-height: 1.5;
 }
 
 .counter,
 .outline-ok {
   margin: 0;
   font-family: $font-mono;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   color: $amber;
 }
 
@@ -94,8 +94,8 @@ $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospac
   gap: 0.25rem;
 
   span {
-    font-size: 0.62rem;
-    letter-spacing: 0.09em;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: $muted;
   }
@@ -108,7 +108,7 @@ $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospac
     background: rgba(0, 0, 0, 0.35);
     color: #e6e8ee;
     font-family: inherit;
-    font-size: 0.78rem;
+    font-size: 0.82rem;
 
     &:focus {
       outline: none;
@@ -120,7 +120,7 @@ $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospac
 button {
   border-radius: 4px;
   font-family: $font-mono;
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   letter-spacing: 0.06em;
   cursor: pointer;
   padding: 0.4rem 0.6rem;
@@ -205,13 +205,13 @@ button {
 }
 
 .zone-name {
-  font-size: 0.78rem;
+  font-size: 0.82rem;
 }
 
 .zone-meta {
   margin-top: 0.15rem;
   font-family: $font-mono;
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   color: $muted;
 }
 
@@ -228,13 +228,13 @@ button {
   background: rgba(120, 12, 12, 0.5);
   border: 1px solid rgba($alert-red, 0.5);
   color: #ffd7d0;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
 }
 
 .notice {
   margin: 0;
   color: #7ee2a8;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
 }
 
 .drawing,
@@ -248,9 +248,9 @@ button {
 
   p {
     margin: 0 0 0.4rem;
-    font-size: 0.7rem;
+    font-size: 0.76rem;
     color: #ff9d8f;
-    line-height: 1.4;
+    line-height: 1.45;
   }
 }
 
@@ -357,7 +357,7 @@ button {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.74rem;
+  font-size: 0.78rem;
 }
 
 // Reporting state as a dot: green = fresh data, grey = silent. The same
@@ -378,13 +378,13 @@ button {
 .sensor-meta {
   margin-top: 0.1rem;
   font-family: $font-mono;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   color: $muted;
 }
 
 .add-sensor {
   justify-self: start;
-  font-size: 0.66rem;
+  font-size: 0.72rem;
 }
 
 // Sensors outside every zone — visually a zone card gone grey.

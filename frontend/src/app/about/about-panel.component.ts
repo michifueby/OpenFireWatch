@@ -160,7 +160,7 @@ import { APP_VERSION } from '../core/version';
 
       .credit {
         font-family: $font-mono;
-        font-size: 0.68rem;
+        font-size: 0.74rem;
         color: #9aa4b2;
 
         a {
@@ -181,7 +181,7 @@ import { APP_VERSION } from '../core/version';
         align-items: center;
         gap: 0.25rem;
         font-family: $font-mono;
-        font-size: 0.62rem;
+        font-size: 0.7rem;
 
         .divider {
           color: #3a4560;
@@ -191,7 +191,7 @@ import { APP_VERSION } from '../core/version';
           padding: 0.1rem 0.25rem;
           border: none;
           background: transparent;
-          color: #6b7688;
+          color: #8f99ab;
           font-family: inherit;
           font-size: inherit;
           letter-spacing: 0.08em;
@@ -226,8 +226,8 @@ import { APP_VERSION } from '../core/version';
         backdrop-filter: blur(8px);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
         color: #e6e8ee;
-        font-size: 0.8rem;
-        line-height: 1.5;
+        font-size: 0.85rem;
+        line-height: 1.55;
 
         h2 {
           display: flex;
@@ -270,7 +270,7 @@ import { APP_VERSION } from '../core/version';
           padding-top: 0.6rem;
           border-top: 1px solid rgba(230, 232, 238, 0.14);
           font-family: $font-mono;
-          font-size: 0.68rem;
+          font-size: 0.72rem;
           color: #9aa4b2;
 
           a {

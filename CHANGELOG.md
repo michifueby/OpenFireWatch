@@ -27,6 +27,13 @@ still a question, not a commitment.
   reposition, calibrate and retire — no SQL required. Sensors show on the map
   as teal dots with a detail popup.
 
+### Changed
+
+- **Readability pass over the whole UI.** The muted label grey now meets
+  WCAG AA on the dark panels, and no informational text renders below ~11 px
+  any more — the smallest labels sat at 9 px, which read as decoration on a
+  phone at arm's length.
+
 ### Fixed
 
 - Adopting a drawn outline into the zone form silently failed in production

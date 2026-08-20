@@ -348,6 +348,43 @@ ein echter Waldbrand an einem kühlen Tag nur als \enquote{Erhöht} gemeldet
 wird.
 \end{hinweis}
 
+\subsection{Bodensensoren}
+
+Alle Wetterwerte, die in die Bewertung einfließen, sind zunächst
+\emph{regionale} Werte: eine Messstation und ein Modellpunkt stehen für ein
+Beobachtungsgebiet von rund 18~km Ausdehnung. Ein Bodensensor, der direkt im
+Risikogebiet montiert ist, ersetzt diese Schätzung durch eine Messung ---
+genau dort, wo es darauf ankommt. Liegt eine Satellitendetektion in einer
+Zone mit aktuellem Sensorwert, rechnet die Bewertung mit den gemessenen
+Werten und nennt den Sensor im Alarm.
+
+Die Verwaltung erfolgt im selben Panel wie die Zonen: Unter jeder Zone stehen
+ihre Sensoren mit einem Statuspunkt (grün: meldet, grau: meldet nicht), den
+letzten Messwerten und dem Akkustand.
+
+\begin{itemize}
+  \item \textbf{+ Sensor}: Auf die Karte tippen, wo die Sonde vergraben ist,
+        dann Bezeichnung und Geräte-ID (LoRaWAN) eintragen. Die Zone ergibt
+        sich automatisch aus der Position.
+  \item \textbf{Bearbeiten} ändert Bezeichnung, Geräte-ID, Position
+        (\enquote{Neu platzieren}) und die optionale Kalibrierung.
+  \item \textbf{Stilllegen} beendet die Verwendung; die Messreihe bleibt als
+        Standortaufzeichnung erhalten.
+\end{itemize}
+
+Auf der Karte erscheinen Sensoren als kleine türkise Punkte mit einem
+Info-Fenster. Ein Sensor, der länger nicht meldet (leerer Akku, Funkloch),
+wird \emph{nicht} weiterverwendet --- die Bewertung fällt dann auf die
+regionalen Werte zurück. Ein toter Sensor darf nie \enquote{alles ruhig}
+bedeuten.
+
+\begin{hinweis}[Kalibrierung]
+Kapazitive Bodenfeuchtesonden messen bodenartabhängig. Ohne Feldkalibrierung
+liefern sie eine Tendenz, keinen Absolutwert. Die Kalibrierung (Faktor und
+Offset) wird beim Sensor hinterlegt und wirkt auch rückwirkend auf alle
+gespeicherten Messwerte, weil diese roh aufbewahrt werden.
+\end{hinweis}
+
 % =============================================================================
 \section{Was das System nicht kann}\label{sec:grenzen}
 \zielgruppe{besonders für Einsatzkräfte --- bitte vollständig lesen}

@@ -236,7 +236,7 @@ import {
         position: fixed;
         top: 1rem;
         right: 1rem;
-        width: 21rem;
+        width: 22rem;
         max-height: calc(100vh - 2rem);
         max-height: calc(100dvh - 2rem);
         overflow-y: auto;
@@ -266,7 +266,7 @@ import {
 
       .status {
         font-family: $font-mono;
-        font-size: 0.65rem;
+        font-size: 0.7rem;
         padding: 0.15rem 0.5rem;
         border-radius: 3px;
         color: #ff9d8f;
@@ -282,8 +282,8 @@ import {
         margin: 0;
         padding: 1rem 0.9rem;
         font-family: $font-mono;
-        font-size: 0.7rem;
-        color: #6b7688;
+        font-size: 0.76rem;
+        color: #8f99ab;
         text-align: center;
       }
 
@@ -311,7 +311,7 @@ import {
 
       .alert-id {
         font-family: $font-mono;
-        font-size: 0.72rem;
+        font-size: 0.76rem;
         font-weight: 700;
         letter-spacing: 0.06em;
         color: #ffd166;
@@ -319,8 +319,8 @@ import {
 
       .ack {
         font-family: $font-mono;
-        font-size: 0.6rem;
-        padding: 0.15rem 0.45rem;
+        font-size: 0.68rem;
+        padding: 0.2rem 0.55rem;
         border: 1px solid rgba(230, 232, 238, 0.35);
         border-radius: 3px;
         background: transparent;
@@ -343,13 +343,13 @@ import {
       .evidence {
         margin-top: 0.3rem;
         font-family: $font-mono;
-        font-size: 0.66rem;
+        font-size: 0.72rem;
         color: #ffd166;
       }
 
       .zone {
         margin-top: 0.3rem;
-        font-size: 0.72rem;
+        font-size: 0.76rem;
         color: #ff9d8f;
       }
 
@@ -360,9 +360,9 @@ import {
         h3 {
           margin: 0 0 0.4rem;
           font-family: $font-mono;
-          font-size: 0.6rem;
+          font-size: 0.66rem;
           letter-spacing: 0.12em;
-          color: #6b7688;
+          color: #8f99ab;
         }
       }
 
@@ -376,9 +376,9 @@ import {
         font-variant-numeric: tabular-nums;
 
         dt {
-          font-size: 0.56rem;
-          letter-spacing: 0.1em;
-          color: #6b7688;
+          font-size: 0.66rem;
+          letter-spacing: 0.08em;
+          color: #8f99ab;
         }
 
         dd {
@@ -400,8 +400,8 @@ import {
       .c-meta {
         margin: 0.35rem 0 0;
         font-family: $font-mono;
-        font-size: 0.62rem;
-        color: #6b7688;
+        font-size: 0.7rem;
+        color: #8f99ab;
       }
 
       .readiness {
@@ -414,7 +414,7 @@ import {
         li {
           padding-left: 0.5rem;
           border-left: 2px solid #3a4560;
-          font-size: 0.68rem;
+          font-size: 0.74rem;
           color: #9aa4b2;
 
           /*
@@ -456,8 +456,8 @@ import {
 
       .r-state {
         font-family: $font-mono;
-        font-size: 0.62rem;
-        color: #6b7688;
+        font-size: 0.7rem;
+        color: #8f99ab;
       }
 
       .history-toggle {
@@ -471,7 +471,7 @@ import {
           background: transparent;
           color: #8b95a7;
           font-family: $font-mono;
-          font-size: 0.62rem;
+          font-size: 0.7rem;
           letter-spacing: 0.08em;
           cursor: pointer;
 
@@ -488,9 +488,9 @@ import {
         h3 {
           margin: 0 0 0.4rem;
           font-family: $font-mono;
-          font-size: 0.6rem;
+          font-size: 0.66rem;
           letter-spacing: 0.12em;
-          color: #6b7688;
+          color: #8f99ab;
         }
       }
 
@@ -501,12 +501,12 @@ import {
         display: grid;
         gap: 0.2rem;
         font-family: $font-mono;
-        font-size: 0.62rem;
+        font-size: 0.7rem;
         font-variant-numeric: tabular-nums;
 
         li {
           display: grid;
-          grid-template-columns: 4.6rem 1fr;
+          grid-template-columns: 5.6rem 1fr;
           gap: 0.1rem 0.5rem;
           padding: 0.3rem 0.4rem;
           border-left: 2px solid #3a4560;
@@ -529,7 +529,7 @@ import {
       }
 
       .h-time {
-        color: #6b7688;
+        color: #8f99ab;
       }
       .h-level {
         color: #e6e8ee;
@@ -543,7 +543,7 @@ import {
         grid-column: 2;
       }
       .h-readings {
-        color: #6b7688;
+        color: #8f99ab;
       }
 
       // Monospace instrument readings, digits aligned via tabular numerals.
@@ -556,14 +556,14 @@ import {
         font-variant-numeric: tabular-nums;
 
         dt {
-          font-size: 0.58rem;
-          letter-spacing: 0.1em;
-          color: #6b7688;
+          font-size: 0.66rem;
+          letter-spacing: 0.08em;
+          color: #8f99ab;
         }
 
         dd {
           margin: 0.1rem 0 0;
-          font-size: 0.78rem;
+          font-size: 0.82rem;
 
           &.hot {
             color: #ff8b5e; // above the 30 °C ignition threshold
@@ -673,7 +673,7 @@ import {
         .chevron {
           flex: none;
           font-size: 0.9rem;
-          color: #6b7688;
+          color: #8f99ab;
         }
 
         .sheet-scroll {
@@ -716,7 +716,7 @@ import {
         }
 
         .readings dt {
-          font-size: 0.64rem;
+          font-size: 0.68rem;
         }
 
         /* The timestamp column was measured for 0.62rem type; at the larger
