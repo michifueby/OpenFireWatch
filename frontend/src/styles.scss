@@ -2,8 +2,9 @@
 // OpenFireWatch — global command-center theme (dark).
 //
 // Component-scoped styles live in each standalone component; this file holds
-// only what MUST be global: the base theme, and everything MapLibre attaches
-// OUTSIDE Angular's view encapsulation (markers, popups).
+// only what MUST be global: the base theme, the responsive contract shared
+// between the overlay panels, and everything MapLibre attaches OUTSIDE
+// Angular's view encapsulation (markers, popups, controls).
 // =============================================================================
 
 // --- Design tokens -----------------------------------------------------------
@@ -14,6 +15,36 @@ $text-main: #e6e8ee;
 $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas,
   monospace;
 
+// Single breakpoint for the whole app: below it the overlays stop being
+// floating side panels and become the bottom-sheet layout a phone expects.
+// Repeated as a literal in the component styles — Angular compiles each
+// component's SCSS in isolation, so a shared variable would not reach them.
+$mobile: 640px;
+
+// Stacking order of the overlays. MapLibre gives its own controls z-index 2
+// and they are not inside any of our components, so "later in the DOM wins"
+// does not hold: without these the map attribution paints on top of the
+// panels. Kept in one place because the values only make sense together.
+//
+//   2  MapLibre controls (attribution)  — MapLibre's own value
+//   3  situation sheet    (phone layout only; the desktop side panel stays
+//                          below the attribution, as it always has)
+//   4  zone editor        (a tool, over the situation it edits)
+//   5  about panel        (opened last, closes first)
+
+:root {
+  // Height reserved at the bottom of the viewport by the collapsed situation
+  // sheet. Published as a custom property so the map attribution can sit
+  // above it instead of underneath — MapLibre positions its controls itself,
+  // and this is the only hook we get.
+  --ofw-sheet-peek: 3.25rem;
+  // Safe areas (notch, home indicator). Zero on everything else.
+  --ofw-safe-top: env(safe-area-inset-top, 0px);
+  --ofw-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ofw-safe-left: env(safe-area-inset-left, 0px);
+  --ofw-safe-right: env(safe-area-inset-right, 0px);
+}
+
 html,
 body {
   margin: 0;
@@ -21,18 +52,49 @@ body {
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: $bg-deep;
   color: $text-main;
+  // The map owns every gesture on this page. Without this, dragging the map
+  // near the top edge triggers pull-to-refresh on Android and the rubber-band
+  // bounce on iOS, both of which read as the map "sticking".
+  overscroll-behavior: none;
+  // Grey flash on every tap looks broken on a dark UI; the components define
+  // their own :active feedback instead.
+  -webkit-tap-highlight-color: transparent;
+  // iOS enlarges text on rotation unless told not to, which breaks the
+  // deliberately compact instrument readings.
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 // -----------------------------------------------------------------------------
-// Radar marker — the pulsating critical-alert dot.
-//
-// Anatomy: the element itself is the solid red core (with a static glow);
-// ::before and ::after are two expanding, fading rings whose animations are
-// offset by half a period, producing a continuous radar sweep. Lives in the
-// GLOBAL stylesheet on purpose: MapLibre Marker elements are appended to the
-// map container outside any Angular component's view encapsulation.
+// Radar marker — the pulsating critical-alert dot. Lives in the GLOBAL
+// stylesheet on purpose: MapLibre Marker elements are appended to the map
+// container outside any Angular component's view encapsulation.
 // -----------------------------------------------------------------------------
+// Anatomy: `.ofw-critical-marker` is a transparent hit area; the visible
+// core is the inner `__core` element, and its ::before/::after are two
+// expanding, fading rings whose animations are offset by half a period,
+// producing a continuous radar sweep. Splitting hit area from visual lets a
+// finger-sized target sit around a dot that stays honest about how precise a
+// satellite fix actually is.
 .ofw-critical-marker {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+// A finger needs more than the 20px a mouse is happy with. 32px rather than
+// the usual 44px minimum: the element also blocks map panning wherever it
+// sits, and a larger dead zone would cost more than the precision buys.
+@media (pointer: coarse) {
+  .ofw-critical-marker {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.ofw-critical-marker__core {
   position: relative;
   width: 16px;
   height: 16px;
@@ -40,7 +102,6 @@ body {
   background: $alert-red;
   border: 2px solid #fff;
   box-shadow: 0 0 12px 2px rgba($alert-red, 0.9); // static glow on the core
-  cursor: pointer;
 
   &::before,
   &::after {
@@ -65,6 +126,16 @@ body {
   }
   100% {
     transform: scale(3.4);
+    opacity: 0;
+  }
+}
+
+// Users who asked their system to reduce motion get a steady dot: the marker
+// must still be conspicuous, so the glow stays and only the sweep stops.
+@media (prefers-reduced-motion: reduce) {
+  .ofw-critical-marker__core::before,
+  .ofw-critical-marker__core::after {
+    animation: none;
     opacity: 0;
   }
 }
@@ -101,4 +172,44 @@ body {
 
 .maplibregl-popup-close-button {
   color: $text-main;
+}
+
+// -----------------------------------------------------------------------------
+// Mobile: MapLibre's own chrome.
+// -----------------------------------------------------------------------------
+@media (max-width: $mobile) {
+  // The zoom buttons duplicate pinch and double-tap, which every phone user
+  // already has, and they land exactly where the situation sheet needs room.
+  .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {
+    display: none;
+  }
+
+  // Attribution is a licence obligation for both Carto and OpenStreetMap, so
+  // it is lifted clear of the collapsed sheet rather than hidden.
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left {
+    bottom: calc(var(--ofw-sheet-peek) + var(--ofw-safe-bottom));
+    transition: bottom 0.25s ease; // in step with the sheet itself
+  }
+
+  // Expanded, the sheet is far taller than that offset, so the lifted
+  // attribution would land in the middle of the panel. Dropped back to the
+  // bottom edge it simply sits behind it, and reappears on collapse.
+  body.ofw-sheet-expanded {
+    .maplibregl-ctrl-bottom-right,
+    .maplibregl-ctrl-bottom-left {
+      bottom: 0;
+    }
+  }
+
+  .maplibregl-popup {
+    max-width: calc(100vw - 2rem) !important;
+  }
+
+  // The default close button is ~18 px of tappable area.
+  .maplibregl-popup-close-button {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.1rem;
+  }
 }

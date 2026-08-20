@@ -37,6 +37,18 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
 /** Neunkirchen, Lower Austria — operational center of the demo deployment. */
 const NEUNKIRCHEN_LNG_LAT: [number, number] = [16.081, 47.723];
 
+/**
+ * Where down the screen an incident is placed when the situation sheet is
+ * lying across the bottom of the map.
+ *
+ * Bounded on both sides: below the ~56 px the launcher and credit bar occupy
+ * along the top edge, and above the sheet, whose height the stylesheet caps
+ * at 60dvh plus its handle. On the shortest phone in common use that leaves
+ * the band roughly 0.10–0.25; a fifth of the way down sits inside it with
+ * room to spare at either end.
+ */
+const INCIDENT_SCREEN_FRACTION = 0.2;
+
 /** MapLibre source/layer ids, kept as constants to avoid stringly typos. */
 const RISK_ZONE_SOURCE = 'high-risk-zones';
 const ANOMALIES_SOURCE = 'anomalies';
@@ -50,7 +62,12 @@ const ANOMALIES_SOURCE = 'anomalies';
       :host,
       .map {
         display: block;
+        // 100vh on a phone means "viewport with the URL bar hidden", so the
+        // bottom of the map — and anything anchored to it — is cropped until
+        // the user scrolls. dvh tracks the actually visible height; vh stays
+        // as the fallback for browsers without it.
         height: 100vh;
+        height: 100dvh;
       }
     `,
   ],
@@ -264,6 +281,11 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     const element = document.createElement('div');
     element.className = 'ofw-critical-marker';
     element.title = `${this.i18n.t('criticalMarkerTitle')}: ${this.i18n.levelLabel(alert.level)}`;
+    // The visible dot is a child so the outer element can be a finger-sized
+    // hit area without inflating how large the detection itself looks.
+    const core = document.createElement('div');
+    core.className = 'ofw-critical-marker__core';
+    element.appendChild(core);
 
     const marker = new maplibregl.Marker({ element })
       .setLngLat([alert.longitude, alert.latitude])
@@ -276,7 +298,41 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       center: [alert.longitude, alert.latitude],
       zoom: Math.max(this.map.getZoom(), 12),
       speed: 0.8,
+      offset: this.incidentScreenOffset(),
     });
+  }
+
+  /**
+   * How far from the centre of the map an incident should be placed.
+   *
+   * Deliberately a fixed fraction of the screen rather than a measurement of
+   * the situation sheet: the alert that triggers this camera move is also the
+   * one that opens the sheet and adds a card to it, so the sheet's height is
+   * still settling at the moment the camera has to be aimed. Measuring it
+   * then reads a half-rendered panel and aims at the wrong place.
+   *
+   * Expressed as an offset rather than as flyTo's `padding`, which MapLibre
+   * clamps: ask it to reserve most of a phone screen and it quietly reserves
+   * far less, leaving the marker behind the panel it was meant to clear.
+   */
+  private incidentScreenOffset(): [number, number] {
+    const centred: [number, number] = [0, 0];
+    const sheet = document.querySelector('.ofw-sheet');
+    if (!sheet) return centred;
+
+    // Asked as a geometry question rather than as a media query: "is the
+    // panel lying across the bottom of the map, or is it a side panel?". A
+    // second copy of the breakpoint would drift from the stylesheet that
+    // owns it. Width is settled from the moment the panel exists, unlike
+    // its height.
+    const spansWidth =
+      sheet.getBoundingClientRect().width > window.innerWidth * 0.8;
+    if (!spansWidth) return centred;
+
+    return [
+      0,
+      Math.round(window.innerHeight * (INCIDENT_SCREEN_FRACTION - 0.5)),
+    ];
   }
 
   /**

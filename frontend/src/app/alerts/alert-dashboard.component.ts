@@ -14,7 +14,8 @@
  */
 
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, OnDestroy, effect, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { TranslationService } from '../core/i18n/translation.service';
 import {
@@ -28,142 +29,167 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <section class="panel" [attr.aria-label]="i18n.t('dashboardAria')">
-      <header class="panel-header">
-        <h2>⬤ {{ i18n.t('dashboardTitle') }}</h2>
-        <span
-          class="status"
-          [class.online]="alerts.connected$ | async"
-          [attr.title]="
-            (alerts.connected$ | async)
-              ? i18n.t('gatewayConnected')
-              : i18n.t('gatewayReconnecting')
-          "
-        >
-          {{ (alerts.connected$ | async) ? i18n.t('live') : i18n.t('offline') }}
-        </span>
-      </header>
+    <section
+      class="panel ofw-sheet"
+      [class.sheet-open]="sheetOpen()"
+      [attr.aria-label]="i18n.t('dashboardAria')"
+    >
+      <!-- Phone layout only (the desktop rules hide it): the grab bar that
+           collapses the panel down to one line of situation summary, so the
+           map underneath stays usable on a 375 px screen. -->
+      <button
+        type="button"
+        [class]="'sheet-handle tone-' + peekTone()"
+        (click)="sheetOpen.set(!sheetOpen())"
+        [attr.aria-expanded]="sheetOpen()"
+        aria-controls="ofw-sheet-body"
+        [attr.aria-label]="
+          sheetOpen() ? i18n.t('sheetCollapse') : i18n.t('sheetExpand')
+        "
+      >
+        <span class="peek">{{ peekText() }}</span>
+        <span class="chevron" aria-hidden="true">{{ sheetOpen() ? '▾' : '▴' }}</span>
+      </button>
 
-      <!-- What the ground looks like right now. Placed above the alerts
-           because it answers the question that comes first: how close is
-           each zone to the point where a detection would escalate? -->
-      <section class="conditions" *ngIf="cond.conditions() as c">
-        <h3>{{ i18n.t('conditionsTitle') }}</h3>
-
-        <p class="empty" *ngIf="!c.available">{{ i18n.t('conditionsUnavailable') }}</p>
-
-        <ng-container *ngIf="c.available">
-          <div class="cond-readings">
-            <span class="c-temp">{{ c.temperatureC | number: '1.0-1' }}&nbsp;°C</span>
-            <span class="c-soil">{{ c.soilMoisturePct | number: '1.0-1' }}&nbsp;%</span>
-            <span class="c-hum">
-              {{ i18n.t('conditionsHumidity') }} {{ c.relativeHumidityPct | number: '1.0-0' }}&nbsp;%
-            </span>
-            <span class="c-meta">
-              {{ i18n.t('conditionsStation') }} {{ c.stationId }} ·
-              {{ c.observedAt | date: 'HH:mm' }}
-            </span>
-          </div>
-
-          <ul class="readiness">
-            <li
-              *ngFor="let z of c.zones"
-              [class.armed]="z.gate === 'weather' && z.armed"
-              [class.partial]="z.gate === 'weather' && !z.armed && partiallyMet(z)"
-              [class.always]="z.gate === 'detection'"
+      <div class="sheet-body" id="ofw-sheet-body">
+        <div class="sheet-scroll">
+          <header class="panel-header">
+            <h2>⬤ {{ i18n.t('dashboardTitle') }}</h2>
+            <span
+              class="status"
+              [class.online]="alerts.connected$ | async"
+              [attr.title]="
+                (alerts.connected$ | async)
+                  ? i18n.t('gatewayConnected')
+                  : i18n.t('gatewayReconnecting')
+              "
             >
-              <span class="r-name">{{ i18n.pick(z.name) }}</span>
-              <span class="r-state">{{ readiness(z) }}</span>
+              {{ (alerts.connected$ | async) ? i18n.t('live') : i18n.t('offline') }}
+            </span>
+          </header>
+
+          <!-- What the ground looks like right now. Placed above the alerts
+               because it answers the question that comes first: how close is
+               each zone to the point where a detection would escalate? -->
+          <section class="conditions" *ngIf="cond.conditions() as c">
+            <h3>{{ i18n.t('conditionsTitle') }}</h3>
+
+            <p class="empty" *ngIf="!c.available">{{ i18n.t('conditionsUnavailable') }}</p>
+
+            <ng-container *ngIf="c.available">
+              <div class="cond-readings">
+                <span class="c-temp">{{ c.temperatureC | number: '1.0-1' }}&nbsp;°C</span>
+                <span class="c-soil">{{ c.soilMoisturePct | number: '1.0-1' }}&nbsp;%</span>
+                <span class="c-hum">
+                  {{ i18n.t('conditionsHumidity') }} {{ c.relativeHumidityPct | number: '1.0-0' }}&nbsp;%
+                </span>
+                <span class="c-meta">
+                  {{ i18n.t('conditionsStation') }} {{ c.stationId }} ·
+                  {{ c.observedAt | date: 'HH:mm' }}
+                </span>
+              </div>
+
+              <ul class="readiness">
+                <li
+                  *ngFor="let z of c.zones"
+                  [class.armed]="z.gate === 'weather' && z.armed"
+                  [class.partial]="z.gate === 'weather' && !z.armed && partiallyMet(z)"
+                  [class.always]="z.gate === 'detection'"
+                >
+                  <span class="r-name">{{ i18n.pick(z.name) }}</span>
+                  <span class="r-state">{{ readiness(z) }}</span>
+                </li>
+              </ul>
+            </ng-container>
+          </section>
+
+          <p class="empty" *ngIf="(alerts.activeWarnings$ | async)?.length === 0">
+            {{ i18n.t('noActiveAlerts') }}
+          </p>
+
+          <ul class="feed">
+            <li class="alert" *ngFor="let warning of alerts.activeWarnings$ | async">
+              <div class="alert-head">
+                <span class="alert-id">
+                  #{{ warning.id }} {{ i18n.levelLabel(warning.level) }}
+                </span>
+                <button
+                  type="button"
+                  class="ack"
+                  (click)="alerts.dismissWarning(warning.id)"
+                  [attr.aria-label]="i18n.t('ackAria')"
+                  [attr.title]="i18n.t('ackAria')"
+                >
+                  {{ i18n.t('ack') }}
+                </button>
+              </div>
+
+              <div class="zone" *ngIf="warning.zone">
+                ▸ {{ i18n.pick(warning.zone.name) }}
+              </div>
+
+              <!-- Why the system called it a smouldering nest, in the operator's
+                   own terms — the evidence, not just the verdict. -->
+              <div class="evidence" *ngIf="warning.smouldering as sm">
+                ◈ {{ smoulderingEvidence(sm) }}
+              </div>
+
+              <dl class="readings">
+                <div class="reading">
+                  <dt>{{ i18n.t('labelTemp') }}</dt>
+                  <dd class="hot">{{ warning.weather.temperatureC | number: '1.1-1' }}&nbsp;°C</dd>
+                </div>
+                <div class="reading">
+                  <dt>{{ i18n.t('labelSoil') }}</dt>
+                  <dd class="dry">{{ warning.weather.soilMoisturePct | number: '1.1-1' }}&nbsp;%</dd>
+                </div>
+                <div class="reading">
+                  <dt>{{ i18n.t('labelCoords') }}</dt>
+                  <dd>
+                    {{ warning.latitude | number: '1.4-4' }},
+                    {{ warning.longitude | number: '1.4-4' }}
+                  </dd>
+                </div>
+                <div class="reading">
+                  <dt>{{ i18n.t('labelAcquired') }}</dt>
+                  <dd>{{ warning.acquiredAt | date: 'HH:mm:ss' : 'UTC' }}Z</dd>
+                </div>
+              </dl>
             </li>
           </ul>
-        </ng-container>
-      </section>
 
-      <p class="empty" *ngIf="(alerts.activeWarnings$ | async)?.length === 0">
-        {{ i18n.t('noActiveAlerts') }}
-      </p>
-
-      <ul class="feed">
-        <li class="alert" *ngFor="let warning of alerts.activeWarnings$ | async">
-          <div class="alert-head">
-            <span class="alert-id">
-              #{{ warning.id }} {{ i18n.levelLabel(warning.level) }}
-            </span>
-            <button
-              type="button"
-              class="ack"
-              (click)="alerts.dismissWarning(warning.id)"
-              [attr.aria-label]="i18n.t('ackAria')"
-              [attr.title]="i18n.t('ackAria')"
-            >
-              {{ i18n.t('ack') }}
+          <!-- The database has recorded every verdict since day one; this is the
+               part of it a responder can actually look at. Collapsed by default
+               so it never competes with what is happening right now. -->
+          <footer class="history-toggle">
+            <button type="button" (click)="showHistory.set(!showHistory())">
+              {{ showHistory() ? i18n.t('historyHide') : i18n.t('historyShow') }}
             </button>
-          </div>
+          </footer>
 
-          <div class="zone" *ngIf="warning.zone">
-            ▸ {{ i18n.pick(warning.zone.name) }}
-          </div>
+          <section class="history" *ngIf="showHistory()">
+            <h3>{{ i18n.t('historyTitle') }}</h3>
 
-          <!-- Why the system called it a smouldering nest, in the operator's
-               own terms — the evidence, not just the verdict. -->
-          <div class="evidence" *ngIf="warning.smouldering as sm">
-            ◈ {{ smoulderingEvidence(sm) }}
-          </div>
+            <p class="empty" *ngIf="(alerts.history$ | async)?.length === 0">
+              {{ i18n.t('historyEmpty') }}
+            </p>
 
-          <dl class="readings">
-            <div class="reading">
-              <dt>{{ i18n.t('labelTemp') }}</dt>
-              <dd class="hot">{{ warning.weather.temperatureC | number: '1.1-1' }}&nbsp;°C</dd>
-            </div>
-            <div class="reading">
-              <dt>{{ i18n.t('labelSoil') }}</dt>
-              <dd class="dry">{{ warning.weather.soilMoisturePct | number: '1.1-1' }}&nbsp;%</dd>
-            </div>
-            <div class="reading">
-              <dt>{{ i18n.t('labelCoords') }}</dt>
-              <dd>
-                {{ warning.latitude | number: '1.4-4' }},
-                {{ warning.longitude | number: '1.4-4' }}
-              </dd>
-            </div>
-            <div class="reading">
-              <dt>{{ i18n.t('labelAcquired') }}</dt>
-              <dd>{{ warning.acquiredAt | date: 'HH:mm:ss' : 'UTC' }}Z</dd>
-            </div>
-          </dl>
-        </li>
-      </ul>
-
-      <!-- The database has recorded every verdict since day one; this is the
-           part of it a responder can actually look at. Collapsed by default
-           so it never competes with what is happening right now. -->
-      <footer class="history-toggle">
-        <button type="button" (click)="showHistory.set(!showHistory())">
-          {{ showHistory() ? i18n.t('historyHide') : i18n.t('historyShow') }}
-        </button>
-      </footer>
-
-      <section class="history" *ngIf="showHistory()">
-        <h3>{{ i18n.t('historyTitle') }}</h3>
-
-        <p class="empty" *ngIf="(alerts.history$ | async)?.length === 0">
-          {{ i18n.t('historyEmpty') }}
-        </p>
-
-        <ol class="history-list">
-          <li *ngFor="let entry of alerts.history$ | async" [class]="'lvl-' + levelClass(entry.level)">
-            <span class="h-time">{{ entry.evaluatedAt ?? entry.acquiredAt | date: 'dd.MM. HH:mm' }}</span>
-            <span class="h-level">{{ i18n.levelLabel(entry.level) }}</span>
-            <span class="h-zone">
-              {{ entry.zone ? i18n.pick(entry.zone.name) : i18n.t('historyOutsideZones') }}
-            </span>
-            <span class="h-readings">
-              {{ entry.weather.temperatureC | number: '1.0-0' }}°C ·
-              {{ entry.weather.soilMoisturePct | number: '1.0-0' }}%
-            </span>
-          </li>
-        </ol>
-      </section>
+            <ol class="history-list">
+              <li *ngFor="let entry of alerts.history$ | async" [class]="'lvl-' + levelClass(entry.level)">
+                <span class="h-time">{{ entry.evaluatedAt ?? entry.acquiredAt | date: 'dd.MM. HH:mm' }}</span>
+                <span class="h-level">{{ i18n.levelLabel(entry.level) }}</span>
+                <span class="h-zone">
+                  {{ entry.zone ? i18n.pick(entry.zone.name) : i18n.t('historyOutsideZones') }}
+                </span>
+                <span class="h-readings">
+                  {{ entry.weather.temperatureC | number: '1.0-0' }}°C ·
+                  {{ entry.weather.soilMoisturePct | number: '1.0-0' }}%
+                </span>
+              </li>
+            </ol>
+          </section>
+        </div>
+      </div>
     </section>
   `,
   styles: [
@@ -174,11 +200,12 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
         monospace;
 
       .panel {
-        position: absolute;
+        position: fixed;
         top: 1rem;
         right: 1rem;
         width: 21rem;
         max-height: calc(100vh - 2rem);
+        max-height: calc(100dvh - 2rem);
         overflow-y: auto;
         border: 1px solid rgba($alert-red, 0.35);
         border-radius: 8px;
@@ -484,12 +511,227 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
           }
         }
       }
+
+      /* ---------------------------------------------------------------------
+       * Phone layout: the floating panel becomes a bottom sheet.
+       *
+       * A 21rem panel is 90 % of a 375 px screen, so on a phone the desktop
+       * layout hands you a map you cannot see and a panel you cannot close.
+       * Collapsed, the sheet is one line of summary; expanded, it is the same
+       * panel — the map keeps the top of the screen either way.
+       * ------------------------------------------------------------------ */
+      .sheet-handle {
+        display: none; /* desktop: the panel is always fully shown */
+      }
+
+      @media (max-width: 640px) {
+        .panel {
+          position: fixed;
+          // Only the sheet needs to outrank MapLibre's controls (see the
+          // layer table in styles.scss). The side panel deliberately does
+          // not: it never lies across the attribution, and raising it there
+          // would hide the licence text behind a panel for no reason.
+          z-index: 3;
+          inset: auto 0 0;
+          width: auto;
+          max-height: none;
+          overflow: visible;
+          border-width: 1px 0 0;
+          border-radius: 14px 14px 0 0;
+          padding-bottom: var(--ofw-safe-bottom);
+
+          /*
+           * Collapsed by sliding the whole panel down until only the handle
+           * shows, rather than by shrinking it. Two reasons: a transform
+           * animates on the compositor where a height would relayout the
+           * panel on every frame, and the panel keeps one stable height in
+           * both states — which is what lets the map work out where to put an
+           * incident without waiting for an animation to finish.
+           */
+          transform: translateY(
+            calc(100% - var(--ofw-sheet-peek) - var(--ofw-safe-bottom))
+          );
+          transition: transform 0.28s ease;
+        }
+
+        .panel.sheet-open {
+          transform: none;
+        }
+
+        .sheet-handle {
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          width: 100%;
+          /* Must equal --ofw-sheet-peek: that variable is what lifts the map
+             attribution clear of this bar. */
+          height: 3.25rem;
+          padding: 0 1rem;
+          border: none;
+          background: transparent;
+          color: inherit;
+          text-align: left;
+          cursor: pointer;
+
+          /* The grab affordance every mobile sheet has. */
+          &::before {
+            content: '';
+            position: absolute;
+            top: 0.4rem;
+            left: 50%;
+            width: 2.25rem;
+            height: 0.25rem;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            background: rgba(230, 232, 238, 0.28);
+          }
+        }
+
+        .peek {
+          flex: 1;
+          min-width: 0; /* let the ellipsis win over the flex basis */
+          overflow: hidden;
+          font-family: $font-mono;
+          font-size: 0.78rem;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          color: #9aa4b2;
+        }
+
+        .tone-warn .peek {
+          color: #ffa023;
+        }
+
+        .tone-critical .peek {
+          color: $alert-red;
+          font-weight: 700;
+        }
+
+        .chevron {
+          flex: none;
+          font-size: 0.9rem;
+          color: #6b7688;
+        }
+
+        .sheet-scroll {
+          /* Bounded so that even a 568 px-tall phone keeps a strip of map
+             above the sheet — MapComponent aims incidents into that strip
+             (INCIDENT_SCREEN_FRACTION), and the two numbers only make sense
+             together. */
+          max-height: 60dvh;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          /* Scrolling to the end of the history must not start panning the
+             map behind the sheet. */
+          overscroll-behavior: contain;
+        }
+
+        /* Touch targets. Everything below was sized for a mouse pointer;
+           a finger needs ~44 px, and the readings need a few more pixels
+           before they stop being decoration on a phone screen. */
+        .ack {
+          min-height: 2.75rem;
+          padding: 0.35rem 0.9rem;
+          font-size: 0.72rem;
+        }
+
+        .history-toggle button {
+          min-height: 2.75rem;
+          font-size: 0.72rem;
+        }
+
+        .r-state,
+        .history-list,
+        .cond-readings .c-hum,
+        .cond-readings .c-meta {
+          font-size: 0.7rem;
+        }
+
+        .readiness li {
+          padding: 0.15rem 0 0.15rem 0.5rem;
+          font-size: 0.76rem;
+        }
+
+        .readings dt {
+          font-size: 0.64rem;
+        }
+
+        /* The timestamp column was measured for 0.62rem type; at the larger
+           mobile size "20.08. 15:30" no longer fits and wraps mid-date. */
+        .history-list li {
+          grid-template-columns: 5.6rem 1fr;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .panel {
+          transition: none;
+        }
+      }
     `,
   ],
 })
-export class AlertDashboardComponent {
+export class AlertDashboardComponent implements OnDestroy {
   /** History stays collapsed until asked for — the live picture comes first. */
   readonly showHistory = signal(false);
+
+  /**
+   * Whether the phone-sized sheet is expanded. Ignored by the desktop layout,
+   * where the panel is always fully visible.
+   *
+   * Starts collapsed: someone opening the site on a phone came for the map,
+   * and a panel that covers it before they have asked anything is in the way.
+   */
+  readonly sheetOpen = signal(false);
+
+  /**
+   * The single line the collapsed sheet shows, ranked by what would actually
+   * make someone open it: a dead gateway first — every number underneath it
+   * is stale and saying "all quiet" would be a lie — then live alarms, then
+   * the zone closest to its threshold, then silence.
+   */
+  private peek(): { text: string; tone: 'critical' | 'warn' | 'quiet' } {
+    if (!this.alerts.isConnected) {
+      return { text: this.i18n.t('offline'), tone: 'warn' };
+    }
+
+    const active = this.alerts.activeWarnings.length;
+    if (active > 0) {
+      const noun = this.i18n.t(active === 1 ? 'sheetAlert' : 'sheetAlerts');
+      return { text: `${active} ${noun}`, tone: 'critical' };
+    }
+
+    const zones = this.cond.conditions()?.zones ?? [];
+    const armed = zones.find((z) => z.gate === 'weather' && z.armed);
+    if (armed) {
+      return {
+        text: `${this.i18n.pick(armed.name)} — ${this.readiness(armed)}`,
+        tone: 'critical',
+      };
+    }
+
+    const near = zones.find((z) => this.partiallyMet(z));
+    if (near) {
+      return {
+        text: `${this.i18n.pick(near.name)} — ${this.readiness(near)}`,
+        tone: 'warn',
+      };
+    }
+
+    return { text: this.i18n.t('sheetQuiet'), tone: 'quiet' };
+  }
+
+  // Split into two primitive-returning calls on purpose: binding an object
+  // that is rebuilt on every change-detection pass makes Angular's dev-mode
+  // verification pass see a "changed" value every time.
+  peekText(): string {
+    return this.peek().text;
+  }
+
+  peekTone(): 'critical' | 'warn' | 'quiet' {
+    return this.peek().tone;
+  }
 
   /**
    * One line stating whether this zone would escalate right now, and if not,
@@ -550,8 +792,31 @@ export class AlertDashboardComponent {
     readonly alerts: RealTimeAlertService,
     readonly i18n: TranslationService,
     readonly cond: ConditionsService,
-  ) {}
+  ) {
+    // A critical escalation opens the sheet by itself. On a desktop the panel
+    // is always on screen, so this changes nothing there; on a phone it is
+    // the difference between an alarm that shows the coordinates and one that
+    // shows a line of text somebody still has to tap.
+    this.alerts.criticalAlerts$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.sheetOpen.set(true));
+
+    // The map attribution is MapLibre's own DOM, outside this component's
+    // view. The global stylesheet parks it above the collapsed sheet so the
+    // licence text stays readable; once the sheet expands it has to drop back
+    // down, or it floats on top of the panel it was meant to clear.
+    effect(() => {
+      document.body.classList.toggle(SHEET_EXPANDED_CLASS, this.sheetOpen());
+    });
+  }
+
+  ngOnDestroy(): void {
+    document.body.classList.remove(SHEET_EXPANDED_CLASS);
+  }
 }
+
+/** Set on <body> so global rules can react to the sheet's state. */
+const SHEET_EXPANDED_CLASS = 'ofw-sheet-expanded';
 
 /** A crossed threshold reads as 0 rather than a confusing negative distance. */
 function formatGap(value: number | undefined): string {

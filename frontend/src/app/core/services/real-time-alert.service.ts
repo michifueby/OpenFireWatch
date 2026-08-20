@@ -103,6 +103,23 @@ export class RealTimeAlertService implements OnDestroy {
     }
   }
 
+  /**
+   * Synchronous snapshots of the two subjects the collapsed mobile sheet
+   * summarises in one line.
+   *
+   * The streams above stay the interface for anything that renders a list;
+   * these exist because a summary is computed inside a template expression,
+   * and piping an Observable through `*ngIf ... as` there would hand change
+   * detection a fresh object on every pass.
+   */
+  get activeWarnings(): readonly AnomalyAlert[] {
+    return this.warningsSubject.value;
+  }
+
+  get isConnected(): boolean {
+    return this.connectedSubject.value;
+  }
+
   /** Operator acknowledged a warning — remove it from the active list. */
   dismissWarning(alertId: number): void {
     this.warningsSubject.next(

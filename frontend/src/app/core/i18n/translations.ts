@@ -45,6 +45,12 @@ export interface TranslationDict {
   conditionsHumidity: string;
   ack: string;
   ackAria: string;
+  /** Collapsed mobile sheet: the one-line summary and its toggle labels. */
+  sheetAlert: string;
+  sheetAlerts: string;
+  sheetQuiet: string;
+  sheetExpand: string;
+  sheetCollapse: string;
   labelTemp: string;
   labelSoil: string;
   labelCoords: string;
@@ -141,6 +147,11 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsGapSoilOnly: 'temperature reached — soil still {soil} % too moist',
     conditionsHumidity: 'humidity',
     ack: 'ACK',
+    sheetAlert: 'ACTIVE ALERT',
+    sheetAlerts: 'ACTIVE ALERTS',
+    sheetQuiet: 'All quiet — no zone near its threshold',
+    sheetExpand: 'Show situation details',
+    sheetCollapse: 'Hide situation details',
     ackAria: 'Acknowledge alert',
     labelTemp: 'TEMP',
     labelSoil: 'SOIL H₂O',
@@ -195,7 +206,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     zonesEdit: 'Edit',
     zonesRetire: 'Retire',
     zonesRetireConfirm: 'Retire this zone? It stops raising alerts; its history is kept.',
-    zonesDrawHint: 'Click on the map to place corners. Double-click or Finish to close.',
+    zonesDrawHint: 'Place corners on the map, then Finish to close the outline.',
     zonesDrawPoints: 'corners',
     zonesUndo: 'Undo point',
     zonesFinish: 'Finish',
@@ -247,6 +258,11 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsGapSoilOnly: 'Temperatur erreicht — Boden noch {soil} % zu feucht',
     conditionsHumidity: 'Luftfeuchte',
     ack: 'QUITT',
+    sheetAlert: 'AKTIVER ALARM',
+    sheetAlerts: 'AKTIVE ALARME',
+    sheetQuiet: 'Lage ruhig — keine Zone nahe ihrer Schwelle',
+    sheetExpand: 'Lagedetails einblenden',
+    sheetCollapse: 'Lagedetails ausblenden',
     ackAria: 'Alarm quittieren',
     labelTemp: 'TEMP',
     labelSoil: 'BODEN H₂O',
@@ -302,7 +318,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     zonesRetire: 'Stilllegen',
     zonesRetireConfirm:
       'Zone stilllegen? Sie löst keine Alarme mehr aus, die Historie bleibt erhalten.',
-    zonesDrawHint: 'Auf die Karte klicken, um Eckpunkte zu setzen. Doppelklick oder Fertig schließt die Fläche.',
+    zonesDrawHint: 'Eckpunkte auf der Karte setzen, dann mit Fertig die Fläche schließen.',
     zonesDrawPoints: 'Eckpunkte',
     zonesUndo: 'Punkt zurück',
     zonesFinish: 'Fertig',

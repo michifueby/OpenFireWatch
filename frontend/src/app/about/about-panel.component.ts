@@ -1,7 +1,8 @@
 /**
  * AboutPanelComponent — developer credit + plain-language description.
  *
- * A slim, always-visible credit bar (bottom-left) with:
+ * A slim, always-visible credit bar — bottom-left on a desktop, top-right on
+ * a phone, where the bottom edge belongs to the situation sheet — with:
  *   - an expandable panel explaining what OpenFireWatch does and how it
  *     works, fully translated (EN/DE), and
  *   - a DE/EN language switch. The initial language follows the browser
@@ -115,7 +116,8 @@ import { TranslationService } from '../core/i18n/translation.service';
 
       // --- Always-visible credit bar (bottom-left) --------------------------
       .bar {
-        position: absolute;
+        position: fixed;
+        z-index: 5; // see the layer table in styles.scss
         left: 1rem;
         bottom: 1rem;
         display: flex;
@@ -204,12 +206,14 @@ import { TranslationService } from '../core/i18n/translation.service';
 
       // --- Expandable explainer panel ----------------------------------------
       .about {
-        position: absolute;
+        position: fixed;
+        z-index: 5;
         left: 1rem;
         bottom: 4rem;
         width: 24rem;
         max-width: calc(100vw - 2rem);
         max-height: calc(100vh - 6rem);
+        max-height: calc(100dvh - 6rem);
         overflow-y: auto;
         padding: 1rem 1.1rem;
         border: 1px solid rgba(230, 232, 238, 0.18);
@@ -268,6 +272,59 @@ import { TranslationService } from '../core/i18n/translation.service';
               color: $alert-red;
             }
           }
+        }
+      }
+
+      /* ---------------------------------------------------------------------
+       * Phone layout.
+       *
+       * The bar moves to the top-right corner: at the bottom-left it sat both
+       * under the situation sheet and on top of the map attribution, and the
+       * credit line it carries is repeated inside the panel it opens anyway.
+       * ------------------------------------------------------------------ */
+      @media (max-width: 640px) {
+        .bar {
+          left: auto;
+          right: calc(0.75rem + var(--ofw-safe-right));
+          bottom: auto;
+          top: calc(0.75rem + var(--ofw-safe-top));
+          gap: 0.35rem;
+          padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+        }
+
+        /* Reads fine on a desktop, truncates to noise on a phone. The same
+           credit is the last line of the panel behind the ℹ button. */
+        .credit,
+        .bar-logo {
+          display: none;
+        }
+
+        .info-toggle {
+          width: 2.5rem;
+          height: 2.5rem;
+          font-size: 1rem;
+        }
+
+        .lang-switch {
+          font-size: 0.72rem;
+
+          button {
+            min-width: 2.25rem;
+            min-height: 2.5rem;
+          }
+        }
+
+        /* Anchored under the bar rather than above the bottom edge, which now
+           belongs to the situation sheet. */
+        .about {
+          top: calc(3.75rem + var(--ofw-safe-top));
+          right: 0.75rem;
+          bottom: auto;
+          left: 0.75rem;
+          width: auto;
+          max-width: none;
+          max-height: calc(100dvh - 8rem);
+          font-size: 0.85rem;
         }
       }
     `,
