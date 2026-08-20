@@ -34,18 +34,38 @@ satellite detections. `GET /api/sensors` shows every registered sensor, its
 derived zone, its latest calibrated values, its battery, and whether it is
 still reporting.
 
+## Managing sensors in the UI
+
+Open **Hazard zones** on the map, unlock with the operator key, and every
+zone lists the sensors standing in it — status dot (green = reporting, grey
+= silent), device id, latest calibrated values, battery. From there:
+
+- **+ Sensor** starts placement: tap the map where the probe is buried, then
+  name it and enter the LoRaWAN device id. The zone is derived from the
+  position automatically — sensors that land outside every zone appear in
+  their own group rather than disappearing, because a misplaced sensor is a
+  mistake worth seeing.
+- **Edit** changes name, device id, position (*Reposition* → tap the map
+  again) and calibration. The calibration section stays folded unless a
+  calibration is already in effect.
+- **Retire** deactivates a sensor; its readings are kept as the site record.
+  Registering the same device id again later re-activates it.
+
+Registered sensors also appear on the map itself as small teal dots (grey
+once silent), with a popup showing their latest values.
+
 ## Connecting a LoRaWAN sensor
 
 The intended path is LoRaWAN: battery-powered nodes in the forest, a gateway
 within radio range, a network server (e.g. The Things Stack) that decodes
 uplinks and forwards them per webhook.
 
-1. **Register the device** — see
-   [`deploy/sensors/register-sensor.example.sql`](../deploy/sensors/register-sensor.example.sql).
-   The device id must match the network server's exactly. Unregistered
-   devices are refused, never auto-created: registration is where position
-   and calibration live, and a reading without a position has no zone to
-   apply to.
+1. **Register the device** — in the UI as described above, or in SQL via
+   [`deploy/sensors/register-sensor.example.sql`](../deploy/sensors/register-sensor.example.sql)
+   for zones that must survive a database rebuild. The device id must match
+   the network server's exactly. Unregistered devices are refused, never
+   auto-created: registration is where position and calibration live, and a
+   reading without a position has no zone to apply to.
 
 2. **Set the intake token** on the server (`.env`):
 
@@ -118,3 +138,9 @@ sensor by then; what it cannot do is climb a tree and change the battery.
 - **Per-device credentials.** All devices arrive through one gateway token.
   Fine for a handful of own sensors behind one network server; revisit before
   accepting readings from hardware other people operate.
+
+The registry API is generic on purpose: `GET/POST/PUT/DELETE /api/sensors`
+carry plain JSON, the reading intake accepts any producer that can POST, and
+new measurement fields extend `SensorReadingDto` + one table column without
+touching the pipeline. Extensions (new sensor types, more fields, sensor-only
+alerts) slot in behind the same endpoints.

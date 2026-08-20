@@ -29,6 +29,7 @@ import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../core/i18n/translation.service';
 import { ConditionsService } from '../core/services/conditions.service';
+import { SensorApiService, SensorInfo } from '../sensors/sensor-api.service';
 import { ZoneApiService } from '../zones/zone-api.service';
 import { ZoneDrawService } from '../zones/zone-draw.service';
 import { AnomalyAlert } from '../core/models/alert.model';
@@ -52,6 +53,18 @@ const INCIDENT_SCREEN_FRACTION = 0.2;
 /** MapLibre source/layer ids, kept as constants to avoid stringly typos. */
 const RISK_ZONE_SOURCE = 'high-risk-zones';
 const ANOMALIES_SOURCE = 'anomalies';
+const SENSORS_SOURCE = 'ground-sensors';
+const SENSORS_LAYER = 'ground-sensors-dots';
+
+/** Feature properties carried by the sensor layer (MapLibre re-parses JSON). */
+interface SensorPopupProps {
+  label: string;
+  deviceId: string;
+  reporting: boolean;
+  temperatureC: number | null;
+  soilMoisturePct: number | null;
+  batteryPct: number | null;
+}
 
 @Component({
   selector: 'ofw-map',
@@ -96,6 +109,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     private readonly i18n: TranslationService,
     private readonly draw: ZoneDrawService,
     private readonly zoneApi: ZoneApiService,
+    private readonly sensorApi: SensorApiService,
     private readonly conditions: ConditionsService,
   ) {
     // Re-draw the overlay whenever the editor writes a zone. Guarded inside
@@ -103,6 +117,15 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     effect(() => {
       this.zoneApi.revision();
       void this.loadRiskZones();
+    });
+
+    // A sensor placed or moved in the editor appears immediately; and the
+    // conditions poll doubles as a refresh tick, so reporting-state dots and
+    // measured values stay honest without their own timer.
+    effect(() => {
+      this.sensorApi.revision();
+      this.conditions.conditions();
+      void this.loadSensors();
     });
 
     // ...and whenever the set of zones changes underneath us.
@@ -146,13 +169,31 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     // now; only sources and layers have to wait for the style.
     this.subscribeToRealtimeAlerts();
 
+    // A tab that loads in the background can measure the container at 0×0
+    // (dvh resolves to 0 until the viewport is realised), leaving MapLibre on
+    // its tiny fallback canvas. Re-measure the moment we become visible.
+    document.addEventListener('visibilitychange', this.onVisible);
+
+    // Automated tests (and a developer on the console) can reach the map
+    // and the draw service through ?debug=1. Read-only exposure: every write
+    // path still carries the operator key, so this reveals nothing that the
+    // public API does not.
+    if (new URLSearchParams(location.search).has('debug')) {
+      (window as unknown as Record<string, unknown>)['__ofw'] = {
+        map: this.map,
+        draw: this.draw,
+      };
+    }
+
     // Sources/layers can only be added once the style has loaded.
     this.map.on('load', () => {
       this.drawRiskZones();
+      this.initSensorLayer();
       this.initAnomalyLayer();
       // Drawing layers are registered last so the draft paints on top.
       this.draw.attach(this.map);
       void this.loadRiskZones();
+      void this.loadSensors();
       void this.loadAnomalyHistory();
       // Anything that streamed in while the style was still loading is
       // already collected; this is the first moment it can be painted.
@@ -231,6 +272,110 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     } catch {
       // The map stays usable without the overlay; live alerts are unaffected.
     }
+  }
+
+  /**
+   * Ground sensors as small teal dots — green-ish while reporting, grey once
+   * silent. Registered before the anomaly layer so detections paint above
+   * them: a sensor is context, a detection is the event.
+   */
+  private initSensorLayer(): void {
+    this.map.addSource(SENSORS_SOURCE, {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+
+    this.map.addLayer({
+      id: SENSORS_LAYER,
+      type: 'circle',
+      source: SENSORS_SOURCE,
+      paint: {
+        'circle-radius': 5,
+        'circle-color': [
+          'case',
+          ['get', 'reporting'],
+          '#2dd4bf', // fresh data
+          '#5b6678', // silent — the dot itself is the maintenance signal
+        ],
+        'circle-stroke-color': '#05070c',
+        'circle-stroke-width': 1.5,
+      },
+    });
+
+    this.map.on('click', SENSORS_LAYER, (event) => {
+      const feature = event.features?.[0];
+      if (!feature) return;
+      new maplibregl.Popup({ offset: 10 })
+        .setLngLat(event.lngLat)
+        .setDOMContent(this.buildSensorPopup(feature.properties as SensorPopupProps))
+        .addTo(this.map);
+    });
+    this.map.on('mouseenter', SENSORS_LAYER, () => {
+      this.map.getCanvas().style.cursor = 'pointer';
+    });
+    this.map.on('mouseleave', SENSORS_LAYER, () => {
+      this.map.getCanvas().style.cursor = '';
+    });
+  }
+
+  /** Fetch the registry and mirror it onto the sensor layer. */
+  private async loadSensors(): Promise<void> {
+    const source = this.map?.getSource(SENSORS_SOURCE) as GeoJSONSource | undefined;
+    if (!source) return;
+    try {
+      const sensors = (await (await fetch('/api/sensors')).json()) as SensorInfo[];
+      source.setData({
+        type: 'FeatureCollection',
+        features: sensors.map((sensor) => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [sensor.longitude, sensor.latitude],
+          },
+          properties: {
+            label: sensor.label,
+            deviceId: sensor.deviceId,
+            reporting: sensor.reporting,
+            temperatureC: sensor.temperatureC,
+            soilMoisturePct: sensor.soilMoisturePct,
+            batteryPct: sensor.batteryPct,
+          },
+        })),
+      });
+    } catch {
+      // The map stays usable without the sensor overlay.
+    }
+  }
+
+  /** Sensor popup, DOM-built like the alert popup (no injection surface). */
+  private buildSensorPopup(props: SensorPopupProps): HTMLElement {
+    const container = document.createElement('div');
+    container.className = 'ofw-popup';
+
+    const title = document.createElement('strong');
+    title.textContent = `🌡 ${props.label}`;
+    container.appendChild(title);
+
+    const lines = [
+      props.deviceId,
+      props.temperatureC != null
+        ? `${this.i18n.t('conditionsTemp')}: ${props.temperatureC} °C`
+        : null,
+      props.soilMoisturePct != null
+        ? `${this.i18n.t('conditionsSoil')}: ${props.soilMoisturePct} %`
+        : null,
+      props.batteryPct != null
+        ? `${this.i18n.t('sensorBattery')}: ${props.batteryPct} %`
+        : null,
+      this.i18n.t(props.reporting ? 'sensorReporting' : 'sensorStale'),
+    ];
+    for (const text of lines) {
+      if (!text) continue;
+      const row = document.createElement('div');
+      row.textContent = text;
+      container.appendChild(row);
+    }
+    return container;
   }
 
   /** Circle layer for ALL broadcast anomalies (ELEVATED and CRITICAL). */
@@ -428,8 +573,13 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     source?.setData({ type: 'FeatureCollection', features: this.anomalyFeatures });
   }
 
+  private readonly onVisible = (): void => {
+    if (!document.hidden) this.map?.resize();
+  };
+
   /** Leak-free teardown: streams, markers, then the WebGL map itself. */
   ngOnDestroy(): void {
+    document.removeEventListener('visibilitychange', this.onVisible);
     this.draw.detach();
     this.subscriptions.unsubscribe();
     this.criticalMarkers.forEach((marker) => marker.remove());

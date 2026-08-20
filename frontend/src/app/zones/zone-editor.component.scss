@@ -338,3 +338,56 @@ button {
     font-size: 0.72rem;
   }
 }
+
+// --- Ground sensors inside a zone card ---------------------------------------
+.sensor-group {
+  margin-top: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed rgba(230, 232, 238, 0.14);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.sensor {
+  padding-left: 0.55rem;
+  border-left: 2px solid rgba(230, 232, 238, 0.14);
+}
+
+.sensor-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+}
+
+// Reporting state as a dot: green = fresh data, grey = silent. The same
+// signal a battery round would check, visible at a glance.
+.s-dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #5b6678;
+
+  &.on {
+    background: #2ea064;
+    box-shadow: 0 0 5px rgba(46, 160, 100, 0.7);
+  }
+}
+
+.sensor-meta {
+  margin-top: 0.1rem;
+  font-family: $font-mono;
+  font-size: 0.6rem;
+  color: $muted;
+}
+
+.add-sensor {
+  justify-self: start;
+  font-size: 0.66rem;
+}
+
+// Sensors outside every zone — visually a zone card gone grey.
+.zone.unassigned {
+  border-left-color: #5b6678;
+}

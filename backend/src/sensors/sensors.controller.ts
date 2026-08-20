@@ -8,15 +8,23 @@
  *
  * GET /api/sensors is public like every other read: which sensors exist,
  * where they stand, whether they are still reporting, and what they measure.
+ *
+ * Managing the registry (register / edit / retire) is operator work and
+ * carries the OPERATOR key — not the gateway token, which exists so that the
+ * box forwarding readings can do nothing but forward readings.
  */
 
 import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
+  Param,
+  ParseIntPipe,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -29,6 +37,8 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
+import { API_KEY_HEADER, ApiKeyGuard } from '../auth/api-key.guard';
+import { RegisterSensorDto } from './register-sensor.dto';
 import { SensorIngestGuard, SENSOR_TOKEN_HEADER } from './sensor-ingest.guard';
 import { normaliseIntakeBody, SensorReadingDto } from './sensor-reading.dto';
 import { SensorService, SensorStatus } from './sensor.service';
@@ -43,6 +53,45 @@ export class SensorsController {
   @ApiOkResponse({ description: 'Sensors with calibrated latest readings.' })
   findAll(): Promise<SensorStatus[]> {
     return this.sensors.findAll();
+  }
+
+  @Post()
+  @HttpCode(201)
+  @UseGuards(ApiKeyGuard)
+  @ApiHeader({ name: API_KEY_HEADER, required: true })
+  @ApiOperation({
+    summary: 'Register a ground sensor',
+    description:
+      'Re-registering a retired device id re-activates it with the new ' +
+      'details; an active duplicate is refused with 409.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid operator key.' })
+  register(@Body() dto: RegisterSensorDto): Promise<{ id: number }> {
+    return this.sensors.register(dto);
+  }
+
+  @Put(':id')
+  @HttpCode(204)
+  @UseGuards(ApiKeyGuard)
+  @ApiHeader({ name: API_KEY_HEADER, required: true })
+  @ApiOperation({ summary: 'Edit a registered sensor' })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RegisterSensorDto,
+  ): Promise<void> {
+    return this.sensors.update(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @UseGuards(ApiKeyGuard)
+  @ApiHeader({ name: API_KEY_HEADER, required: true })
+  @ApiOperation({
+    summary: 'Retire a sensor',
+    description: 'Deactivates it; its readings are kept as the site record.',
+  })
+  retire(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    return this.sensors.retire(id);
   }
 
   @Post('readings')

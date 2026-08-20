@@ -12,6 +12,10 @@
  *   move         rubber-band preview to the cursor
  *   double-click finish
  *   Enter        finish · Backspace undo last corner · Escape cancel
+ *
+ * Besides polygons it also picks single POINTS (sensor placement): one click,
+ * done. Same service because both modes fight over the same map gestures and
+ * the same draft layers — two services would coordinate through flags anyway.
  */
 
 import { Injectable, signal } from '@angular/core';
@@ -35,7 +39,10 @@ export class ZoneDrawService {
   readonly drawing = signal(false);
   /** Set when the map's double-click gesture completes an outline. */
   readonly completed = signal<GeoJSON.Polygon | null>(null);
+  /** Set when a point-pick click lands; stays rendered until cleared. */
+  readonly pickedPoint = signal<Position | null>(null);
 
+  private mode: 'polygon' | 'point' = 'polygon';
   private map?: MapLibreMap;
   private cursor: Position | null = null;
   private keyHandler?: (event: KeyboardEvent) => void;
@@ -83,6 +90,7 @@ export class ZoneDrawService {
 
   /** Enter drawing mode, optionally seeding it with an existing outline. */
   start(seed?: Position[]): void {
+    this.mode = 'polygon';
     this.completed.set(null);
     this.corners.set(seed ? [...seed] : []);
     this.cursor = null;
@@ -105,6 +113,35 @@ export class ZoneDrawService {
     this.render();
   }
 
+  /**
+   * Enter point-pick mode: the next click on the map is the answer.
+   * The point stays rendered (as a draft dot) until clearPoint() — the form
+   * that asked for it is still open, and an invisible choice invites doubt.
+   */
+  startPointPick(): void {
+    this.mode = 'point';
+    this.completed.set(null);
+    this.pickedPoint.set(null);
+    this.corners.set([]);
+    this.cursor = null;
+    this.drawing.set(true);
+    if (this.map) {
+      this.map.getCanvas().style.cursor = 'crosshair';
+    }
+    this.keyHandler = (event: KeyboardEvent) => {
+      if (!this.drawing()) return;
+      if (event.key === 'Escape') this.cancel();
+    };
+    window.addEventListener('keydown', this.keyHandler);
+    this.render();
+  }
+
+  /** Remove the picked point from the draft layer. */
+  clearPoint(): void {
+    this.pickedPoint.set(null);
+    this.render();
+  }
+
   /** Remove the most recently placed corner. */
   undo(): void {
     this.corners.update((c) => c.slice(0, -1));
@@ -114,6 +151,7 @@ export class ZoneDrawService {
   /** Leave drawing mode, discarding the draft. */
   cancel(): void {
     this.corners.set([]);
+    this.pickedPoint.set(null);
     this.stop();
   }
 
@@ -156,6 +194,11 @@ export class ZoneDrawService {
   private readonly onClick = (event: MapMouseEvent): void => {
     if (!this.drawing()) return;
     const { lng, lat } = event.lngLat;
+    if (this.mode === 'point') {
+      this.pickedPoint.set([round6(lng), round6(lat)]);
+      this.stop(); // one click is the whole gesture
+      return;
+    }
     this.corners.update((c) => [...c, [round6(lng), round6(lat)]]);
     this.render();
   };
@@ -185,6 +228,16 @@ export class ZoneDrawService {
       properties: {},
       geometry: { type: 'Point', coordinates: position },
     }));
+
+    // The picked point outlives drawing mode — see startPointPick.
+    const picked = this.pickedPoint();
+    if (picked) {
+      features.push({
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'Point', coordinates: picked },
+      });
+    }
 
     const path = this.cursor ? [...corners, this.cursor] : corners;
     if (path.length >= MIN_CORNERS) {

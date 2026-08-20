@@ -1,5 +1,6 @@
 /**
- * ZoneEditorComponent — operator panel for managing hazard zones.
+ * ZoneEditorComponent — operator panel for managing hazard zones and the
+ * ground sensors mounted in them.
  *
  * Design goals, in order:
  *   1. The common case is one gesture: draw the outline on the map, type two
@@ -20,11 +21,27 @@ import { FormsModule } from '@angular/forms';
 import { TranslationService } from '../core/i18n/translation.service';
 import { TranslationDict } from '../core/i18n/translations';
 import {
+  SensorApiService,
+  SensorInfo,
+} from '../sensors/sensor-api.service';
+import {
   HazardType,
   ZoneApiService,
   ZoneListItem,
 } from './zone-api.service';
 import { ZoneDrawService } from './zone-draw.service';
+
+/** What the sensor form edits. */
+interface SensorDraft {
+  id: number | null;
+  deviceId: string;
+  label: string;
+  latitude: number | null;
+  longitude: number | null;
+  temperatureOffsetC: number;
+  soilMoistureScale: number;
+  soilMoistureOffsetPct: number;
+}
 
 /** Hazard types offered in the form, with their translation keys. */
 const HAZARD_OPTIONS: ReadonlyArray<{
@@ -65,20 +82,51 @@ export class ZoneEditorComponent implements OnDestroy {
   /** Id of the zone awaiting retire confirmation, if any. */
   readonly confirmingRetire = signal<number | null>(null);
 
+  // --- Sensors ---------------------------------------------------------------
+
+  readonly sensors = signal<SensorInfo[]>([]);
+  /** Null = no sensor form open; otherwise the sensor being created/edited. */
+  readonly sensorDraft = signal<SensorDraft | null>(null);
+  readonly confirmingSensorRetire = signal<number | null>(null);
+  /** Calibration inputs stay hidden until asked for — most sensors need none. */
+  readonly showCalibration = signal(false);
+
   private keyInput = '';
 
   constructor(
     readonly i18n: TranslationService,
     readonly api: ZoneApiService,
+    readonly sensorApi: SensorApiService,
     readonly draw: ZoneDrawService,
   ) {
+    // Both effects adopt map gestures into form state, so both WRITE signals.
+    // Angular forbids that by default (NG0600) and fails silently in prod —
+    // which is exactly how the polygon hand-off below shipped broken. The
+    // opt-in is deliberate here: draw → draft is a one-way street, so no
+    // update cycle can form.
+
     // A double-click on the map completes the outline; adopt it into the draft.
-    effect(() => {
-      const completed = this.draw.completed();
-      if (!completed) return;
-      this.draft.update((d) => (d ? { ...d, geometry: completed } : d));
-      this.draw.completed.set(null);
-    });
+    effect(
+      () => {
+        const completed = this.draw.completed();
+        if (!completed) return;
+        this.draft.update((d) => (d ? { ...d, geometry: completed } : d));
+        this.draw.completed.set(null);
+      },
+      { allowSignalWrites: true },
+    );
+
+    // A point-pick click places the sensor; adopt it into the sensor draft.
+    effect(
+      () => {
+        const point = this.draw.pickedPoint();
+        if (!point) return;
+        this.sensorDraft.update((d) =>
+          d ? { ...d, longitude: point[0], latitude: point[1] } : d,
+        );
+      },
+      { allowSignalWrites: true },
+    );
   }
 
   // --- List ------------------------------------------------------------------
@@ -90,10 +138,27 @@ export class ZoneEditorComponent implements OnDestroy {
 
   async refresh(): Promise<void> {
     try {
-      this.zones.set(await this.api.list());
+      // One failing list must not blank the other; each falls back alone.
+      const [zones, sensors] = await Promise.all([
+        this.api.list().catch(() => null),
+        this.sensorApi.list().catch(() => null),
+      ]);
+      if (zones) this.zones.set(zones);
+      else this.error.set('Could not load zones.');
+      if (sensors) this.sensors.set(sensors);
     } catch {
       this.error.set('Could not load zones.');
     }
+  }
+
+  /** Sensors standing inside the given zone (derived server-side). */
+  sensorsFor(zoneId: number): SensorInfo[] {
+    return this.sensors().filter((sensor) => sensor.zoneId === zoneId);
+  }
+
+  /** Sensors outside every active zone — misplaced or awaiting their zone. */
+  unassignedSensors(): SensorInfo[] {
+    return this.sensors().filter((sensor) => sensor.zoneId === null);
   }
 
   /** Zone label in the active language. */
@@ -252,6 +317,140 @@ export class ZoneEditorComponent implements OnDestroy {
     this.busy.set(true);
     try {
       await this.api.retire(zone.id);
+      await this.refresh();
+    } catch (err) {
+      this.error.set((err as Error).message);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  // --- Sensor draft ----------------------------------------------------------
+
+  startNewSensor(): void {
+    this.error.set(null);
+    this.notice.set(null);
+    this.showCalibration.set(false);
+    this.sensorDraft.set({
+      id: null,
+      deviceId: '',
+      label: '',
+      latitude: null,
+      longitude: null,
+      temperatureOffsetC: 0,
+      soilMoistureScale: 1,
+      soilMoistureOffsetPct: 0,
+    });
+    this.draw.startPointPick();
+  }
+
+  startEditSensor(sensor: SensorInfo): void {
+    this.error.set(null);
+    this.notice.set(null);
+    // Shown expanded when a calibration is already in effect: hiding an
+    // active correction would misrepresent what the sensor reports.
+    this.showCalibration.set(
+      sensor.temperatureOffsetC !== 0 ||
+        sensor.soilMoistureScale !== 1 ||
+        sensor.soilMoistureOffsetPct !== 0,
+    );
+    this.sensorDraft.set({
+      id: sensor.id,
+      deviceId: sensor.deviceId,
+      label: sensor.label,
+      latitude: sensor.latitude,
+      longitude: sensor.longitude,
+      temperatureOffsetC: sensor.temperatureOffsetC,
+      soilMoistureScale: sensor.soilMoistureScale,
+      soilMoistureOffsetPct: sensor.soilMoistureOffsetPct,
+    });
+  }
+
+  /** Move the sensor: the next map click replaces its position. */
+  repositionSensor(): void {
+    this.draw.startPointPick();
+  }
+
+  setSensorDeviceId(value: string): void {
+    this.sensorDraft.update((d) => (d ? { ...d, deviceId: value } : d));
+  }
+
+  setSensorLabel(value: string): void {
+    this.sensorDraft.update((d) => (d ? { ...d, label: value } : d));
+  }
+
+  setSensorTempOffset(value: number): void {
+    this.sensorDraft.update((d) => (d ? { ...d, temperatureOffsetC: value } : d));
+  }
+
+  setSensorScale(value: number): void {
+    this.sensorDraft.update((d) => (d ? { ...d, soilMoistureScale: value } : d));
+  }
+
+  setSensorSoilOffset(value: number): void {
+    this.sensorDraft.update((d) =>
+      d ? { ...d, soilMoistureOffsetPct: value } : d,
+    );
+  }
+
+  cancelSensorDraft(): void {
+    this.draw.cancel();
+    this.sensorDraft.set(null);
+    this.error.set(null);
+  }
+
+  async saveSensor(): Promise<void> {
+    const draft = this.sensorDraft();
+    if (!draft) return;
+
+    if (!draft.deviceId.trim() || !draft.label.trim()) {
+      this.error.set(this.i18n.t('sensorNeedFields'));
+      return;
+    }
+    if (draft.latitude === null || draft.longitude === null) {
+      this.error.set(this.i18n.t('sensorNeedPosition'));
+      return;
+    }
+
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const payload = {
+        deviceId: draft.deviceId.trim(),
+        label: draft.label.trim(),
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        temperatureOffsetC: Number(draft.temperatureOffsetC) || 0,
+        soilMoistureScale: Number(draft.soilMoistureScale) || 1,
+        soilMoistureOffsetPct: Number(draft.soilMoistureOffsetPct) || 0,
+      };
+      if (draft.id === null) await this.sensorApi.create(payload);
+      else await this.sensorApi.update(draft.id, payload);
+
+      this.notice.set(this.i18n.t('sensorSaved'));
+      this.sensorDraft.set(null);
+      this.draw.clearPoint();
+      await this.refresh();
+    } catch (err) {
+      this.error.set((err as Error).message);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  askRetireSensor(sensor: SensorInfo): void {
+    this.confirmingSensorRetire.set(sensor.id);
+  }
+
+  abortRetireSensor(): void {
+    this.confirmingSensorRetire.set(null);
+  }
+
+  async retireSensor(sensor: SensorInfo): Promise<void> {
+    this.confirmingSensorRetire.set(null);
+    this.busy.set(true);
+    try {
+      await this.sensorApi.retire(sensor.id);
       await this.refresh();
     } catch (err) {
       this.error.set((err as Error).message);

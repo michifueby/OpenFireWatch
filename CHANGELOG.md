@@ -13,6 +13,26 @@ still a question, not a commitment.
 
 ## [Unreleased]
 
+### Added
+
+- **Ground sensors (LoRaWAN).** Intake for temperature/soil-moisture sensors
+  mounted in the risk areas (`POST /api/sensors/readings`, TTN-v3 webhook
+  format accepted directly), guarded by a dedicated gateway token. When a
+  detection lands in a zone with a fresh reading, the measured values replace
+  the regional estimate as the ignition rule's inputs — and the alert names
+  the sensor. Stale sensors fall back to the regional estimate.
+- **Sensor management in the UI.** The hazard-zones panel lists each zone's
+  sensors with reporting state, values and battery; placing a sensor is a tap
+  on the map, and its zone is derived from the position. Register, edit,
+  reposition, calibrate and retire — no SQL required. Sensors show on the map
+  as teal dots with a detail popup.
+
+### Fixed
+
+- Adopting a drawn outline into the zone form silently failed in production
+  (NG0600: signal writes inside effects are disallowed by default) — drawing
+  a zone or placing a sensor now actually reaches the form.
+
 ## [0.1.0] — 2026-08-20
 
 First tagged release. The system has been running publicly at

@@ -781,6 +781,87 @@ describe('OpenFireWatch pipeline (e2e)', () => {
       expect(sensor.zoneId).not.toBeNull(); // derived from where it stands
     });
 
+    it('is managed with the operator key, and the zone follows the position', async () => {
+      const body = {
+        deviceId: 'e2e-managed',
+        label: 'e2e managed probe',
+        latitude: DRILL_LAT,
+        longitude: DRILL_LON,
+        soilMoistureScale: 1.5,
+      };
+
+      // Registry writes are operator work, not gateway work: the gateway
+      // token must not be able to move a sensor.
+      await request(app.getHttpServer()).post('/api/sensors').send(body).expect(401);
+      await request(app.getHttpServer())
+        .post('/api/sensors')
+        .set('X-Sensor-Token', SENSOR_TOKEN)
+        .send(body)
+        .expect(401);
+
+      const created = await request(app.getHttpServer())
+        .post('/api/sensors')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send(body)
+        .expect(201);
+      const id = created.body.id as number;
+
+      // Inside the phosphorus zone → zone derived from the coordinates.
+      let list = await request(app.getHttpServer()).get('/api/sensors').expect(200);
+      let sensor = list.body.find((s: { id: number }) => s.id === id);
+      expect(sensor.zoneId).not.toBeNull();
+      expect(sensor.label).toBe('e2e managed probe');
+
+      // A second live sensor may not claim the same device id.
+      await request(app.getHttpServer())
+        .post('/api/sensors')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send(body)
+        .expect(409);
+
+      // Moving it far outside every zone clears the derived zone.
+      await request(app.getHttpServer())
+        .put(`/api/sensors/${id}`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({ ...body, latitude: 47.0, longitude: 15.0 })
+        .expect(204);
+      list = await request(app.getHttpServer()).get('/api/sensors').expect(200);
+      sensor = list.body.find((s: { id: number }) => s.id === id);
+      expect(sensor.zoneId).toBeNull();
+
+      // Retire hides it from the registry without deleting anything...
+      await request(app.getHttpServer())
+        .delete(`/api/sensors/${id}`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(204);
+      list = await request(app.getHttpServer()).get('/api/sensors').expect(200);
+      expect(list.body.some((s: { id: number }) => s.id === id)).toBe(false);
+
+      // ...and registering the same device id again re-activates it: the
+      // natural meaning of typing a decommissioned probe's id is that it has
+      // been remounted, and its old readings stay attached.
+      const revived = await request(app.getHttpServer())
+        .post('/api/sensors')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send(body)
+        .expect(201);
+      expect(revived.body.id).toBe(id);
+    });
+
+    it('rejects a calibration that is almost certainly a typo', async () => {
+      await request(app.getHttpServer())
+        .post('/api/sensors')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({
+          deviceId: 'e2e-typo',
+          label: 'typo probe',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+          soilMoistureScale: 50, // no probe is off by 50×
+        })
+        .expect(400);
+    });
+
     it('stores a retransmitted uplink once, not twice', async () => {
       await registerSensor('e2e-dedup');
       const observedAt = new Date().toISOString();

@@ -25,9 +25,16 @@
  *     zone — it would be a number with nowhere to apply.
  */
 
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 
 import { DatabaseService } from '../database/database.service';
+import { RegisterSensorDto } from './register-sensor.dto';
 import { SensorReadingDto } from './sensor-reading.dto';
 
 /**
@@ -54,6 +61,10 @@ export interface SensorStatus {
   temperatureC: number | null;
   soilMoisturePct: number | null;
   batteryPct: number | null;
+  /** Calibration in effect — the editor must round-trip it, not reset it. */
+  temperatureOffsetC: number;
+  soilMoistureScale: number;
+  soilMoistureOffsetPct: number;
 }
 
 /** Calibrated, still-fresh ground conditions measured inside one zone. */
@@ -137,6 +148,9 @@ export class SensorService implements OnModuleInit {
       label: string;
       latitude: number;
       longitude: number;
+      temperature_offset_c: number;
+      soil_moisture_scale: number;
+      soil_moisture_offset_pct: number;
       zone_id: string | null;
       last_seen_at: Date | null;
       observed_at: Date | null;
@@ -147,6 +161,9 @@ export class SensorService implements OnModuleInit {
       SELECT s.id, s.device_id, s.label,
              ST_Y(s.geom) AS latitude,
              ST_X(s.geom) AS longitude,
+             s.temperature_offset_c,
+             s.soil_moisture_scale,
+             s.soil_moisture_offset_pct,
              z.id AS zone_id,
              s.last_seen_at,
              r.observed_at,
@@ -181,6 +198,9 @@ export class SensorService implements OnModuleInit {
       temperatureC: numberOrNull(row.temperature_c),
       soilMoisturePct: numberOrNull(row.soil_moisture_pct),
       batteryPct: numberOrNull(row.battery_pct),
+      temperatureOffsetC: Number(row.temperature_offset_c),
+      soilMoistureScale: Number(row.soil_moisture_scale),
+      soilMoistureOffsetPct: Number(row.soil_moisture_offset_pct),
     }));
   }
 
@@ -232,6 +252,104 @@ export class SensorService implements OnModuleInit {
       byZone.set(zoneId, existing ? mostConservative(existing, candidate) : candidate);
     }
     return byZone;
+  }
+
+  /**
+   * Register a sensor from the UI.
+   *
+   * A device id that already belongs to a RETIRED sensor re-activates it with
+   * the new details — remounting a decommissioned probe is the natural
+   * meaning of typing its id again, and its old readings stay attached, which
+   * is exactly right: they are the drought record of wherever it stood. An
+   * ACTIVE duplicate is refused: two live sensors claiming one identity would
+   * merge two places into one reading.
+   */
+  async register(dto: RegisterSensorDto): Promise<{ id: number }> {
+    const { rows } = await this.db.query<{ id: string }>(
+      `
+      INSERT INTO ground_sensors
+        (device_id, label, geom,
+         temperature_offset_c, soil_moisture_scale, soil_moisture_offset_pct)
+      VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326), $5, $6, $7)
+      ON CONFLICT (device_id) DO UPDATE
+        SET label                    = EXCLUDED.label,
+            geom                     = EXCLUDED.geom,
+            temperature_offset_c     = EXCLUDED.temperature_offset_c,
+            soil_moisture_scale      = EXCLUDED.soil_moisture_scale,
+            soil_moisture_offset_pct = EXCLUDED.soil_moisture_offset_pct,
+            is_active                = TRUE
+        WHERE ground_sensors.is_active = FALSE
+      RETURNING id;
+      `,
+      [
+        dto.deviceId,
+        dto.label,
+        dto.longitude,
+        dto.latitude,
+        dto.temperatureOffsetC ?? 0,
+        dto.soilMoistureScale ?? 1,
+        dto.soilMoistureOffsetPct ?? 0,
+      ],
+    );
+    if (!rows[0]) {
+      throw new ConflictException(
+        `Device "${dto.deviceId}" is already registered and active.`,
+      );
+    }
+    return { id: Number(rows[0].id) };
+  }
+
+  /** Edit a registered sensor — position, label, id or calibration. */
+  async update(id: number, dto: RegisterSensorDto): Promise<void> {
+    try {
+      const { rowCount } = await this.db.query(
+        `
+        UPDATE ground_sensors
+           SET device_id                = $2,
+               label                    = $3,
+               geom                     = ST_SetSRID(ST_MakePoint($4, $5), 4326),
+               temperature_offset_c     = $6,
+               soil_moisture_scale      = $7,
+               soil_moisture_offset_pct = $8
+         WHERE id = $1 AND is_active;
+        `,
+        [
+          id,
+          dto.deviceId,
+          dto.label,
+          dto.longitude,
+          dto.latitude,
+          dto.temperatureOffsetC ?? 0,
+          dto.soilMoistureScale ?? 1,
+          dto.soilMoistureOffsetPct ?? 0,
+        ],
+      );
+      if (rowCount === 0) {
+        throw new NotFoundException(`No active sensor with id ${id}.`);
+      }
+    } catch (error) {
+      // Unique violation: the new device id belongs to another sensor.
+      if ((error as { code?: string }).code === '23505') {
+        throw new ConflictException(
+          `Device "${dto.deviceId}" is already registered to another sensor.`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Retire, never delete: the readings are the drought record of that spot,
+   * and past evaluations that quoted this sensor must stay explicable.
+   */
+  async retire(id: number): Promise<void> {
+    const { rowCount } = await this.db.query(
+      `UPDATE ground_sensors SET is_active = FALSE WHERE id = $1 AND is_active;`,
+      [id],
+    );
+    if (rowCount === 0) {
+      throw new NotFoundException(`No active sensor with id ${id}.`);
+    }
   }
 
   /** Registry table plus readings; idempotent DDL, like the rest. */

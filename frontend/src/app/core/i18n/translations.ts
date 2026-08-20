@@ -114,6 +114,30 @@ export interface TranslationDict {
   zonesSaved: string;
   zonesNeedGeometry: string;
   zonesNeedNames: string;
+  // --- Sensor management (inside the zone editor) -------------------------------
+  sensorAdd: string;
+  sensorsOutside: string;
+  sensorPlaceHint: string;
+  sensorPosition: string;
+  sensorPlace: string;
+  sensorReposition: string;
+  sensorSave: string;
+  sensorLabel: string;
+  sensorDeviceId: string;
+  sensorCalibration: string;
+  sensorCalibrationHint: string;
+  sensorTempOffset: string;
+  sensorScale: string;
+  sensorSoilOffset: string;
+  sensorRetireConfirm: string;
+  sensorSaved: string;
+  sensorNeedFields: string;
+  sensorNeedPosition: string;
+  sensorReporting: string;
+  sensorStale: string;
+  sensorNoData: string;
+  sensorBattery: string;
+
   hazardWhitePhosphorus: string;
   hazardWildfire: string;
   hazardAmmunitionDepot: string;
@@ -232,6 +256,32 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     zonesSaved: 'Zone saved.',
     zonesNeedGeometry: 'Draw an outline with at least 3 corners first.',
     zonesNeedNames: 'Both names are required.',
+    sensorAdd: '+ Sensor',
+    sensorsOutside: 'Sensors outside every zone',
+    sensorPlaceHint:
+      'Tap the map where the sensor is mounted. Its zone follows from the position automatically.',
+    sensorPosition: 'Position',
+    sensorPlace: 'Place on the map',
+    sensorReposition: 'Reposition',
+    sensorSave: 'Save sensor',
+    sensorLabel: 'Name',
+    sensorDeviceId: 'Device ID (LoRaWAN)',
+    sensorCalibration: 'Calibration (optional)',
+    sensorCalibrationHint:
+      'true value = raw × factor + offset. Leave as is unless the probe was calibrated in the field.',
+    sensorTempOffset: 'Temperature offset (°C)',
+    sensorScale: 'Soil moisture factor',
+    sensorSoilOffset: 'Soil moisture offset (%)',
+    sensorRetireConfirm:
+      'Retire this sensor? It stops feeding evaluations; its readings are kept.',
+    sensorSaved: 'Sensor saved.',
+    sensorNeedFields: 'Name and device ID are required.',
+    sensorNeedPosition: 'Place the sensor on the map first.',
+    sensorReporting: 'reporting',
+    sensorStale: 'not reporting',
+    sensorNoData: 'no data yet',
+    sensorBattery: 'Battery',
+
     hazardWhitePhosphorus: 'White phosphorus',
     hazardWildfire: 'Wildfire',
     hazardAmmunitionDepot: 'Ammunition depot',
@@ -350,6 +400,32 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     zonesSaved: 'Zone gespeichert.',
     zonesNeedGeometry: 'Zuerst einen Umriss mit mindestens 3 Eckpunkten zeichnen.',
     zonesNeedNames: 'Beide Namen sind erforderlich.',
+    sensorAdd: '+ Sensor',
+    sensorsOutside: 'Sensoren außerhalb aller Zonen',
+    sensorPlaceHint:
+      'Auf die Karte tippen, wo der Sensor montiert ist. Die Zone ergibt sich automatisch aus der Position.',
+    sensorPosition: 'Position',
+    sensorPlace: 'Auf der Karte platzieren',
+    sensorReposition: 'Neu platzieren',
+    sensorSave: 'Sensor speichern',
+    sensorLabel: 'Bezeichnung',
+    sensorDeviceId: 'Geräte-ID (LoRaWAN)',
+    sensorCalibration: 'Kalibrierung (optional)',
+    sensorCalibrationHint:
+      'Wahrer Wert = Rohwert × Faktor + Offset. Unverändert lassen, wenn die Sonde nicht im Feld kalibriert wurde.',
+    sensorTempOffset: 'Temperatur-Offset (°C)',
+    sensorScale: 'Bodenfeuchte-Faktor',
+    sensorSoilOffset: 'Bodenfeuchte-Offset (%)',
+    sensorRetireConfirm:
+      'Sensor stilllegen? Er fließt nicht mehr in Bewertungen ein; die Messwerte bleiben erhalten.',
+    sensorSaved: 'Sensor gespeichert.',
+    sensorNeedFields: 'Bezeichnung und Geräte-ID sind erforderlich.',
+    sensorNeedPosition: 'Zuerst den Sensor auf der Karte platzieren.',
+    sensorReporting: 'meldet',
+    sensorStale: 'meldet nicht',
+    sensorNoData: 'noch keine Daten',
+    sensorBattery: 'Akku',
+
     hazardWhitePhosphorus: 'Weißer Phosphor',
     hazardWildfire: 'Waldbrand',
     hazardAmmunitionDepot: 'Munitionsdepot',
