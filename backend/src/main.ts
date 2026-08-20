@@ -43,7 +43,14 @@ async function bootstrap(): Promise<void> {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, openApiConfig));
 
-  await app.listen(Number(process.env.API_PORT ?? 8000), '0.0.0.0');
+  // API_PORT may legitimately carry a host-interface prefix in .env
+  // ("127.0.0.1:8000") because docker-compose uses the same variable for the
+  // host binding. Take the last colon-separated segment, and fall back rather
+  // than crashing on anything unparseable — a listening service on the default
+  // port is always better than none.
+  const rawPort = process.env.API_PORT?.split(':').pop() ?? '';
+  const port = Number.parseInt(rawPort, 10);
+  await app.listen(Number.isInteger(port) && port > 0 && port < 65536 ? port : 8000, '0.0.0.0');
 }
 
 void bootstrap();

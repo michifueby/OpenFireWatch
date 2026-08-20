@@ -85,6 +85,11 @@ services:
       POSTGRES_HOST: db
       REDIS_HOST: redis
       REDIS_PORT: "6379"
+      # API_PORT in .env describes the HOST binding and may carry an interface
+      # prefix (e.g. "127.0.0.1:8000"). Inside the container the app must
+      # always listen on a plain 8000, so pin it here — otherwise a loopback
+      # binding would reach the app as a port number and crash it.
+      API_PORT: "8000"
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:
