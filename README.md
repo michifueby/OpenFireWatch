@@ -13,6 +13,15 @@ OpenFireWatch is an event-driven early warning system that detects and alerts on
 Built on a **pure TypeScript stack**: Node.js + BullMQ workers, a NestJS API, and an Angular + MapLibre GL JS frontend.
 
 <p align="center">
+  <img src="docs/img/situation-map.png" alt="OpenFireWatch situation map: hazard zone outlines over a dark map, a pulsing marker on a detected smouldering nest, and the critical alerts panel showing temperature, soil moisture and coordinates" width="900" />
+</p>
+
+<p align="center">
+  <em>A smouldering nest detected inside a monitored forest — the alert carries the
+  evidence behind it: five satellite passes over 72 h, peaking at 1.4 MW.</em>
+</p>
+
+<p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg" /></a>
   <a href="#-architecture"><img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" /></a>
   <a href="#-quick-start"><img alt="Docker Compose" src="https://img.shields.io/badge/docker--compose-ready-2496ED?logo=docker&logoColor=white" /></a>
@@ -121,7 +130,9 @@ Contributions are what make open source thrive — and early warning systems sav
 4. **Open a Pull Request** with a clear description of the problem and your solution. Small, focused PRs are reviewed fastest.
 5. **Found a bug or have an idea?** Open an issue first for anything larger than a quick fix so we can discuss the approach.
 
-Please be kind and constructive — we follow the [Contributor Covenant](https://www.contributor-covenant.org/) code of conduct.
+Please be kind and constructive — we follow the [Contributor Covenant](CODE_OF_CONDUCT.md).
+
+Full details are in [CONTRIBUTING.md](CONTRIBUTING.md); for security issues see [SECURITY.md](SECURITY.md) — please do not open a public issue for those.
 
 ## 👤 Developer
 
