@@ -49,6 +49,12 @@ OpenFireWatch is **fault-tolerant and event-driven by design**. Every layer is d
 > 🗺️ **[Monitoring areas & risk zones →](docs/monitoring-areas.md)** — how to
 > enlarge or move the observed area, add further hazard zones, and verify the
 > change before trusting it.
+>
+> 📕 **[Handbuch (Deutsch, PDF) →](docs/handbuch/handbuch.pdf)** — a printable
+> German manual written for three audiences: fire-service personnel, curious
+> members of the public, and developers. Explains how to read the map, what
+> each alert level means, how zones are managed, and — importantly — what the
+> system cannot do.
 
 ```
  ┌──────────────┐   ┌──────────────┐

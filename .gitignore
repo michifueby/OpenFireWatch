@@ -14,6 +14,14 @@ npm-cache/
 dist/
 out-tsc/
 
+# LaTeX build artefacts (the .tex and the generated .pdf are versioned)
+*.aux
+*.fdb_latexmk
+*.fls
+*.out
+*.toc
+*.synctex.gz
+
 # Logs & OS noise
 *.log
 .DS_Store
