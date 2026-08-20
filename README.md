@@ -120,6 +120,9 @@ Then open:
 
 Get a free NASA FIRMS map key at <https://firms.modaps.eosdis.nasa.gov/api/map_key/> and set `FIRMS_MAP_KEY` in your `.env`.
 
+> 🚀 **Running it publicly?** [docs/deployment.md](docs/deployment.md) walks
+> through a TLS-terminated deployment on a ~€5/month VPS, including backups.
+
 ## 🤝 Contributing
 
 Contributions are what make open source thrive — and early warning systems save lives. We welcome them all.

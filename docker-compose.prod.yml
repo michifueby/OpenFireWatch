@@ -1,0 +1,36 @@
+# =============================================================================
+# OpenFireWatch — public deployment layer (TLS entry point).
+#
+# Used TOGETHER with the base file, never alone:
+#
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Note the base file is named explicitly: that skips docker-compose.override.yml,
+# which publishes the database and broker on localhost for development.
+#
+# Requires DOMAIN and ACME_EMAIL in .env, and DOMAIN pointing at this host.
+# =============================================================================
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN must be set for the public deployment}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set for Let's Encrypt}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # certificates — must persist across restarts
+      - caddy-config:/config
+    depends_on:
+      - frontend
+    networks:
+      - openfirewatch
+
+volumes:
+  caddy-data:
+  caddy-config:

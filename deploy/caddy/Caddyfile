@@ -1,0 +1,38 @@
+# =============================================================================
+# OpenFireWatch — TLS termination and public entry point.
+#
+# Caddy obtains and renews Let's Encrypt certificates automatically; the only
+# prerequisite is that DOMAIN resolves to this server's public IP.
+#
+# Everything is proxied to the frontend container, which already serves the
+# Angular bundle and forwards /api and /socket.io to the backend. Keeping that
+# single upstream means the browser talks to exactly one origin — no CORS on
+# normal requests, and WebSocket upgrades pass straight through (Caddy handles
+# them in reverse_proxy without extra configuration).
+# =============================================================================
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Hardening headers. The app loads map tiles and fonts from third parties,
+	# so a strict Content-Security-Policy needs tailoring per basemap provider
+	# and is deliberately left out rather than shipped broken.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	reverse_proxy frontend:80
+
+	log {
+		output stdout
+		format console
+	}
+}

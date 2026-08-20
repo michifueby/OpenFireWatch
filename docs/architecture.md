@@ -342,6 +342,8 @@ erDiagram
 - [README](../README.md) — overview, quick start, contributing
 - [Monitoring areas & risk zones](monitoring-areas.md) — operator guide for
   changing `FIRMS_AREA` and maintaining `high_risk_zones`
+- [Deployment](deployment.md) — running it publicly with TLS, backups and
+  update procedure
 - [`docker-compose.yml`](../docker-compose.yml) — the full local stack
 - [`backend/test/app.e2e-spec.ts`](../backend/test/app.e2e-spec.ts) — the
   architecture verified end to end against real PostGIS and Redis
