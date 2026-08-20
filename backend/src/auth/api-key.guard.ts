@@ -59,8 +59,12 @@ export class ApiKeyGuard implements CanActivate {
  * Constant-time equality. Both sides are hashed first so the comparison
  * always runs over equal-length buffers — otherwise the key length would
  * leak, and `timingSafeEqual` would throw on a mismatch.
+ *
+ * Exported because the sensor gateway authenticates with its own credential
+ * on its own header: a second guard, but the same comparison. Two copies of
+ * this would be two chances to write `===` in a hurry.
  */
-function matches(presented: string, configured: string): boolean {
+export function matches(presented: string, configured: string): boolean {
   const a = createHash('sha256').update(presented).digest();
   const b = createHash('sha256').update(configured).digest();
   return timingSafeEqual(a, b);

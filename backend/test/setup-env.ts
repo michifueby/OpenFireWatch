@@ -28,3 +28,7 @@ process.env.REDIS_DB = '15';
 // Writes are guarded by ApiKeyGuard; the suite exercises both the accepted
 // and the rejected path, so the key must be known here.
 process.env.OPERATOR_API_KEY = 'e2e-test-operator-key';
+
+// The sensor intake has its own credential (a gateway must not hold the
+// operator key); the suite exercises accept and reject paths for it too.
+process.env.SENSOR_INGEST_TOKEN = 'e2e-test-sensor-token';

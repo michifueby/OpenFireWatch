@@ -36,6 +36,7 @@ import IORedis from 'ioredis';
 
 import { DatabaseService } from '../database/database.service';
 import { RiskZone, RiskZoneService } from '../risk-zones/risk-zone.service';
+import { SensorService } from '../sensors/sensor.service';
 import {
   AlertLevel,
   isCredibleDetection,
@@ -114,6 +115,7 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly db: DatabaseService,
     private readonly riskZones: RiskZoneService,
+    private readonly sensors: SensorService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -229,6 +231,13 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
 
     let smouldering: AnomalyAlertPayload['smouldering'];
 
+    // The conditions the verdict is based on. Regional estimate by default,
+    // replaced by measured ground truth when a live sensor stands in the
+    // zone — and then persisted and broadcast AS the decision inputs, so an
+    // alert never displays numbers the rule did not run on.
+    let decisionTemperatureC = weather.temperatureC;
+    let decisionSoilMoisturePct = weather.soilMoisturePct;
+
     if (!zone) {
       level = AlertLevel.INFO;
     } else {
@@ -251,11 +260,25 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
 
       const profile = profileFor(zone.hazardType);
 
+      // Ground truth beats the regional estimate. The report's weather is one
+      // TAWES station and one grid point standing in for the whole monitored
+      // area; a live sensor inside THIS zone measures the soil the rule is
+      // actually about. Substituted field-by-field — a sensor without a soil
+      // probe still improves the temperature — and only while fresh: a dead
+      // sensor must never report calm on behalf of a wood that is drying out
+      // (SensorService.currentByZone already enforces the freshness window).
+      const local = (await this.sensors.currentByZone()).get(zone.id);
+      decisionTemperatureC = local?.temperatureC ?? weather.temperatureC;
+      decisionSoilMoisturePct = local?.soilMoisturePct ?? weather.soilMoisturePct;
+      const groundSource = local
+        ? `sensor ${local.deviceId}`
+        : 'regional estimate';
+
       // Phosphorus gate — both conditions must hold SIMULTANEOUSLY.
       const ignitionTemperatureReached =
-        weather.temperatureC >= PHOSPHORUS_IGNITION.IGNITION_TEMPERATURE_C;
+        decisionTemperatureC >= PHOSPHORUS_IGNITION.IGNITION_TEMPERATURE_C;
       const soilCrackedAndDry =
-        weather.soilMoisturePct < PHOSPHORUS_IGNITION.CRITICAL_SOIL_MOISTURE_PCT;
+        decisionSoilMoisturePct < PHOSPHORUS_IGNITION.CRITICAL_SOIL_MOISTURE_PCT;
       const weatherOk =
         !profile.requiresIgnitionWeather ||
         (ignitionTemperatureReached && soilCrackedAndDry);
@@ -274,7 +297,8 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
         // Recording WHY it stayed below critical makes an ELEVATED entry
         // actionable instead of merely puzzling.
         withheldBecause = !weatherOk
-          ? `ignition preconditions not met (${weather.temperatureC}°C, soil ${weather.soilMoisturePct}%)`
+          ? `ignition preconditions not met (${decisionTemperatureC}°C, soil ` +
+            `${decisionSoilMoisturePct}% — ${groundSource})`
           : `satellite confidence rated low ("${detection.confidence}")`;
       }
     }
@@ -286,7 +310,7 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
         (anomaly_id, zone_id, alert_level, temperature_c, soil_moisture_pct)
       VALUES ($1, $2, $3, $4, $5);
       `,
-      [anomalyId, zone?.id ?? null, level, weather.temperatureC, weather.soilMoisturePct],
+      [anomalyId, zone?.id ?? null, level, decisionTemperatureC, decisionSoilMoisturePct],
     );
 
     // -- 6) Log & escalate ------------------------------------------------------
@@ -295,7 +319,7 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `🚨 ${level} — anomaly #${anomalyId} inside "${zone!.name.en}" ` +
           `[${zone!.hazardType}] at (${detection.latitude}, ${detection.longitude}): ` +
-          `${weather.temperatureC}°C, soil ${weather.soilMoisturePct}%, ` +
+          `${decisionTemperatureC}°C, soil ${decisionSoilMoisturePct}%, ` +
           `confidence ${detection.confidence ?? 'n/a'}` +
           (smouldering
             ? ` — persisted across ${smouldering.passes} passes in ${smouldering.windowHours} h, ` +
@@ -322,8 +346,8 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
         level,
         zone,
         weather: {
-          temperatureC: weather.temperatureC,
-          soilMoisturePct: weather.soilMoisturePct,
+          temperatureC: decisionTemperatureC,
+          soilMoisturePct: decisionSoilMoisturePct,
         },
         ...(smouldering ? { smouldering } : {}),
       };

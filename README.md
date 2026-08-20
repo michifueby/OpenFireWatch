@@ -50,6 +50,10 @@ OpenFireWatch is **fault-tolerant and event-driven by design**. Every layer is d
 > enlarge or move the observed area, add further hazard zones, and verify the
 > change before trusting it.
 >
+> 🌡️ **[Ground sensors →](docs/ground-sensors.md)** — mounting LoRaWAN
+> temperature/soil-moisture sensors in the risk areas, so the ignition rule
+> runs on measured ground truth instead of a regional estimate.
+>
 > 📕 **[Handbuch (Deutsch, PDF) →](docs/handbuch/handbuch.pdf)** — a printable
 > German manual written for three audiences: fire-service personnel, curious
 > members of the public, and developers. Explains how to read the map, what

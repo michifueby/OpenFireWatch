@@ -550,6 +550,258 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('ground sensors', () => {
+    const SENSOR_TOKEN = process.env.SENSOR_INGEST_TOKEN!;
+
+    /** Register a sensor at the drill point (inside the phosphorus zone). */
+    async function registerSensor(
+      deviceId: string,
+      calibration: { scale?: number; offsetPct?: number; tempOffsetC?: number } = {},
+    ): Promise<void> {
+      await db.query(
+        `INSERT INTO ground_sensors
+           (device_id, label, geom, soil_moisture_scale, soil_moisture_offset_pct, temperature_offset_c)
+         VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326), $5, $6, $7)
+         ON CONFLICT (device_id) DO UPDATE
+           SET soil_moisture_scale = EXCLUDED.soil_moisture_scale,
+               soil_moisture_offset_pct = EXCLUDED.soil_moisture_offset_pct,
+               temperature_offset_c = EXCLUDED.temperature_offset_c,
+               is_active = TRUE;`,
+        [
+          deviceId,
+          `e2e ${deviceId}`,
+          DRILL_LON,
+          DRILL_LAT,
+          calibration.scale ?? 1,
+          calibration.offsetPct ?? 0,
+          calibration.tempOffsetC ?? 0,
+        ],
+      );
+    }
+
+    afterEach(async () => {
+      // Sensors sit outside the per-test TRUNCATE, so clean up explicitly —
+      // a leftover live sensor would silently change every later verdict.
+      await db.query(
+        `DELETE FROM sensor_readings WHERE sensor_id IN
+           (SELECT id FROM ground_sensors WHERE device_id LIKE 'e2e-%');`,
+      );
+      await db.query(`DELETE FROM ground_sensors WHERE device_id LIKE 'e2e-%';`);
+    });
+
+    it('refuses readings without the gateway token, and from unknown devices', async () => {
+      const reading = {
+        deviceId: 'e2e-nobody',
+        observedAt: new Date().toISOString(),
+        temperatureC: 20,
+      };
+
+      await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .send(reading)
+        .expect(401);
+      await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .set('X-Sensor-Token', 'wrong-token')
+        .send(reading)
+        .expect(401);
+
+      // Right token, unregistered device: reported, never auto-created — a
+      // reading with no registered position has no zone to apply to.
+      const res = await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .set('X-Sensor-Token', SENSOR_TOKEN)
+        .send(reading)
+        .expect(202);
+      expect(res.body).toEqual({ accepted: 0, unknownDevices: ['e2e-nobody'] });
+    });
+
+    it('applies the field calibration on read, not on write', async () => {
+      // A capacitive probe reporting roughly half the true value.
+      await registerSensor('e2e-cal', { scale: 2, offsetPct: 1 });
+
+      await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .set('X-Sensor-Token', SENSOR_TOKEN)
+        .send({
+          deviceId: 'e2e-cal',
+          observedAt: new Date().toISOString(),
+          temperatureC: 20,
+          soilMoisturePct: 12, // raw
+        })
+        .expect(202);
+
+      const res = await request(app.getHttpServer()).get('/api/sensors').expect(200);
+      const sensor = res.body.find(
+        (s: { deviceId: string }) => s.deviceId === 'e2e-cal',
+      );
+      expect(sensor.reporting).toBe(true);
+      expect(sensor.soilMoisturePct).toBe(25); // 12 * 2 + 1
+      // The raw value stays raw in storage, so a corrected calibration also
+      // corrects the past.
+      const { rows } = await db.query(
+        `SELECT soil_moisture_pct_raw FROM sensor_readings
+          WHERE sensor_id = (SELECT id FROM ground_sensors WHERE device_id = 'e2e-cal');`,
+      );
+      expect(Number(rows[0].soil_moisture_pct_raw)).toBe(12);
+    });
+
+    it('lets measured ground truth escalate what the regional estimate would hold back', async () => {
+      await registerSensor('e2e-ground');
+
+      // The wood itself: hot and bone dry.
+      await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .set('X-Sensor-Token', SENSOR_TOKEN)
+        .send({
+          deviceId: 'e2e-ground',
+          observedAt: new Date().toISOString(),
+          temperatureC: 33,
+          soilMoisturePct: 12,
+        })
+        .expect(202);
+
+      // The regional estimate: a cool, damp day that would gate phosphorus
+      // at ELEVATED. The sensor inside the zone must outrank it.
+      await reportsQueue.add('detection-report', {
+        detection: {
+          source: 'E2E_SENSOR',
+          satellite: 'TEST',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+          acquiredAt: new Date().toISOString(),
+          brightnessK: 340,
+          frpMw: 12,
+          confidence: 'h',
+        },
+        weather: {
+          temperatureC: 18,
+          soilMoisturePct: 45,
+          windSpeedKmh: 5,
+          observedAt: new Date().toISOString(),
+        },
+      });
+
+      const rows = await waitFor(
+        async () => {
+          const { rows } = await db.query(
+            `SELECT alert_level, temperature_c, soil_moisture_pct FROM validated_events;`,
+          );
+          return rows.length > 0 ? rows : undefined;
+        },
+        20_000,
+        'sensor-driven verdict',
+      );
+      expect(rows[0].alert_level).toBe('CRITICAL_PHOSPHORUS_FIRE');
+      // The record carries the numbers the rule actually ran on — the
+      // measured ones, not the regional estimate it overrode.
+      expect(Number(rows[0].temperature_c)).toBe(33);
+      expect(Number(rows[0].soil_moisture_pct)).toBe(12);
+    });
+
+    it('falls back to the regional estimate once the sensor goes stale', async () => {
+      await registerSensor('e2e-stale');
+
+      // Alarming values — but hours old. A dead sensor must not keep
+      // reporting on behalf of the wood, in either direction.
+      await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .set('X-Sensor-Token', SENSOR_TOKEN)
+        .send({
+          deviceId: 'e2e-stale',
+          observedAt: new Date(Date.now() - 6 * 3600_000).toISOString(),
+          temperatureC: 40,
+          soilMoisturePct: 5,
+        })
+        .expect(202);
+
+      await reportsQueue.add('detection-report', {
+        detection: {
+          source: 'E2E_SENSOR',
+          satellite: 'TEST',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+          acquiredAt: new Date().toISOString(),
+          brightnessK: 340,
+          frpMw: 12,
+          confidence: 'h',
+        },
+        weather: {
+          temperatureC: 18,
+          soilMoisturePct: 45,
+          windSpeedKmh: 5,
+          observedAt: new Date().toISOString(),
+        },
+      });
+
+      const rows = await waitFor(
+        async () => {
+          const { rows } = await db.query(`SELECT alert_level FROM validated_events;`);
+          return rows.length > 0 ? rows : undefined;
+        },
+        20_000,
+        'stale-sensor verdict',
+      );
+      expect(rows[0].alert_level).toBe('ELEVATED');
+
+      // And the status endpoint says so, which is what a maintenance round
+      // would read.
+      const res = await request(app.getHttpServer()).get('/api/sensors').expect(200);
+      const sensor = res.body.find(
+        (s: { deviceId: string }) => s.deviceId === 'e2e-stale',
+      );
+      expect(sensor.reporting).toBe(false);
+    });
+
+    it('accepts a LoRaWAN uplink envelope straight from a network server webhook', async () => {
+      await registerSensor('e2e-lora');
+
+      await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .set('Authorization', `Bearer ${SENSOR_TOKEN}`)
+        .send({
+          end_device_ids: { device_id: 'e2e-lora' },
+          received_at: new Date().toISOString(),
+          uplink_message: {
+            received_at: new Date().toISOString(),
+            decoded_payload: { temperatureC: 21.5, soilMoisturePct: 30, batteryPct: 87 },
+          },
+        })
+        .expect(202)
+        .expect((res) => {
+          expect(res.body.accepted).toBe(1);
+        });
+
+      const res = await request(app.getHttpServer()).get('/api/sensors').expect(200);
+      const sensor = res.body.find(
+        (s: { deviceId: string }) => s.deviceId === 'e2e-lora',
+      );
+      expect(sensor.temperatureC).toBe(21.5);
+      expect(sensor.batteryPct).toBe(87);
+      expect(sensor.zoneId).not.toBeNull(); // derived from where it stands
+    });
+
+    it('stores a retransmitted uplink once, not twice', async () => {
+      await registerSensor('e2e-dedup');
+      const observedAt = new Date().toISOString();
+      const reading = { deviceId: 'e2e-dedup', observedAt, temperatureC: 19 };
+
+      for (let i = 0; i < 2; i += 1) {
+        await request(app.getHttpServer())
+          .post('/api/sensors/readings')
+          .set('X-Sensor-Token', SENSOR_TOKEN)
+          .send(reading)
+          .expect(202);
+      }
+
+      const { rows } = await db.query(
+        `SELECT count(*) FROM sensor_readings
+          WHERE sensor_id = (SELECT id FROM ground_sensors WHERE device_id = 'e2e-dedup');`,
+      );
+      expect(Number(rows[0].count)).toBe(1);
+    });
+  });
+
   describe('per-hazard escalation criteria', () => {
     /** Enqueue one report at a coordinate and wait for its verdict. */
     const evaluate = async (

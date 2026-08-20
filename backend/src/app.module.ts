@@ -8,6 +8,7 @@ import { DatabaseModule } from './database/database.module';
 import { EvaluationModule } from './evaluation/evaluation.module';
 import { HealthController } from './health/health.controller';
 import { RiskZonesModule } from './risk-zones/risk-zones.module';
+import { SensorsModule } from './sensors/sensors.module';
 import { SimulationModule } from './simulation/simulation.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { SimulationModule } from './simulation/simulation.module';
     AlertsModule, // relays Redis alerts to Socket.IO clients
     AnomaliesModule, // REST read model (GeoJSON)
     ConditionsModule, // current conditions + per-zone readiness
+    SensorsModule, // ground sensor registry + LoRaWAN intake
     SimulationModule, // POST /api/simulate-fire end-to-end drill trigger
   ],
   controllers: [HealthController],
