@@ -17,6 +17,10 @@ import { CommonModule } from '@angular/common';
 import { Component, signal } from '@angular/core';
 
 import { TranslationService } from '../core/i18n/translation.service';
+import {
+  ConditionsService,
+  ZoneReadiness,
+} from '../core/services/conditions.service';
 import { RealTimeAlertService } from '../core/services/real-time-alert.service';
 
 @Component({
@@ -39,6 +43,40 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
           {{ (alerts.connected$ | async) ? i18n.t('live') : i18n.t('offline') }}
         </span>
       </header>
+
+      <!-- What the ground looks like right now. Placed above the alerts
+           because it answers the question that comes first: how close is
+           each zone to the point where a detection would escalate? -->
+      <section class="conditions" *ngIf="cond.conditions() as c">
+        <h3>{{ i18n.t('conditionsTitle') }}</h3>
+
+        <p class="empty" *ngIf="!c.available">{{ i18n.t('conditionsUnavailable') }}</p>
+
+        <ng-container *ngIf="c.available">
+          <div class="cond-readings">
+            <span class="c-temp">{{ c.temperatureC | number: '1.0-1' }}&nbsp;°C</span>
+            <span class="c-soil">{{ c.soilMoisturePct | number: '1.0-1' }}&nbsp;%</span>
+            <span class="c-hum">
+              {{ i18n.t('conditionsHumidity') }} {{ c.relativeHumidityPct | number: '1.0-0' }}&nbsp;%
+            </span>
+            <span class="c-meta">
+              {{ i18n.t('conditionsStation') }} {{ c.stationId }} ·
+              {{ c.observedAt | date: 'HH:mm' }}
+            </span>
+          </div>
+
+          <ul class="readiness">
+            <li
+              *ngFor="let z of c.zones"
+              [class.armed]="z.armed"
+              [class.partial]="!z.armed && partiallyMet(z)"
+            >
+              <span class="r-name">{{ i18n.pick(z.name) }}</span>
+              <span class="r-state">{{ readiness(z) }}</span>
+            </li>
+          </ul>
+        </ng-container>
+      </section>
 
       <p class="empty" *ngIf="(alerts.activeWarnings$ | async)?.length === 0">
         {{ i18n.t('noActiveAlerts') }}
@@ -247,6 +285,86 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
         color: #ff9d8f;
       }
 
+      .conditions {
+        padding: 0.6rem 0.9rem;
+        border-bottom: 1px solid rgba(230, 232, 238, 0.12);
+
+        h3 {
+          margin: 0 0 0.4rem;
+          font-family: $font-mono;
+          font-size: 0.6rem;
+          letter-spacing: 0.12em;
+          color: #6b7688;
+        }
+      }
+
+      .cond-readings {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.15rem 0.7rem;
+        font-family: $font-mono;
+        font-variant-numeric: tabular-nums;
+        font-size: 0.78rem;
+
+        .c-temp {
+          color: #ff8b5e;
+        }
+        .c-soil {
+          color: #ffd166;
+        }
+        .c-hum,
+        .c-meta {
+          font-size: 0.62rem;
+          color: #6b7688;
+          align-self: center;
+        }
+        .c-meta {
+          flex-basis: 100%;
+        }
+      }
+
+      .readiness {
+        list-style: none;
+        margin: 0.5rem 0 0;
+        padding: 0;
+        display: grid;
+        gap: 0.3rem;
+
+        li {
+          padding-left: 0.5rem;
+          border-left: 2px solid #3a4560;
+          font-size: 0.68rem;
+          color: #9aa4b2;
+
+          &.partial {
+            border-left-color: #ffa023;
+
+            .r-state {
+              color: #ffa023;
+            }
+          }
+
+          &.armed {
+            border-left-color: $alert-red;
+
+            .r-state {
+              color: $alert-red;
+            }
+          }
+        }
+      }
+
+      .r-name {
+        display: block;
+        color: #c6ccd6;
+      }
+
+      .r-state {
+        font-family: $font-mono;
+        font-size: 0.62rem;
+        color: #6b7688;
+      }
+
       .history-toggle {
         padding: 0 0.6rem 0.6rem;
 
@@ -358,6 +476,42 @@ export class AlertDashboardComponent {
   /** History stays collapsed until asked for — the live picture comes first. */
   readonly showHistory = signal(false);
 
+  /**
+   * One line stating whether this zone would escalate right now, and if not,
+   * how far the conditions still are from its threshold.
+   */
+  readiness(z: ZoneReadiness): string {
+    if (z.gate === 'detection') return this.i18n.t('conditionsOnDetection');
+    if (z.armed) return this.i18n.t('conditionsArmed');
+
+    // Which of the two conditions is already satisfied matters: "one hot
+    // afternoon away" is a very different situation from "nowhere near", and
+    // reporting a clamped 0 for an already-crossed threshold hid exactly that.
+    const tempMet = (z.temperatureGapC ?? 1) <= 0;
+    const soilMet = (z.soilMoistureGapPct ?? 1) < 0;
+
+    if (soilMet && !tempMet) {
+      return this.i18n
+        .t('conditionsGapTempOnly')
+        .replace('{temp}', formatGap(z.temperatureGapC));
+    }
+    if (tempMet && !soilMet) {
+      return this.i18n
+        .t('conditionsGapSoilOnly')
+        .replace('{soil}', formatGap(z.soilMoistureGapPct));
+    }
+    return this.i18n
+      .t('conditionsGap')
+      .replace('{temp}', formatGap(z.temperatureGapC))
+      .replace('{soil}', formatGap(z.soilMoistureGapPct));
+  }
+
+  /** One of the two weather conditions already satisfied — worth flagging. */
+  partiallyMet(z: ZoneReadiness): boolean {
+    if (z.gate !== 'weather') return false;
+    return (z.temperatureGapC ?? 1) <= 0 || (z.soilMoistureGapPct ?? 1) < 0;
+  }
+
   /** Coarse class for colour-coding a history row by severity. */
   levelClass(level: string): 'critical' | 'elevated' | 'info' {
     if (level.startsWith('CRITICAL')) return 'critical';
@@ -380,5 +534,12 @@ export class AlertDashboardComponent {
   constructor(
     readonly alerts: RealTimeAlertService,
     readonly i18n: TranslationService,
+    readonly cond: ConditionsService,
   ) {}
+}
+
+/** A crossed threshold reads as 0 rather than a confusing negative distance. */
+function formatGap(value: number | undefined): string {
+  if (value === undefined) return '?';
+  return String(Math.max(0, Math.round(value * 10) / 10));
 }

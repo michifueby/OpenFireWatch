@@ -67,6 +67,20 @@ export async function ingestDetections(job: Job): Promise<number> {
     area.centroid.longitude,
   );
 
+  // Publish what we just measured, whether or not any hotspot follows. The
+  // conditions are useful in their own right: they say how close each zone is
+  // to its thresholds *before* anything ignites.
+  await publishConditions({
+    observedAt: station.observedAt,
+    temperatureC: station.temperatureC,
+    relativeHumidityPct: station.relativeHumidityPct,
+    soilMoisturePct,
+    stationId: station.stationId,
+    area: area.bbox,
+    areaOrigin: area.origin,
+    cycleAt: new Date().toISOString(),
+  });
+
   // --- 3) Satellite hotspots (streamed CSV) ------------------------------------
   const detections = await fetchFirmsDetections(area.bbox);
   if (detections.length === 0) {
@@ -127,4 +141,34 @@ export async function ingestDetections(job: Job): Promise<number> {
       `soil ${soilMoisturePct}%`,
   );
   return validReports.length;
+}
+
+/** Shared Redis handle for the conditions snapshot. */
+const conditionsRedis = createRedisConnection();
+
+/**
+ * Store the latest ground conditions for the API to serve.
+ *
+ * Given a generous TTL of four polling intervals: long enough to survive a
+ * couple of failed cycles, short enough that a genuinely stopped ingestion
+ * makes the key disappear rather than leaving the UI showing stale weather
+ * as though it were live.
+ */
+async function publishConditions(snapshot: Record<string, unknown>): Promise<void> {
+  try {
+    await conditionsRedis.set(
+      BUS.CONDITIONS_KEY,
+      JSON.stringify(snapshot),
+      'EX',
+      config.FIRMS_POLL_INTERVAL * 4,
+    );
+  } catch (error) {
+    // Never let a reporting detail abort an ingestion cycle.
+    console.warn(`[ingest] could not publish conditions: ${(error as Error).message}`);
+  }
+}
+
+/** Release the handle during graceful shutdown. */
+export async function closeConditionsRedis(): Promise<void> {
+  await conditionsRedis.quit();
 }

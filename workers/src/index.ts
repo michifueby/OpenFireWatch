@@ -28,7 +28,11 @@ import {
   closeMonitoringAreaPool,
   resolveMonitoringArea,
 } from './clients/monitoring-area';
-import { detectionReportsQueue, ingestDetections } from './ingestion/ingest.task';
+import {
+  closeConditionsRedis,
+  detectionReportsQueue,
+  ingestDetections,
+} from './ingestion/ingest.task';
 import { createRedisConnection } from './redis';
 
 async function main(): Promise<void> {
@@ -117,6 +121,7 @@ async function main(): Promise<void> {
       detectionReportsQueue.close(),
       deadLetterQueue.close(),
       closeMonitoringAreaPool(),
+      closeConditionsRedis(),
     ]);
     process.exit(0);
   };

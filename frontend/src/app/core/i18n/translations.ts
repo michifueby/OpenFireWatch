@@ -34,6 +34,15 @@ export interface TranslationDict {
   historyTitle: string;
   historyEmpty: string;
   historyOutsideZones: string;
+  conditionsTitle: string;
+  conditionsUnavailable: string;
+  conditionsStation: string;
+  conditionsArmed: string;
+  conditionsOnDetection: string;
+  conditionsGap: string;
+  conditionsGapTempOnly: string;
+  conditionsGapSoilOnly: string;
+  conditionsHumidity: string;
   ack: string;
   ackAria: string;
   labelTemp: string;
@@ -122,6 +131,15 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     historyTitle: 'LAST 7 DAYS',
     historyEmpty: 'Nothing evaluated in this period.',
     historyOutsideZones: 'outside all zones',
+    conditionsTitle: 'CONDITIONS',
+    conditionsUnavailable: 'No recent ingestion cycle — conditions unknown.',
+    conditionsStation: 'station',
+    conditionsArmed: 'ignition window OPEN',
+    conditionsOnDetection: 'escalates on any credible detection',
+    conditionsGap: '{temp} °C and {soil} % from the ignition window',
+    conditionsGapTempOnly: 'soil already dry enough — {temp} °C short of ignition',
+    conditionsGapSoilOnly: 'temperature reached — soil still {soil} % too moist',
+    conditionsHumidity: 'humidity',
     ack: 'ACK',
     ackAria: 'Acknowledge alert',
     labelTemp: 'TEMP',
@@ -219,6 +237,15 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     historyTitle: 'LETZTE 7 TAGE',
     historyEmpty: 'In diesem Zeitraum wurde nichts bewertet.',
     historyOutsideZones: 'außerhalb aller Zonen',
+    conditionsTitle: 'BEDINGUNGEN',
+    conditionsUnavailable: 'Kein aktueller Abrufzyklus — Bedingungen unbekannt.',
+    conditionsStation: 'Station',
+    conditionsArmed: 'Zündfenster OFFEN',
+    conditionsOnDetection: 'eskaliert bei jeder glaubwürdigen Detektion',
+    conditionsGap: '{temp} °C und {soil} % vom Zündfenster entfernt',
+    conditionsGapTempOnly: 'Boden bereits trocken genug — nur noch {temp} °C bis zur Zündung',
+    conditionsGapSoilOnly: 'Temperatur erreicht — Boden noch {soil} % zu feucht',
+    conditionsHumidity: 'Luftfeuchte',
     ack: 'QUITT',
     ackAria: 'Alarm quittieren',
     labelTemp: 'TEMP',

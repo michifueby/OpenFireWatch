@@ -267,6 +267,97 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     }
   });
 
+  describe('current conditions', () => {
+    it('reports honestly when no ingestion cycle has run', async () => {
+      // A fresh deployment. Guessing values here would be worse than a gap:
+      // the panel must be able to say "unknown", not show stale weather.
+      await redis.del('conditions:current');
+      const res = await request(app.getHttpServer()).get('/api/conditions').expect(200);
+
+      expect(res.body.available).toBe(false);
+      expect(res.body.temperatureC).toBeUndefined();
+      // Zones are still listed — the map should show them regardless.
+      expect(res.body.zones.length).toBeGreaterThan(0);
+    });
+
+    it('measures each zone against ITS OWN threshold, not one global rule', async () => {
+      await redis.set(
+        'conditions:current',
+        JSON.stringify({
+          observedAt: new Date().toISOString(),
+          cycleAt: new Date().toISOString(),
+          temperatureC: 24,
+          relativeHumidityPct: 55,
+          soilMoisturePct: 31,
+          stationId: '11090',
+          area: '16,47,17,48',
+        }),
+      );
+      // A wildfire zone alongside the seeded phosphorus one.
+      await db.query(
+        `INSERT INTO high_risk_zones (name, name_en, name_de, hazard_type, geom)
+         VALUES ('e2e-conditions', 'E2E wildfire', 'E2E-Waldbrand', 'wildfire',
+                 ST_SetSRID(ST_GeomFromGeoJSON($1), 4326))
+         ON CONFLICT (name) DO UPDATE SET hazard_type = EXCLUDED.hazard_type;`,
+        [JSON.stringify({
+          type: 'Polygon',
+          coordinates: [[[16.48,47.92],[16.52,47.92],[16.52,47.88],[16.48,47.88],[16.48,47.92]]],
+        })],
+      );
+
+      try {
+        const res = await request(app.getHttpServer()).get('/api/conditions').expect(200);
+        expect(res.body.available).toBe(true);
+        expect(res.body.temperatureC).toBe(24);
+
+        const phosphorus = res.body.zones.find(
+          (z: { hazardType: string }) => z.hazardType === 'white_phosphorus',
+        );
+        const wildfire = res.body.zones.find(
+          (z: { hazardType: string }) => z.hazardType === 'wildfire',
+        );
+
+        // 24 °C is 6 below the 30 °C threshold; 31 % soil is 11 above the 20 %.
+        expect(phosphorus.gate).toBe('weather');
+        expect(phosphorus.armed).toBe(false);
+        expect(phosphorus.temperatureGapC).toBe(6);
+        expect(phosphorus.soilMoistureGapPct).toBe(11);
+
+        // The wildfire zone does not wait for weather at all.
+        expect(wildfire.gate).toBe('detection');
+        expect(wildfire.armed).toBe(true);
+        expect(wildfire.temperatureGapC).toBeUndefined();
+      } finally {
+        await db.query(`DELETE FROM high_risk_zones WHERE name = 'e2e-conditions';`);
+        await redis.del('conditions:current');
+      }
+    });
+
+    it('arms a phosphorus zone once both thresholds are crossed', async () => {
+      await redis.set(
+        'conditions:current',
+        JSON.stringify({
+          observedAt: new Date().toISOString(),
+          cycleAt: new Date().toISOString(),
+          temperatureC: 33,
+          relativeHumidityPct: 20,
+          soilMoisturePct: 12,
+          stationId: '11090',
+          area: '16,47,17,48',
+        }),
+      );
+      try {
+        const res = await request(app.getHttpServer()).get('/api/conditions').expect(200);
+        const phosphorus = res.body.zones.find(
+          (z: { hazardType: string }) => z.hazardType === 'white_phosphorus',
+        );
+        expect(phosphorus.armed).toBe(true);
+      } finally {
+        await redis.del('conditions:current');
+      }
+    });
+  });
+
   describe('alert history', () => {
     it('serves past evaluations that the live socket has already forgotten', async () => {
       // The point of the endpoint: a browser that was not open when the alert

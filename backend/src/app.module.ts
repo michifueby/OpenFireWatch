@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 
 import { AlertsModule } from './alerts/alerts.module';
 import { AnomaliesModule } from './anomalies/anomalies.module';
+import { ConditionsModule } from './conditions/conditions.module';
 import { DatabaseModule } from './database/database.module';
 import { EvaluationModule } from './evaluation/evaluation.module';
 import { HealthController } from './health/health.controller';
@@ -18,6 +19,7 @@ import { SimulationModule } from './simulation/simulation.module';
     EvaluationModule, // consumes detection reports, applies the phosphorus rule
     AlertsModule, // relays Redis alerts to Socket.IO clients
     AnomaliesModule, // REST read model (GeoJSON)
+    ConditionsModule, // current conditions + per-zone readiness
     SimulationModule, // POST /api/simulate-fire end-to-end drill trigger
   ],
   controllers: [HealthController],

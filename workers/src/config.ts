@@ -77,4 +77,11 @@ export const BUS = {
   DEAD_LETTER_QUEUE: 'dlq.ingestion',
   /** Redis pub/sub channel the NestJS API relays to WebSocket clients. */
   ALERTS_CHANNEL: 'alerts:anomalies',
+  /**
+   * Latest ground conditions, refreshed every ingestion cycle. A plain key
+   * rather than a table: it is a snapshot, not history, and it expires on its
+   * own if ingestion stops — so the UI can say "stale" instead of showing
+   * yesterday's weather as if it were current.
+   */
+  CONDITIONS_KEY: 'conditions:current',
 } as const;
