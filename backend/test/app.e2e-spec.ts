@@ -267,6 +267,95 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     }
   });
 
+  describe('alert history', () => {
+    it('serves past evaluations that the live socket has already forgotten', async () => {
+      // The point of the endpoint: a browser that was not open when the alert
+      // fired — or one that was simply reloaded — must still see it.
+      await request(app.getHttpServer())
+        .post('/api/simulate-fire')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+
+      const history = await waitFor(
+        async () => {
+          const res = await request(app.getHttpServer())
+            .get('/api/alerts?limit=10')
+            .expect(200);
+          return res.body.length > 0 ? res.body : undefined;
+        },
+        20_000,
+        'alert history entry',
+      );
+
+      expect(history[0]).toEqual(
+        expect.objectContaining({
+          type: 'thermal_anomaly',
+          level: 'CRITICAL_PHOSPHORUS_FIRE',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+          weather: { temperatureC: 32, soilMoisturePct: 15 },
+          zone: expect.objectContaining({ name: ZONE_NAME }),
+        }),
+      );
+      // evaluatedAt is what distinguishes a history entry from a live alert.
+      expect(Date.parse(history[0].evaluatedAt)).not.toBeNaN();
+    });
+
+    it('keeps INFO events, so "detected but outside every zone" stays visible', async () => {
+      await reportsQueue.add('detection-report', {
+        detection: {
+          source: 'E2E_HISTORY', satellite: 'TEST',
+          latitude: 47.0, longitude: 15.0,   // far from any zone
+          acquiredAt: new Date().toISOString(),
+          brightnessK: 340, frpMw: 10, confidence: 'h',
+        },
+        weather: {
+          temperatureC: 35, soilMoisturePct: 10,
+          windSpeedKmh: 5, observedAt: new Date().toISOString(),
+        },
+      });
+
+      const all = await waitFor(
+        async () => {
+          const res = await request(app.getHttpServer()).get('/api/alerts?limit=10');
+          const info = res.body.filter((e: { level: string }) => e.level === 'INFO');
+          return info.length > 0 ? info : undefined;
+        },
+        20_000,
+        'INFO history entry',
+      );
+      // A LEFT JOIN failure here would silently drop these entirely.
+      expect(all[0].zone).toBeNull();
+    });
+
+    it('criticalOnly filters out everything below a critical level', async () => {
+      await request(app.getHttpServer())
+        .post('/api/simulate-fire')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+      await waitFor(
+        async () => {
+          const res = await request(app.getHttpServer()).get('/api/alerts?criticalOnly=true');
+          return res.body.length > 0 ? res.body : undefined;
+        },
+        20_000,
+        'critical-only history',
+      );
+
+      const res = await request(app.getHttpServer())
+        .get('/api/alerts?criticalOnly=true')
+        .expect(200);
+      expect(res.body.length).toBeGreaterThan(0);
+      for (const entry of res.body) {
+        expect(entry.level).toMatch(/^CRITICAL_/);
+      }
+    });
+
+    it('rejects an out-of-range limit instead of trusting it', async () => {
+      await request(app.getHttpServer()).get('/api/alerts?limit=99999').expect(400);
+    });
+  });
+
   describe('per-hazard escalation criteria', () => {
     /** Enqueue one report at a coordinate and wait for its verdict. */
     const evaluate = async (

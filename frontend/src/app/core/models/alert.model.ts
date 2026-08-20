@@ -61,6 +61,12 @@ export interface AnomalyAlert {
   level: AlertLevel;
   zone: RiskZoneRef | null;
   weather: AlertWeather;
+  /**
+   * When the backend evaluated it. Present on history entries loaded from
+   * `GET /api/alerts`, absent on live WebSocket alerts (which are, by
+   * definition, being evaluated right now).
+   */
+  evaluatedAt?: string;
   /** Present only on CRITICAL_SMOULDERING — the persistence evidence. */
   smouldering?: {
     passes: number;

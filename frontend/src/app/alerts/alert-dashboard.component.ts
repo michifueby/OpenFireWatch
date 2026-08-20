@@ -14,7 +14,7 @@
  */
 
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 
 import { TranslationService } from '../core/i18n/translation.service';
 import { RealTimeAlertService } from '../core/services/real-time-alert.service';
@@ -94,6 +94,37 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
           </dl>
         </li>
       </ul>
+
+      <!-- The database has recorded every verdict since day one; this is the
+           part of it a responder can actually look at. Collapsed by default
+           so it never competes with what is happening right now. -->
+      <footer class="history-toggle">
+        <button type="button" (click)="showHistory.set(!showHistory())">
+          {{ showHistory() ? i18n.t('historyHide') : i18n.t('historyShow') }}
+        </button>
+      </footer>
+
+      <section class="history" *ngIf="showHistory()">
+        <h3>{{ i18n.t('historyTitle') }}</h3>
+
+        <p class="empty" *ngIf="(alerts.history$ | async)?.length === 0">
+          {{ i18n.t('historyEmpty') }}
+        </p>
+
+        <ol class="history-list">
+          <li *ngFor="let entry of alerts.history$ | async" [class]="'lvl-' + levelClass(entry.level)">
+            <span class="h-time">{{ entry.evaluatedAt ?? entry.acquiredAt | date: 'dd.MM. HH:mm' }}</span>
+            <span class="h-level">{{ i18n.levelLabel(entry.level) }}</span>
+            <span class="h-zone">
+              {{ entry.zone ? i18n.pick(entry.zone.name) : i18n.t('historyOutsideZones') }}
+            </span>
+            <span class="h-readings">
+              {{ entry.weather.temperatureC | number: '1.0-0' }}°C ·
+              {{ entry.weather.soilMoisturePct | number: '1.0-0' }}%
+            </span>
+          </li>
+        </ol>
+      </section>
     </section>
   `,
   styles: [
@@ -216,6 +247,83 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
         color: #ff9d8f;
       }
 
+      .history-toggle {
+        padding: 0 0.6rem 0.6rem;
+
+        button {
+          width: 100%;
+          padding: 0.3rem;
+          border: 1px dashed rgba(230, 232, 238, 0.25);
+          border-radius: 4px;
+          background: transparent;
+          color: #8b95a7;
+          font-family: $font-mono;
+          font-size: 0.62rem;
+          letter-spacing: 0.08em;
+          cursor: pointer;
+
+          &:hover {
+            border-color: $alert-red;
+            color: $alert-red;
+          }
+        }
+      }
+
+      .history {
+        padding: 0 0.6rem 0.7rem;
+
+        h3 {
+          margin: 0 0 0.4rem;
+          font-family: $font-mono;
+          font-size: 0.6rem;
+          letter-spacing: 0.12em;
+          color: #6b7688;
+        }
+      }
+
+      .history-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.2rem;
+        font-family: $font-mono;
+        font-size: 0.62rem;
+        font-variant-numeric: tabular-nums;
+
+        li {
+          display: grid;
+          grid-template-columns: 4.6rem 1fr;
+          gap: 0.1rem 0.5rem;
+          padding: 0.3rem 0.4rem;
+          border-left: 2px solid #3a4560;
+          border-radius: 3px;
+          background: rgba(0, 0, 0, 0.25);
+          color: #9aa4b2;
+
+          &.lvl-critical {
+            border-left-color: $alert-red;
+          }
+          &.lvl-elevated {
+            border-left-color: #ffa023;
+          }
+        }
+      }
+
+      .h-time {
+        color: #6b7688;
+      }
+      .h-level {
+        color: #e6e8ee;
+      }
+      .h-zone,
+      .h-readings {
+        grid-column: 2;
+      }
+      .h-readings {
+        color: #6b7688;
+      }
+
       // Monospace instrument readings, digits aligned via tabular numerals.
       .readings {
         margin: 0.55rem 0 0;
@@ -247,6 +355,15 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
   ],
 })
 export class AlertDashboardComponent {
+  /** History stays collapsed until asked for — the live picture comes first. */
+  readonly showHistory = signal(false);
+
+  /** Coarse class for colour-coding a history row by severity. */
+  levelClass(level: string): 'critical' | 'elevated' | 'info' {
+    if (level.startsWith('CRITICAL')) return 'critical';
+    return level === 'ELEVATED' ? 'elevated' : 'info';
+  }
+
   /** Fill the evidence sentence with this alert's numbers. */
   smoulderingEvidence(sm: {
     passes: number;

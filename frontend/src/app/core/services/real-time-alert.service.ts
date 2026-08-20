@@ -33,6 +33,7 @@ export class RealTimeAlertService implements OnDestroy {
   private readonly anomalySubject = new Subject<AnomalyAlert>();
   private readonly criticalSubject = new Subject<AnomalyAlert>();
   private readonly warningsSubject = new BehaviorSubject<AnomalyAlert[]>([]);
+  private readonly historySubject = new BehaviorSubject<AnomalyAlert[]>([]);
   private readonly connectedSubject = new BehaviorSubject<boolean>(false);
 
   /** Every broadcast alert — feeds the anomaly layer on the map. */
@@ -41,6 +42,8 @@ export class RealTimeAlertService implements OnDestroy {
   readonly criticalAlerts$: Observable<AnomalyAlert> = this.criticalSubject.asObservable();
   /** Current unacknowledged critical warnings, newest first. */
   readonly activeWarnings$: Observable<AnomalyAlert[]> = this.warningsSubject.asObservable();
+  /** Recent evaluations of every level, loaded once from the REST history. */
+  readonly history$: Observable<AnomalyAlert[]> = this.historySubject.asObservable();
   /** Gateway connectivity (drives the dashboard status chip). */
   readonly connected$: Observable<boolean> = this.connectedSubject.asObservable();
 
@@ -71,6 +74,33 @@ export class RealTimeAlertService implements OnDestroy {
         this.pushWarning(alert);
       }),
     );
+
+    void this.loadHistory();
+  }
+
+  /**
+   * Seed from the REST history so a page reload does not blank the picture.
+   *
+   * Until this existed, an alert only lived in the browser tab that happened
+   * to be open when it fired — the database had every verdict, and the UI
+   * showed none of it after F5.
+   */
+  async loadHistory(): Promise<void> {
+    try {
+      const [recent, criticals] = await Promise.all([
+        fetch('/api/alerts?limit=100&sinceHours=168').then((r) =>
+          r.ok ? (r.json() as Promise<AnomalyAlert[]>) : [],
+        ),
+        fetch('/api/alerts?limit=50&sinceHours=24&criticalOnly=true').then((r) =>
+          r.ok ? (r.json() as Promise<AnomalyAlert[]>) : [],
+        ),
+      ]);
+      this.historySubject.next(recent);
+      // Older first, so pushWarning's newest-first ordering comes out right.
+      [...criticals].reverse().forEach((alert) => this.pushWarning(alert));
+    } catch {
+      // History is a convenience; live alerts work without it.
+    }
   }
 
   /** Operator acknowledged a warning — remove it from the active list. */
@@ -82,6 +112,9 @@ export class RealTimeAlertService implements OnDestroy {
 
   /** Prepend a warning, dedupe by anomaly id, cap the list length. */
   private pushWarning(alert: AnomalyAlert): void {
+    this.historySubject.next(
+      [alert, ...this.historySubject.value.filter((h) => h.id !== alert.id)].slice(0, 100),
+    );
     const withoutDuplicate = this.warningsSubject.value.filter(
       (warning) => warning.id !== alert.id,
     );
@@ -95,6 +128,7 @@ export class RealTimeAlertService implements OnDestroy {
     this.anomalySubject.complete();
     this.criticalSubject.complete();
     this.warningsSubject.complete();
+    this.historySubject.complete();
     this.connectedSubject.complete();
   }
 }

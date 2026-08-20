@@ -29,6 +29,11 @@ export interface TranslationDict {
   levelSmouldering: string;
   levelElevated: string;
   smoulderingEvidence: string;
+  historyShow: string;
+  historyHide: string;
+  historyTitle: string;
+  historyEmpty: string;
+  historyOutsideZones: string;
   ack: string;
   ackAria: string;
   labelTemp: string;
@@ -112,6 +117,11 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     levelSmouldering: 'SMOULDERING NEST',
     levelElevated: 'ELEVATED',
     smoulderingEvidence: 'persisted across {passes} passes in {hours} h · peak {frp} MW',
+    historyShow: 'Show history',
+    historyHide: 'Hide history',
+    historyTitle: 'LAST 7 DAYS',
+    historyEmpty: 'Nothing evaluated in this period.',
+    historyOutsideZones: 'outside all zones',
     ack: 'ACK',
     ackAria: 'Acknowledge alert',
     labelTemp: 'TEMP',
@@ -204,6 +214,11 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     levelSmouldering: 'GLUTNEST',
     levelElevated: 'ERHÖHT',
     smoulderingEvidence: 'bei {passes} Überflügen in {hours} h · Spitze {frp} MW',
+    historyShow: 'Verlauf anzeigen',
+    historyHide: 'Verlauf ausblenden',
+    historyTitle: 'LETZTE 7 TAGE',
+    historyEmpty: 'In diesem Zeitraum wurde nichts bewertet.',
+    historyOutsideZones: 'außerhalb aller Zonen',
     ack: 'QUITT',
     ackAria: 'Alarm quittieren',
     labelTemp: 'TEMP',
