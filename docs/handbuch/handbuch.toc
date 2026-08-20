@@ -1,0 +1,22 @@
+\babel@toc {ngerman}{}\relax 
+\contentsline {section}{\numberline {1}Wie Sie dieses Handbuch lesen}{4}{section.1}%
+\contentsline {section}{\numberline {2}Was OpenFireWatch tut}{4}{section.2}%
+\contentsline {section}{\numberline {3}Die Lagekarte lesen}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Was Sie auf der Karte sehen}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Das Lagepanel rechts oben}{6}{subsection.3.2}%
+\contentsline {paragraph}{\nonumberline Bedingungen.}{6}{paragraph*.4}%
+\contentsline {paragraph}{\nonumberline Aktuelle Alarme.}{7}{paragraph*.6}%
+\contentsline {paragraph}{\nonumberline Verlauf.}{7}{paragraph*.8}%
+\contentsline {subsection}{\numberline {3.3}Die Alarmstufen}{7}{subsection.3.3}%
+\contentsline {section}{\numberline {4}Wie das System zu seinem Urteil kommt}{7}{section.4}%
+\contentsline {section}{\numberline {5}Gefahrenzonen verwalten}{8}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Zone anlegen}{9}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Zone ändern oder stilllegen}{9}{subsection.5.2}%
+\contentsline {section}{\numberline {6}Was das System nicht kann}{9}{section.6}%
+\contentsline {section}{\numberline {7}Technischer Überblick}{10}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Datenquellen}{10}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Aufbau}{11}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Schnittstelle}{11}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Selbst betreiben}{12}{subsection.7.4}%
+\contentsline {subsection}{\numberline {7.5}Mitarbeiten}{12}{subsection.7.5}%
+\providecommand \tocbasic@end@toc@file {}\tocbasic@end@toc@file 

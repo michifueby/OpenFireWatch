@@ -28,6 +28,7 @@ import maplibregl, { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../core/i18n/translation.service';
+import { ConditionsService } from '../core/services/conditions.service';
 import { ZoneApiService } from '../zones/zone-api.service';
 import { ZoneDrawService } from '../zones/zone-draw.service';
 import { AnomalyAlert } from '../core/models/alert.model';
@@ -63,18 +64,40 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   /** Live markers we created — tracked so ngOnDestroy can remove them all. */
   private readonly criticalMarkers: maplibregl.Marker[] = [];
   private readonly anomalyFeatures: GeoJSON.Feature[] = [];
+  /** Zone ids the overlay currently reflects, to detect changes cheaply. */
+  private knownZoneIds = '';
 
   constructor(
     private readonly alerts: RealTimeAlertService,
     private readonly i18n: TranslationService,
     private readonly draw: ZoneDrawService,
     private readonly zoneApi: ZoneApiService,
+    private readonly conditions: ConditionsService,
   ) {
     // Re-draw the overlay whenever the editor writes a zone. Guarded inside
     // loadRiskZones(), so firing before the map is ready is harmless.
     effect(() => {
       this.zoneApi.revision();
       void this.loadRiskZones();
+    });
+
+    // ...and whenever the set of zones changes underneath us.
+    //
+    // The editor is not the only way zones appear: the documented path for
+    // zones that must survive a rebuild is plain SQL (deploy/zones/*.sql).
+    // Those never went through `revision`, so the overlay kept showing the
+    // zones that existed at page load while the conditions panel — which
+    // polls — already listed the new ones. Two parts of the same screen
+    // disagreeing about which zones exist is worse than either being stale.
+    effect(() => {
+      const ids = (this.conditions.conditions()?.zones ?? [])
+        .map((z) => z.id)
+        .sort((a, b) => a - b)
+        .join(',');
+      if (ids && ids !== this.knownZoneIds) {
+        this.knownZoneIds = ids;
+        void this.loadRiskZones();
+      }
     });
   }
 
