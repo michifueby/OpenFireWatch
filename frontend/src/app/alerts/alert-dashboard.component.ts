@@ -68,8 +68,9 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
           <ul class="readiness">
             <li
               *ngFor="let z of c.zones"
-              [class.armed]="z.armed"
-              [class.partial]="!z.armed && partiallyMet(z)"
+              [class.armed]="z.gate === 'weather' && z.armed"
+              [class.partial]="z.gate === 'weather' && !z.armed && partiallyMet(z)"
+              [class.always]="z.gate === 'detection'"
             >
               <span class="r-name">{{ i18n.pick(z.name) }}</span>
               <span class="r-state">{{ readiness(z) }}</span>
@@ -335,6 +336,20 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
           border-left: 2px solid #3a4560;
           font-size: 0.68rem;
           color: #9aa4b2;
+
+          /*
+           * A detection-gated zone is armed by definition — it will look like
+           * this forever. Colouring it red would spend the alarm colour on a
+           * property rather than a state, and a row that is permanently red
+           * teaches people to stop noticing red.
+           */
+          &.always {
+            border-left-color: #3a4560;
+
+            .r-state {
+              color: #8b95a7;
+            }
+          }
 
           &.partial {
             border-left-color: #ffa023;
