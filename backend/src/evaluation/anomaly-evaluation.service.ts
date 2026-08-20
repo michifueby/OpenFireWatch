@@ -382,9 +382,31 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
         evaluated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
       );
     `);
+    // Acknowledgement, added additively so databases created by an earlier
+    // release keep working. Written by AlertHistoryService (AlertsModule) and
+    // read by every query that asks what is still outstanding; the column
+    // lives here because this service owns the table.
+    //
+    // No `acknowledged_by`: there are no accounts yet, so it could only hold
+    // a free-text name — friction in an emergency, and an unverified string
+    // that looks like an audit trail without being one. ApiKeyGuard is what
+    // limits who may acknowledge, and it is the seam where real accounts slot
+    // in (see its own note).
+    await this.db.query(`
+      ALTER TABLE validated_events
+        ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ;
+    `);
     await this.db.query(`
       CREATE INDEX IF NOT EXISTS idx_validated_events_level_time
         ON validated_events (alert_level, evaluated_at DESC);
+    `);
+    // Partial index: "which criticals are still outstanding" is the query the
+    // dashboard runs on every page load, and it only ever looks at the rows
+    // that are still NULL here.
+    await this.db.query(`
+      CREATE INDEX IF NOT EXISTS idx_validated_events_unacknowledged
+        ON validated_events (evaluated_at DESC)
+        WHERE acknowledged_at IS NULL;
     `);
   }
 

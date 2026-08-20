@@ -35,4 +35,14 @@ export class QueryAlertsDto {
   @Transform(({ value }) => value === true || value === 'true' || value === '1')
   @IsBoolean()
   criticalOnly: boolean = false;
+
+  @ApiPropertyOptional({
+    description:
+      'Return only alerts nobody has acknowledged yet — what is still outstanding',
+    default: false,
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true' || value === '1')
+  @IsBoolean()
+  unacknowledgedOnly: boolean = false;
 }

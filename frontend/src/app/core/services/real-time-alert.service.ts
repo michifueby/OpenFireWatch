@@ -16,11 +16,15 @@
  * self-heals without any code here.
  */
 
-import { Injectable, NgZone, OnDestroy } from '@angular/core';
+import { Injectable, NgZone, OnDestroy, inject } from '@angular/core';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
 
 import { AnomalyAlert, ServerToClientEvents } from '../models/alert.model';
+import { OperatorKeyService } from './operator-key.service';
+
+/** Thrown by `acknowledge` when this tab has no operator key. */
+export const LOCKED = 'locked';
 
 /** Upper bound on the retained warning list — a dashboard, not a database. */
 const MAX_ACTIVE_WARNINGS = 50;
@@ -46,6 +50,8 @@ export class RealTimeAlertService implements OnDestroy {
   readonly history$: Observable<AnomalyAlert[]> = this.historySubject.asObservable();
   /** Gateway connectivity (drives the dashboard status chip). */
   readonly connected$: Observable<boolean> = this.connectedSubject.asObservable();
+
+  private readonly operatorKey = inject(OperatorKeyService);
 
   constructor(private readonly zone: NgZone) {
     // Connect OUTSIDE Angular's zone so Socket.IO heartbeats never trigger
@@ -75,6 +81,13 @@ export class RealTimeAlertService implements OnDestroy {
       }),
     );
 
+    // Acknowledgements arrive the same way alerts do, including the ones this
+    // tab made itself. One code path clears the alarm everywhere, so two
+    // responders on two devices cannot end up looking at different pictures.
+    this.socket.on('alert:acknowledged', (event) =>
+      this.zone.run(() => this.applyAcknowledgement(event.id, event.acknowledgedAt)),
+    );
+
     void this.loadHistory();
   }
 
@@ -91,9 +104,11 @@ export class RealTimeAlertService implements OnDestroy {
         fetch('/api/alerts?limit=100&sinceHours=168').then((r) =>
           r.ok ? (r.json() as Promise<AnomalyAlert[]>) : [],
         ),
-        fetch('/api/alerts?limit=50&sinceHours=24&criticalOnly=true').then((r) =>
-          r.ok ? (r.json() as Promise<AnomalyAlert[]>) : [],
-        ),
+        // Only what is still outstanding: an alert somebody already took must
+        // not come back as an active warning on the next page load.
+        fetch(
+          '/api/alerts?limit=50&sinceHours=24&criticalOnly=true&unacknowledgedOnly=true',
+        ).then((r) => (r.ok ? (r.json() as Promise<AnomalyAlert[]>) : [])),
       ]);
       this.historySubject.next(recent);
       // Older first, so pushWarning's newest-first ordering comes out right.
@@ -120,15 +135,56 @@ export class RealTimeAlertService implements OnDestroy {
     return this.connectedSubject.value;
   }
 
-  /** Operator acknowledged a warning — remove it from the active list. */
-  dismissWarning(alertId: number): void {
+  /**
+   * Record that a responder has taken this alert.
+   *
+   * Guarded by the operator key, and deliberately so: this deployment is on
+   * the open internet and an acknowledgement now clears the alarm for
+   * everyone, so it cannot be something a passer-by can do.
+   *
+   * The list is not touched here — the server answers, then broadcasts, and
+   * this tab clears the alarm from that broadcast like every other client.
+   * Removing it optimistically would show a responder an alarm as handled
+   * that the record still holds open.
+   */
+  async acknowledge(alertId: number): Promise<void> {
+    const key = this.operatorKey.read();
+    if (!key) throw new Error(LOCKED);
+
+    const response = await fetch(`/api/alerts/${alertId}/acknowledge`, {
+      method: 'POST',
+      headers: { 'X-API-Key': key },
+    });
+    if (response.ok) return;
+
+    if (response.status === 401 || response.status === 503) {
+      this.operatorKey.clear();
+      throw new Error(LOCKED);
+    }
+    const body = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    throw new Error(body?.message ?? `HTTP ${response.status}`);
+  }
+
+  /** Drop an acknowledged alert from the active list and stamp the history. */
+  private applyAcknowledgement(alertId: number, acknowledgedAt: string): void {
     this.warningsSubject.next(
       this.warningsSubject.value.filter((warning) => warning.id !== alertId),
+    );
+    this.historySubject.next(
+      this.historySubject.value.map((entry) =>
+        entry.id === alertId ? { ...entry, acknowledgedAt } : entry,
+      ),
     );
   }
 
   /** Prepend a warning, dedupe by anomaly id, cap the list length. */
   private pushWarning(alert: AnomalyAlert): void {
+    // A restored history entry may already carry an acknowledgement; it
+    // belongs in the record, not in the list of what is still outstanding.
+    if (alert.acknowledgedAt) return;
+
     this.historySubject.next(
       [alert, ...this.historySubject.value.filter((h) => h.id !== alert.id)].slice(0, 100),
     );

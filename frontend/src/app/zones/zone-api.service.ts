@@ -1,18 +1,14 @@
 /**
  * ZoneApiService — reads and writes hazard zones.
  *
- * Credential handling: the operator key is kept in `sessionStorage`, not
- * `localStorage`, so it disappears when the tab closes instead of persisting
- * on a shared workstation. It is only ever sent to the same origin as the
- * app, in the `X-API-Key` header — never in a URL, where it would end up in
- * server logs and browser history.
+ * Credential handling lives in OperatorKeyService, which the alert
+ * acknowledgement path shares.
  */
 
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 
 import { LocalizedName } from '../core/models/alert.model';
-
-const KEY_STORAGE = 'ofw-operator-key';
+import { OperatorKeyService } from '../core/services/operator-key.service';
 
 export type HazardType =
   | 'white_phosphorus'
@@ -37,8 +33,10 @@ export interface ZonePayload {
 
 @Injectable({ providedIn: 'root' })
 export class ZoneApiService {
+  private readonly operatorKey = inject(OperatorKeyService);
+
   /** Whether an operator key is present in this tab. */
-  readonly unlocked = signal<boolean>(!!readStoredKey());
+  readonly unlocked = this.operatorKey.unlocked;
 
   /**
    * Bumped after every successful write. The map watches it and re-fetches
@@ -84,14 +82,12 @@ export class ZoneApiService {
       this.lock();
       return false;
     }
-    sessionStorage.setItem(KEY_STORAGE, key);
-    this.unlocked.set(true);
+    this.operatorKey.store(key);
     return true;
   }
 
   lock(): void {
-    sessionStorage.removeItem(KEY_STORAGE);
-    this.unlocked.set(false);
+    this.operatorKey.clear();
   }
 
   create(payload: ZonePayload): Promise<void> {
@@ -111,7 +107,7 @@ export class ZoneApiService {
     method: 'POST' | 'PUT' | 'DELETE',
     payload?: ZonePayload,
   ): Promise<void> {
-    const key = readStoredKey();
+    const key = this.operatorKey.read();
     if (!key) throw new Error('locked');
 
     const response = await fetch(url, {
@@ -140,13 +136,5 @@ export class ZoneApiService {
       ? body!.message.join('; ')
       : (body?.message ?? `HTTP ${response.status}`);
     throw new Error(detail);
-  }
-}
-
-function readStoredKey(): string | null {
-  try {
-    return sessionStorage.getItem(KEY_STORAGE);
-  } catch {
-    return null; // storage blocked (private mode) — the editor stays locked
   }
 }

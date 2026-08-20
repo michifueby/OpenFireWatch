@@ -29,6 +29,15 @@ import { Server, Socket } from 'socket.io';
 /** Pub/sub channel name — must match the workers' `BUS.ALERTS_CHANNEL`. */
 const ALERTS_CHANNEL = 'alerts:anomalies';
 
+/**
+ * Acknowledgements travel through Redis rather than straight out of the
+ * controller, for the same reason alerts do: any replica may serve the POST,
+ * but every replica has to tell its own connected clients. Skipping the bus
+ * would mean only the responders who happen to be attached to the same API
+ * instance see the alarm clear.
+ */
+const ACKNOWLEDGEMENTS_CHANNEL = 'alerts:acknowledgements';
+
 /** Socket.IO event name the Angular frontend listens for (all levels). */
 const ANOMALY_EVENT = 'anomaly:new';
 
@@ -43,6 +52,16 @@ const ANOMALY_EVENT = 'anomaly:new';
  * level is carried in the payload's `level` field.
  */
 const CRITICAL_EVENT = 'alert:critical';
+
+/** Socket.IO event telling every client an alert has been taken. */
+const ACKNOWLEDGED_EVENT = 'alert:acknowledged';
+
+/** Payload of both the Redis message and the Socket.IO event. */
+export interface AcknowledgementEvent {
+  /** Anomaly id — the same id the alert payload carries. */
+  id: number;
+  acknowledgedAt: string;
+}
 
 @WebSocketGateway({
   cors: {
@@ -64,6 +83,9 @@ export class AlertsGateway
    */
   private subscriber: IORedis;
 
+  /** Separate connection: a subscriber connection cannot issue PUBLISH. */
+  private publisher: IORedis;
+
   async onModuleInit(): Promise<void> {
     this.subscriber = new IORedis({
       host: process.env.REDIS_HOST ?? 'redis',
@@ -74,30 +96,54 @@ export class AlertsGateway
       retryStrategy: (attempt) => Math.min(2 ** attempt * 100, 30_000),
     });
 
-    await this.subscriber.subscribe(ALERTS_CHANNEL);
+    this.publisher = this.subscriber.duplicate();
+
+    await this.subscriber.subscribe(ALERTS_CHANNEL, ACKNOWLEDGEMENTS_CHANNEL);
 
     this.subscriber.on('message', (channel: string, payload: string) => {
-      if (channel !== ALERTS_CHANNEL) return;
       try {
         // -----------------------------------------------------------------
         // THE RELAY: one Redis message fans out to every connected browser.
         // -----------------------------------------------------------------
-        const alert = JSON.parse(payload) as { level?: string };
-        this.server.emit(ANOMALY_EVENT, alert);
-        if (alert.level?.startsWith('CRITICAL_')) {
-          this.server.emit(CRITICAL_EVENT, alert);
+        if (channel === ALERTS_CHANNEL) {
+          const alert = JSON.parse(payload) as { level?: string };
+          this.server.emit(ANOMALY_EVENT, alert);
+          if (alert.level?.startsWith('CRITICAL_')) {
+            this.server.emit(CRITICAL_EVENT, alert);
+          }
+          return;
+        }
+        if (channel === ACKNOWLEDGEMENTS_CHANNEL) {
+          this.server.emit(
+            ACKNOWLEDGED_EVENT,
+            JSON.parse(payload) as AcknowledgementEvent,
+          );
         }
       } catch {
         // A malformed message must never crash the relay loop.
-        this.logger.error(`Dropped malformed alert payload: ${payload}`);
+        this.logger.error(`Dropped malformed payload on ${channel}: ${payload}`);
       }
     });
 
-    this.logger.log(`Subscribed to Redis channel "${ALERTS_CHANNEL}"`);
+    this.logger.log(
+      `Subscribed to Redis channels "${ALERTS_CHANNEL}", "${ACKNOWLEDGEMENTS_CHANNEL}"`,
+    );
+  }
+
+  /**
+   * Announce that an alert has been taken. Published rather than emitted
+   * directly so replicas other than the one that served the request tell
+   * their own clients too.
+   */
+  async announceAcknowledgement(event: AcknowledgementEvent): Promise<void> {
+    await this.publisher.publish(
+      ACKNOWLEDGEMENTS_CHANNEL,
+      JSON.stringify(event),
+    );
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.subscriber.quit();
+    await Promise.allSettled([this.subscriber.quit(), this.publisher.quit()]);
   }
 
   handleConnection(client: Socket): void {

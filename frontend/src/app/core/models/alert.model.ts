@@ -67,6 +67,11 @@ export interface AnomalyAlert {
    * definition, being evaluated right now).
    */
   evaluatedAt?: string;
+  /**
+   * When a responder took this alert, or null while it is still outstanding.
+   * Present on history entries; live alerts are by definition unacknowledged.
+   */
+  acknowledgedAt?: string | null;
   /** Present only on CRITICAL_SMOULDERING — the persistence evidence. */
   smouldering?: {
     passes: number;
@@ -85,4 +90,16 @@ export interface ServerToClientEvents {
   'anomaly:new': (alert: AnomalyAlert) => void;
   /** Life-safety channel: any CRITICAL_* escalation, whatever the hazard. */
   'alert:critical': (alert: AnomalyAlert) => void;
+  /**
+   * A responder has taken an alert. Sent to every client, including the one
+   * that acknowledged, so all of them clear the same alarm from the same
+   * event instead of each guessing locally.
+   */
+  'alert:acknowledged': (event: AcknowledgementEvent) => void;
+}
+
+/** Payload of `alert:acknowledged`. `id` is the anomaly id. */
+export interface AcknowledgementEvent {
+  id: number;
+  acknowledgedAt: string;
 }

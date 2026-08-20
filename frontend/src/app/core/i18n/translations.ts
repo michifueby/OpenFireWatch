@@ -45,6 +45,9 @@ export interface TranslationDict {
   conditionsHumidity: string;
   ack: string;
   ackAria: string;
+  /** Acknowledging is a guarded write; these explain that and record it. */
+  ackNeedsKey: string;
+  ackedAt: string;
   /** Collapsed mobile sheet: the one-line summary and its toggle labels. */
   sheetAlert: string;
   sheetAlerts: string;
@@ -153,6 +156,9 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     sheetExpand: 'Show situation details',
     sheetCollapse: 'Hide situation details',
     ackAria: 'Acknowledge alert',
+    ackNeedsKey:
+      'Acknowledging clears the alarm for everyone, so it needs the operator key. Unlock it in the Hazard zones panel.',
+    ackedAt: 'Acknowledged',
     labelTemp: 'TEMP',
     labelSoil: 'SOIL H₂O',
     labelCoords: 'LAT / LON',
@@ -264,6 +270,9 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     sheetExpand: 'Lagedetails einblenden',
     sheetCollapse: 'Lagedetails ausblenden',
     ackAria: 'Alarm quittieren',
+    ackNeedsKey:
+      'Quittieren löscht den Alarm für alle und erfordert deshalb den Betreiber-Schlüssel. Im Panel „Gefahrenzonen“ entsperren.',
+    ackedAt: 'Quittiert',
     labelTemp: 'TEMP',
     labelSoil: 'BODEN H₂O',
     labelCoords: 'LAT / LON',

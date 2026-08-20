@@ -12,7 +12,7 @@
  * `evaluatedAt`, which live alerts do not carry.
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { DatabaseService } from '../database/database.service';
 import { QueryAlertsDto } from './query-alerts.dto';
@@ -29,6 +29,8 @@ export interface AlertHistoryEntry {
   source: string;
   zone: { id: number; name: { en: string; de: string }; hazardType: string } | null;
   weather: { temperatureC: number; soilMoisturePct: number };
+  /** When somebody took responsibility for this alert, or null if nobody has. */
+  acknowledgedAt: string | null;
 }
 
 const HISTORY_SQL = `
@@ -36,6 +38,7 @@ const HISTORY_SQL = `
          ve.temperature_c,
          ve.soil_moisture_pct,
          ve.evaluated_at,
+         ve.acknowledged_at,
          a.id  AS anomaly_id,
          a.source,
          a.acquired_at,
@@ -53,8 +56,28 @@ const HISTORY_SQL = `
   LEFT JOIN high_risk_zones z ON z.id = ve.zone_id
   WHERE ve.evaluated_at >= now() - ($1 || ' hours')::interval
     AND ($2::boolean IS FALSE OR ve.alert_level LIKE 'CRITICAL%')
+    AND ($3::boolean IS FALSE OR ve.acknowledged_at IS NULL)
   ORDER BY ve.evaluated_at DESC
-  LIMIT $3;
+  LIMIT $4;
+`;
+
+/**
+ * Acknowledgement is keyed by anomaly, not by evaluation row: the anomaly id
+ * is what the alert payload carries and what a responder sees on screen, and
+ * re-evaluating the same detection must not resurrect an alert somebody has
+ * already taken.
+ *
+ * `WHERE acknowledged_at IS NULL` keeps the first acknowledgement's timestamp
+ * rather than overwriting it, so a second click never rewrites when it
+ * happened. RETURNING is empty in that case, which the caller distinguishes
+ * from "no such alert" by looking the anomaly up separately.
+ */
+const ACKNOWLEDGE_SQL = `
+  UPDATE validated_events
+     SET acknowledged_at = now()
+   WHERE anomaly_id = $1
+     AND acknowledged_at IS NULL
+  RETURNING acknowledged_at;
 `;
 
 @Injectable()
@@ -67,6 +90,7 @@ export class AlertHistoryService {
       temperature_c: string | number;
       soil_moisture_pct: string | number;
       evaluated_at: Date;
+      acknowledged_at: Date | null;
       anomaly_id: string;
       source: string;
       acquired_at: Date;
@@ -77,7 +101,12 @@ export class AlertHistoryService {
       name_en: string | null;
       name_de: string | null;
       hazard_type: string | null;
-    }>(HISTORY_SQL, [query.sinceHours, query.criticalOnly, query.limit]);
+    }>(HISTORY_SQL, [
+      query.sinceHours,
+      query.criticalOnly,
+      query.unacknowledgedOnly,
+      query.limit,
+    ]);
 
     return rows.map((row) => ({
       type: 'thermal_anomaly' as const,
@@ -103,6 +132,36 @@ export class AlertHistoryService {
         temperatureC: Number(row.temperature_c),
         soilMoisturePct: Number(row.soil_moisture_pct),
       },
+      acknowledgedAt: row.acknowledged_at?.toISOString() ?? null,
     }));
+  }
+
+  /**
+   * Record that somebody has taken this alert.
+   *
+   * Idempotent: acknowledging an already-acknowledged alert returns the
+   * original timestamp instead of failing. Two responders pressing the button
+   * within the same second is a normal thing to happen, not an error worth
+   * showing either of them.
+   */
+  async acknowledge(anomalyId: number): Promise<{ acknowledgedAt: string }> {
+    const { rows } = await this.db.query<{ acknowledged_at: Date }>(
+      ACKNOWLEDGE_SQL,
+      [anomalyId],
+    );
+    if (rows[0]) return { acknowledgedAt: rows[0].acknowledged_at.toISOString() };
+
+    // Nothing updated: either already acknowledged, or no such alert. Only
+    // the second is a client error worth reporting.
+    const { rows: existing } = await this.db.query<{ acknowledged_at: Date }>(
+      `SELECT acknowledged_at FROM validated_events
+        WHERE anomaly_id = $1 AND acknowledged_at IS NOT NULL
+        ORDER BY acknowledged_at LIMIT 1;`,
+      [anomalyId],
+    );
+    if (existing[0]) {
+      return { acknowledgedAt: existing[0].acknowledged_at.toISOString() };
+    }
+    throw new NotFoundException(`No evaluated alert for anomaly ${anomalyId}.`);
   }
 }

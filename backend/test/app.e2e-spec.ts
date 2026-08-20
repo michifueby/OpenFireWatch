@@ -447,6 +447,91 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('acknowledgement', () => {
+    /** Raise a real critical alert and return the anomaly id it produced. */
+    async function raiseCriticalAlert(): Promise<number> {
+      await request(app.getHttpServer())
+        .post('/api/simulate-fire')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+
+      const outstanding = await waitFor(
+        async () => {
+          const res = await request(app.getHttpServer())
+            .get('/api/alerts?criticalOnly=true&unacknowledgedOnly=true&limit=10')
+            .expect(200);
+          return res.body.length > 0 ? res.body : undefined;
+        },
+        20_000,
+        'outstanding critical alert',
+      );
+      return outstanding[0].id as number;
+    }
+
+    it('refuses to let a passer-by silence an alarm', async () => {
+      const id = await raiseCriticalAlert();
+
+      await request(app.getHttpServer())
+        .post(`/api/alerts/${id}/acknowledge`)
+        .expect(401);
+      await request(app.getHttpServer())
+        .post(`/api/alerts/${id}/acknowledge`)
+        .set('X-API-Key', 'wrong-key')
+        .expect(401);
+
+      // Still outstanding: a rejected acknowledgement must change nothing.
+      const res = await request(app.getHttpServer())
+        .get('/api/alerts?criticalOnly=true&unacknowledgedOnly=true&limit=10')
+        .expect(200);
+      expect(res.body.map((e: { id: number }) => e.id)).toContain(id);
+    });
+
+    it('records the acknowledgement and drops the alert from what is outstanding', async () => {
+      const id = await raiseCriticalAlert();
+
+      const ack = await request(app.getHttpServer())
+        .post(`/api/alerts/${id}/acknowledge`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(200);
+      expect(Date.parse(ack.body.acknowledgedAt)).not.toBeNaN();
+
+      const outstanding = await request(app.getHttpServer())
+        .get('/api/alerts?criticalOnly=true&unacknowledgedOnly=true&limit=10')
+        .expect(200);
+      expect(outstanding.body.map((e: { id: number }) => e.id)).not.toContain(id);
+
+      // The record keeps it: acknowledging is not deleting.
+      const history = await request(app.getHttpServer())
+        .get('/api/alerts?criticalOnly=true&limit=10')
+        .expect(200);
+      const entry = history.body.find((e: { id: number }) => e.id === id);
+      expect(entry.acknowledgedAt).toBe(ack.body.acknowledgedAt);
+    });
+
+    it('is idempotent, so two responders pressing at once is not an error', async () => {
+      const id = await raiseCriticalAlert();
+
+      const first = await request(app.getHttpServer())
+        .post(`/api/alerts/${id}/acknowledge`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(200);
+      const second = await request(app.getHttpServer())
+        .post(`/api/alerts/${id}/acknowledge`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(200);
+
+      // The second press must not rewrite when the alert was taken.
+      expect(second.body.acknowledgedAt).toBe(first.body.acknowledgedAt);
+    });
+
+    it('reports an unknown alert instead of silently succeeding', async () => {
+      await request(app.getHttpServer())
+        .post('/api/alerts/999999999/acknowledge')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(404);
+    });
+  });
+
   describe('per-hazard escalation criteria', () => {
     /** Enqueue one report at a coordinate and wait for its verdict. */
     const evaluate = async (

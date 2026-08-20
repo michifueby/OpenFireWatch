@@ -22,7 +22,10 @@ import {
   ConditionsService,
   ZoneReadiness,
 } from '../core/services/conditions.service';
-import { RealTimeAlertService } from '../core/services/real-time-alert.service';
+import {
+  LOCKED,
+  RealTimeAlertService,
+} from '../core/services/real-time-alert.service';
 
 @Component({
   selector: 'ofw-alert-dashboard',
@@ -116,7 +119,7 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
                 <button
                   type="button"
                   class="ack"
-                  (click)="alerts.dismissWarning(warning.id)"
+                  (click)="acknowledge(warning.id)"
                   [attr.aria-label]="i18n.t('ackAria')"
                   [attr.title]="i18n.t('ackAria')"
                 >
@@ -127,6 +130,13 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
               <div class="zone" *ngIf="warning.zone">
                 ▸ {{ i18n.pick(warning.zone.name) }}
               </div>
+
+              <!-- Why the button did nothing, next to the button that did
+                   nothing — the operator key is unlocked in the zones panel,
+                   which is not where anyone would think to look on their own. -->
+              <p class="ack-error" *ngIf="ackError()?.id === warning.id">
+                {{ ackError()?.message }}
+              </p>
 
               <!-- Why the system called it a smouldering nest, in the operator's
                    own terms — the evidence, not just the verdict. -->
@@ -175,9 +185,23 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
             </p>
 
             <ol class="history-list">
-              <li *ngFor="let entry of alerts.history$ | async" [class]="'lvl-' + levelClass(entry.level)">
+              <li
+                *ngFor="let entry of alerts.history$ | async"
+                [class]="'lvl-' + levelClass(entry.level)"
+                [class.acked]="entry.acknowledgedAt"
+              >
                 <span class="h-time">{{ entry.evaluatedAt ?? entry.acquiredAt | date: 'dd.MM. HH:mm' }}</span>
-                <span class="h-level">{{ i18n.levelLabel(entry.level) }}</span>
+                <span class="h-level">
+                  <span
+                    class="h-acked"
+                    *ngIf="entry.acknowledgedAt as at"
+                    [attr.title]="
+                      i18n.t('ackedAt') + ' ' + (at | date: 'dd.MM. HH:mm')
+                    "
+                    >✓</span
+                  >
+                  {{ i18n.levelLabel(entry.level) }}
+                </span>
                 <span class="h-zone">
                   {{ entry.zone ? i18n.pick(entry.zone.name) : i18n.t('historyOutsideZones') }}
                 </span>
@@ -298,6 +322,13 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
           border-color: $alert-red;
           color: $alert-red;
         }
+      }
+
+      .ack-error {
+        margin: 0.4rem 0 0;
+        font-size: 0.68rem;
+        line-height: 1.4;
+        color: #ffd7d0;
       }
 
       .evidence {
@@ -467,6 +498,11 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
           &.lvl-elevated {
             border-left-color: #ffa023;
           }
+
+          /* Handled: still on the record, no longer competing for attention. */
+          &.acked {
+            opacity: 0.62;
+          }
         }
       }
 
@@ -475,6 +511,10 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
       }
       .h-level {
         color: #e6e8ee;
+      }
+
+      .h-acked {
+        color: #7ee2a8;
       }
       .h-zone,
       .h-readings {
@@ -675,6 +715,31 @@ import { RealTimeAlertService } from '../core/services/real-time-alert.service';
 export class AlertDashboardComponent implements OnDestroy {
   /** History stays collapsed until asked for — the live picture comes first. */
   readonly showHistory = signal(false);
+
+  /**
+   * Why the last acknowledgement did not go through, and which alert it was
+   * about. One at a time: a responder is acting on one alarm, and a column of
+   * identical error lines would say nothing the first one did not.
+   */
+  readonly ackError = signal<{ id: number; message: string } | null>(null);
+
+  /**
+   * Take an alert. The list is not touched here — the server records it and
+   * broadcasts, and this tab clears the alarm from that broadcast exactly like
+   * every other connected client.
+   */
+  async acknowledge(alertId: number): Promise<void> {
+    this.ackError.set(null);
+    try {
+      await this.alerts.acknowledge(alertId);
+    } catch (error) {
+      const message = (error as Error).message;
+      this.ackError.set({
+        id: alertId,
+        message: message === LOCKED ? this.i18n.t('ackNeedsKey') : message,
+      });
+    }
+  }
 
   /**
    * Whether the phone-sized sheet is expanded. Ignored by the desktop layout,
