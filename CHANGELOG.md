@@ -13,6 +13,14 @@ still a question, not a commitment.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-08-21
+
+### Changed
+
+<!-- Written from commit subjects: no Unreleased notes existed at release
+     time. Worth rewriting for a reader who does not read diffs. -->
+- feat: seasonal ignition history — how unusual is this year, actually
+
 ## [0.4.0] — 2026-08-21
 
 ### Added
@@ -152,7 +160,8 @@ describes what that deployment does.
 - Critical markers were lost if an alert arrived while the map style was
   still loading, and were never restored after a reload.
 
-[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.1.0...v0.2.0
