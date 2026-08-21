@@ -7,4 +7,4 @@
  */
 
 /** The released version this bundle was built from. */
-export const APP_VERSION = '0.7.0';
+export const APP_VERSION = '0.8.0';

@@ -13,6 +13,14 @@ still a question, not a commitment.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-08-21
+
+### Changed
+
+<!-- Written from commit subjects: no Unreleased notes existed at release
+     time. Worth rewriting for a reader who does not read diffs. -->
+- feat: wind on the panel, the record as CSV — and two bugs en route
+
 ## [0.7.0] — 2026-08-21
 
 ### Changed
@@ -202,7 +210,8 @@ describes what that deployment does.
 - Critical markers were lost if an alert arrived while the map style was
   still loading, and were never restored after a reload.
 
-[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.4.0...v0.5.0
