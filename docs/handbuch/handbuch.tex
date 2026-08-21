@@ -78,14 +78,14 @@
 {\large\color{ofwGrau} Handbuch für Einsatzkräfte, Betreiber und Entwickler\par}
 
 \vspace{1.1cm}
-\includegraphics[width=0.88\textwidth]{img/lagekarte.png}
+\includegraphics[width=0.88\textwidth,height=0.40\textheight,keepaspectratio]{img/lagekarte.png}
 
 \vfill
 {\color{ofwGrau}
 Live-Instanz: \url{https://openfirewatch.org}\\
 Quellcode: \url{https://github.com/michifueby/OpenFireWatch}\\[0.4cm]
 Entwickelt von Michael Fueby \quad$\cdot$\quad Open Source (MIT-Lizenz)\par}
-\vspace{1cm}
+\vspace{0.4cm}
 \end{titlepage}
 
 % =============================================================================
@@ -258,13 +258,14 @@ Am Rechner steht das Panel rechts oben, am Telefon unten (siehe voriger
 Abschnitt). Es hat drei Bereiche, von oben nach unten:
 
 \paragraph{Bedingungen.} Die aktuell gemessenen Werte --- Lufttemperatur,
-Bodenfeuchte, Luftfeuchte --- und darunter für jede Zone, \emph{wie weit sie
-von einem Alarm entfernt ist}. Das ist der vorausschauende Teil: Sie sehen
+Bodenfeuchte, Luftfeuchte und, wo die Station ihn liefert, der Wind samt
+Richtung --- und darunter für jede Zone, \emph{wie weit sie von einem Alarm
+entfernt ist}. Das ist der vorausschauende Teil: Sie sehen
 morgens, ob heute ein kritischer Tag wird.
 
-Im abgebildeten Beispiel steht beim Föhrenwald \enquote{7{,}6\,\textdegree C
-und 0{,}3\,\% vom Zündfenster entfernt}. Beide Bedingungen sind also noch
-nicht erfüllt --- es müsste deutlich wärmer \emph{und} etwas trockener werden.
+Im abgebildeten Beispiel steht beim Föhrenwald \enquote{11{,}2\,\textdegree C
+und 7\,\% vom Zündfenster entfernt}. Beide Bedingungen sind also noch nicht
+erfüllt --- es müsste deutlich wärmer \emph{und} trockener werden.
 
 Ist eine der beiden bereits erfüllt, sagt die Zeile das ausdrücklich, etwa
 \enquote{Boden bereits trocken genug --- nur noch 3{,}6\,\textdegree C bis zur
