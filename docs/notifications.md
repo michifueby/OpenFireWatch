@@ -134,12 +134,21 @@ channel carries it without modification. `NotificationKind` is a closed union
 on purpose — a typo in a free-form string would silently stop delivering one
 kind of alert, and that is the worst failure mode this system has.
 
+## Escalation
+
+A notification proves delivery to a phone, not to a person. If a critical
+alert sits unacknowledged for `NOTIFY_ESCALATE_MINUTES` (default 15, `0`
+disables), one reminder goes out through every configured channel, naming the
+alert and how long it has waited. Once per alert, ever — repetition is how
+channels get muted, and a muted channel warns nobody. Alerts older than twelve
+hours are left to the morning review rather than pinged again.
+
+*Who to try next* — a second person, a different number — is an operational
+question the crew has to answer; `EscalationService` is the seam where that
+would go.
+
 ## Deliberately not built yet
 
-- **Escalation.** Nobody is notified a second time if the first message is not
-  acknowledged. The state to build that on now exists — acknowledgements are
-  recorded server-side — but who to escalate to, and after how long, is an
-  operational question rather than a technical one.
 - **Per-zone routing.** Every configured channel receives everything.
 - **SMTP.** Deliberately absent: it would mean a mail dependency and
   credentials to keep, when a webhook to any relay does the same job. If real

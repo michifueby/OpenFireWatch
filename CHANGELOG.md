@@ -33,6 +33,10 @@ still a question, not a commitment.
 
 ### Added
 
+- **Escalation for unacknowledged alerts.** A critical alert that nobody has
+  taken within `NOTIFY_ESCALATE_MINUTES` (default 15) triggers one reminder
+  through every configured channel — once per alert, never repeated, and never
+  for an alert somebody has acknowledged.
 - **Incident register and validation.** Real events — fires, drills,
   observations, including ones from years past — recorded in the operator
   panel with a tap on the map. Every fire is automatically held against the

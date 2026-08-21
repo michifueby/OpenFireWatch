@@ -13,6 +13,7 @@ import { Module } from '@nestjs/common';
 
 import { TelegramChannel } from './channels/telegram.channel';
 import { WebhookChannel } from './channels/webhook.channel';
+import { EscalationService } from './escalation.service';
 import { IngestionWatchdog } from './ingestion-watchdog.service';
 import { NOTIFICATION_CHANNELS } from './notification-channel';
 import { NotificationService } from './notification.service';
@@ -32,6 +33,7 @@ const CHANNELS = [WebhookChannel, TelegramChannel];
     },
     NotificationService,
     IngestionWatchdog,
+    EscalationService,
   ],
   exports: [NotificationService],
 })

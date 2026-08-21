@@ -1100,6 +1100,88 @@ describe('OpenFireWatch pipeline (e2e)', () => {
       expect(rows[0]).toEqual({ channel: 'webhook', status: 'sent' });
     });
 
+    it('reminds about an alert nobody has taken — once', async () => {
+      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      const { EscalationService } = await import('../src/notifications/escalation.service');
+      const escalation = app.get(EscalationService);
+
+      // Raise a real critical alert...
+      await request(app.getHttpServer())
+        .post('/api/simulate-fire')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+      const alerts = await waitFor(
+        async () => {
+          const r = await request(app.getHttpServer())
+            .get('/api/alerts?criticalOnly=true&unacknowledgedOnly=true&limit=1');
+          return r.body.length > 0 ? r.body : undefined;
+        },
+        20_000,
+        'critical alert for escalation',
+      );
+      const anomalyId = alerts[0].id;
+      received.length = 0; // drop the alert notification itself
+
+      // Fresh alert, no delay elapsed: a sweep must stay silent.
+      await escalation.sweep();
+      await settle();
+      expect(received).toHaveLength(0);
+
+      // Age it past the delay, as time would.
+      await db.query(
+        `UPDATE validated_events SET evaluated_at = now() - interval '30 minutes'
+          WHERE anomaly_id = $1;`,
+        [anomalyId],
+      );
+      await escalation.sweep();
+      await settle();
+      expect(received).toHaveLength(1);
+      expect(received[0].body.kind).toBe('alert.unacknowledged');
+      expect(received[0].body.body).toContain(String(anomalyId));
+
+      // A second sweep must NOT repeat it — that is how channels get muted.
+      await escalation.sweep();
+      await settle();
+      expect(received).toHaveLength(1);
+    });
+
+    it('never reminds about an alert somebody has taken', async () => {
+      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      const { EscalationService } = await import('../src/notifications/escalation.service');
+      const escalation = app.get(EscalationService);
+
+      await request(app.getHttpServer())
+        .post('/api/simulate-fire')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+      const alerts = await waitFor(
+        async () => {
+          const r = await request(app.getHttpServer())
+            .get('/api/alerts?criticalOnly=true&unacknowledgedOnly=true&limit=1');
+          return r.body.length > 0 ? r.body : undefined;
+        },
+        20_000,
+        'critical alert for ack-then-escalate',
+      );
+      const anomalyId = alerts[0].id;
+
+      await request(app.getHttpServer())
+        .post(`/api/alerts/${anomalyId}/acknowledge`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(200);
+      await db.query(
+        `UPDATE validated_events SET evaluated_at = now() - interval '30 minutes'
+          WHERE anomaly_id = $1;`,
+        [anomalyId],
+      );
+      received.length = 0;
+
+      await escalation.sweep();
+      await settle();
+      // The whole point of acknowledgement: taken means no further noise.
+      expect(received).toHaveLength(0);
+    });
+
     it('records a failure instead of losing it', async () => {
       // A port nothing listens on: the channel throws, the dispatcher retries,
       // and the outcome still has to end up on the record.

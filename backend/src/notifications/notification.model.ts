@@ -25,6 +25,8 @@ export type NotificationKind =
   | 'ingestion.recovered'
   /** The ignition rule, read forwards: conditions are coming, nothing burns yet. */
   | 'forecast.ignition-window'
+  /** A critical alert has sat unacknowledged past the configured delay. */
+  | 'alert.unacknowledged'
   /** Somebody pressed the test button; proves the wiring end to end. */
   | 'test';
 
