@@ -22,6 +22,13 @@ export enum AlertLevel {
   /** A weak heat source that persisted at the same spot across passes —
    *  the satellite signature of a smouldering ember nest. */
   CRITICAL_SMOULDERING = 'CRITICAL_SMOULDERING',
+  /**
+   * A ground sensor measured the heat itself. Deliberately its own level and
+   * deliberately NOT behind any weather gate: the gates are proxies for
+   * "could something ignite?", and a probe reading 55 °C in the soil is past
+   * the question — like smouldering persistence, measurement beats prediction.
+   */
+  CRITICAL_SENSOR_HEAT = 'CRITICAL_SENSOR_HEAT',
 }
 
 /** True for every CRITICAL_* level — the levels that page a responder. */

@@ -65,6 +65,15 @@ message. Create a bot with [@BotFather](https://t.me/botfather), add it to the
 group, post once, then read the chat id from
 `https://api.telegram.org/bot<TOKEN>/getUpdates`.
 
+## Language
+
+`NOTIFY_LANGUAGE=de|en` (default `de`) sets the language of every message —
+per deployment, not per recipient, because a notification goes to a channel
+and a crew shares the channel. All texts live in
+`backend/src/notifications/notification-texts.ts` as typed builders, so a
+missing value is a compile error rather than a `{temp}` leaking into
+somebody's 03:00 phone alert.
+
 ## Checking it works
 
 Do not wait for an emergency to find out the chat id was wrong:

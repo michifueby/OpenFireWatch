@@ -35,6 +35,7 @@ import {
 
 import { DatabaseService } from '../database/database.service';
 import { RegisterSensorDto } from './register-sensor.dto';
+import { SensorAlertService } from './sensor-alert.service';
 import { SensorReadingDto } from './sensor-reading.dto';
 
 /**
@@ -94,7 +95,10 @@ const CALIBRATED = `
 export class SensorService implements OnModuleInit {
   private readonly logger = new Logger(SensorService.name);
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly sensorAlerts: SensorAlertService,
+  ) {}
 
   async onModuleInit(): Promise<void> {
     await this.ensureSchema();
@@ -137,6 +141,10 @@ export class SensorService implements OnModuleInit {
       `UPDATE ground_sensors SET last_seen_at = now() WHERE id = $1;`,
       [sensor.id],
     );
+
+    // The reading is stored; now ask whether it IS the alert. Never throws,
+    // so a broken alert path cannot reject the evidence it runs on.
+    await this.sensorAlerts.evaluate(Number(sensor.id), reading.observedAt);
     return true;
   }
 

@@ -27,6 +27,7 @@ export interface TranslationDict {
   levelOrdnanceHeat: string;
   levelThermalAnomaly: string;
   levelSmouldering: string;
+  levelSensorHeat: string;
   levelElevated: string;
   smoulderingEvidence: string;
   historyShow: string;
@@ -95,6 +96,8 @@ export interface TranslationDict {
   outcomeNothing: string;
   outcomeConfirmed: string;
   outcomeNothingFound: string;
+  /** Prefix on alerts a ground probe raised itself. */
+  sensorMeasuredBy: string;
   ack: string;
   ackAria: string;
   /** Acknowledging is a guarded write; these explain that and record it. */
@@ -214,6 +217,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     levelOrdnanceHeat: 'HEAT AT ORDNANCE SITE',
     levelThermalAnomaly: 'THERMAL ANOMALY',
     levelSmouldering: 'SMOULDERING NEST',
+    levelSensorHeat: 'GROUND SENSOR HEAT',
     levelElevated: 'ELEVATED',
     smoulderingEvidence: 'persisted across {passes} passes in {hours} h · peak {frp} MW',
     historyShow: 'Show history',
@@ -278,6 +282,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     outcomeNothing: 'Nothing found',
     outcomeConfirmed: 'confirmed on site',
     outcomeNothingFound: 'checked — nothing found',
+    sensorMeasuredBy: 'Ground sensor',
     ack: 'ACK',
     sheetAlert: 'ACTIVE ALERT',
     sheetAlerts: 'ACTIVE ALERTS',
@@ -407,6 +412,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     levelOrdnanceHeat: 'HITZE AN MUNITIONSSTANDORT',
     levelThermalAnomaly: 'THERMISCHE ANOMALIE',
     levelSmouldering: 'GLUTNEST',
+    levelSensorHeat: 'HITZE AN BODENSONDE',
     levelElevated: 'ERHÖHT',
     smoulderingEvidence: 'bei {passes} Überflügen in {hours} h · Spitze {frp} MW',
     historyShow: 'Verlauf anzeigen',
@@ -471,6 +477,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     outcomeNothing: 'Ohne Befund',
     outcomeConfirmed: 'vor Ort bestätigt',
     outcomeNothingFound: 'geprüft — nichts gefunden',
+    sensorMeasuredBy: 'Bodensonde',
     ack: 'QUITT',
     sheetAlert: 'AKTIVER ALARM',
     sheetAlerts: 'AKTIVE ALARME',

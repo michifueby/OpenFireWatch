@@ -49,6 +49,15 @@ still a question, not a commitment.
 
 ### Added
 
+- **Sensor-raised alerts.** A ground probe can now raise an alarm itself —
+  the case no satellite sees: smouldering under the surface or under a closed
+  canopy. Absolute threshold (50 °C) or an abnormal climb (+15 K over the
+  six-hour median, 35 °C floor), both on calibrated values, one alert per
+  probe per episode. The result is an ordinary critical alert: same map,
+  acknowledgement, escalation, notifications and incident validation.
+- **Notification language.** `NOTIFY_LANGUAGE=de|en` — all message texts in
+  one typed module instead of hard-coded German across five services.
+
 - **Wind in the conditions panel.** The TAWES station reports it and nothing
   showed it; for a responder, wind is the spread-direction question. Shown as
   "10 km/h aus SO", and the row disappears when the station has no anemometer

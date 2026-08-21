@@ -8,6 +8,7 @@ import {
 } from '@nestjs/swagger';
 
 import { API_KEY_HEADER, ApiKeyGuard } from '../auth/api-key.guard';
+import { testText } from './notification-texts';
 import { NotificationService } from './notification.service';
 
 /**
@@ -47,12 +48,7 @@ export class NotificationsController {
       kind: 'test',
       severity: 'critical', // must pass any severity floor, or the test lies
       dedupeKey: `test:${Date.now()}`,
-      title: 'OpenFireWatch — Testmeldung',
-      body: [
-        'Dies ist eine Testmeldung. Es liegt kein Ereignis vor.',
-        '',
-        'Wenn Sie das lesen, funktioniert die Benachrichtigung.',
-      ].join('\n'),
+      ...testText(),
       data: { test: true },
       url: process.env.PUBLIC_URL?.trim() || 'https://openfirewatch.org',
       occurredAt: new Date().toISOString(),

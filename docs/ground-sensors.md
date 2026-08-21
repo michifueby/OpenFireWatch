@@ -139,6 +139,29 @@ sensor by then; what it cannot do is climb a tree and change the battery.
   Fine for a handful of own sensors behind one network server; revisit before
   accepting readings from hardware other people operate.
 
+## Sensor-raised alerts
+
+A probe is a witness, not just a thermometer. The manual's first documented
+limit — smouldering under the surface, in roots, under a closed canopy — is
+exactly the blind spot a buried probe covers, and since satellites pass only
+a few times a day, the probe also wins on time. Two triggers, both on
+calibrated values:
+
+- **Absolute:** ≥ `SENSOR_ALERT_TEMPERATURE_C` (default 50 °C — no soil at
+  this latitude reaches that under canopy by weather alone).
+- **Climb:** ≥ 35 °C *and* at least `SENSOR_ALERT_RISE_C` (default 15 K)
+  above the median of the previous six hours. A smoulder announces itself as
+  a climb long before any absolute line; the 35 °C floor keeps a cold morning
+  warming into a hot noon from ever paging anyone. A probe with fewer than
+  two prior readings gives no climb verdict — one point is not a baseline.
+
+A triggered alert is an ordinary alert (`CRITICAL_SENSOR_HEAT`): same map,
+same acknowledgement, same escalation, same notifications, same incident
+validation. Deliberately no weather gate — the gates answer "could something
+ignite?", and a measured 55 °C is past the question, by the same principle
+that lets smouldering persistence outrank prediction. One alert per probe per
+`SENSOR_ALERT_COOLDOWN_HOURS` (default 6): the same heat is the same fire.
+
 The registry API is generic on purpose: `GET/POST/PUT/DELETE /api/sensors`
 carry plain JSON, the reading intake accepts any producer that can POST, and
 new measurement fields extend `SensorReadingDto` + one table column without

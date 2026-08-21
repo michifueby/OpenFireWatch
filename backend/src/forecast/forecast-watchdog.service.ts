@@ -15,6 +15,7 @@
 
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
+import { forecastWindowText } from '../notifications/notification-texts';
 import { NotificationService } from '../notifications/notification.service';
 import { ForecastService, IgnitionWindow, ZoneForecast } from './forecast.service';
 
@@ -64,14 +65,6 @@ export class ForecastWatchdog implements OnModuleInit, OnModuleDestroy {
     window: IgnitionWindow,
     hoursAway: number,
   ): Promise<void> {
-    const day = new Date(window.from).toLocaleDateString('de-AT', {
-      weekday: 'long',
-      day: '2-digit',
-      month: '2-digit',
-    });
-    const from = window.from.slice(11, 16);
-    const to = window.to.slice(11, 16);
-
     await this.notifications.notify({
       kind: 'forecast.ignition-window',
       // A forecast is not an event: it is a warning that there is still time
@@ -80,21 +73,14 @@ export class ForecastWatchdog implements OnModuleInit, OnModuleDestroy {
       // Keyed on the window itself, so an hourly forecast refresh re-reports
       // nothing. A window that shifts to another hour is genuinely new news.
       dedupeKey: `forecast:${zone.zoneId}:${window.from}`,
-      title: `Zündfenster erwartet — ${zone.name.de}`,
-      body: [
-        `${day}, ${from}–${to} Uhr werden in dieser Zone beide Bedingungen`,
-        'für eine Selbstentzündung zugleich erfüllt:',
-        '',
-        `  Temperatur bis ${window.peakTemperatureC} °C`,
-        `  Bodenfeuchte bis herunter auf ${window.minSoilMoisturePct} %`,
-        '',
-        `Vorlauf: rund ${Math.round(hoursAway)} Stunden.`,
-        '',
-        'Das ist eine Vorhersage, kein Brand. Sie schafft Zeit für Streife,',
-        'Hinweise an Waldbesucher oder Bereitschaft.',
-        '',
-        'Kein Ersatz für den Notruf 122.',
-      ].join('\n'),
+      ...forecastWindowText({
+        zoneName: zone.name.de,
+        from: window.from,
+        to: window.to,
+        peakTemperatureC: window.peakTemperatureC,
+        minSoilMoisturePct: window.minSoilMoisturePct,
+        hoursAway,
+      }),
       data: { zoneId: zone.zoneId, hazardType: zone.hazardType, window },
       url: process.env.PUBLIC_URL?.trim() || 'https://openfirewatch.org',
       occurredAt: new Date().toISOString(),

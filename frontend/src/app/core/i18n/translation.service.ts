@@ -27,6 +27,7 @@ const LEVEL_LABEL_KEYS: Record<string, keyof TranslationDict> = {
   CRITICAL_ORDNANCE_HEAT: 'levelOrdnanceHeat',
   CRITICAL_THERMAL_ANOMALY: 'levelThermalAnomaly',
   CRITICAL_SMOULDERING: 'levelSmouldering',
+  CRITICAL_SENSOR_HEAT: 'levelSensorHeat',
 };
 
 @Injectable({ providedIn: 'root' })

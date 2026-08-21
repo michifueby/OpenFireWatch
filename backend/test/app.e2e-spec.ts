@@ -1119,6 +1119,31 @@ describe('OpenFireWatch pipeline (e2e)', () => {
       expect(rows[0]).toEqual({ channel: 'webhook', status: 'sent' });
     });
 
+    it('speaks the configured language', async () => {
+      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      process.env.NOTIFY_LANGUAGE = 'en';
+      try {
+        await request(app.getHttpServer())
+          .post('/api/notifications/test')
+          .set('X-API-Key', OPERATOR_KEY)
+          .expect(202);
+        await settle();
+        expect(received[0].body.title).toBe('OpenFireWatch — test message');
+
+        // And the default stays German — the deployment this was built for.
+        delete process.env.NOTIFY_LANGUAGE;
+        received.length = 0;
+        await request(app.getHttpServer())
+          .post('/api/notifications/test')
+          .set('X-API-Key', OPERATOR_KEY)
+          .expect(202);
+        await settle();
+        expect(received[0].body.title).toBe('OpenFireWatch — Testmeldung');
+      } finally {
+        delete process.env.NOTIFY_LANGUAGE;
+      }
+    });
+
     it('reminds about an alert nobody has taken — once', async () => {
       process.env.NOTIFY_WEBHOOK_URL = hookUrl;
       const { EscalationService } = await import('../src/notifications/escalation.service');
@@ -1617,6 +1642,193 @@ describe('OpenFireWatch pipeline (e2e)', () => {
           soilMoistureScale: 50, // no probe is off by 50×
         })
         .expect(400);
+    });
+
+    it('raises a real alert when a probe measures fire-grade heat', async () => {
+      // A probe in the phosphorus zone, with a calibration that matters: the
+      // trigger must fire on the CALIBRATED value, or an offset probe would
+      // silently alert at the wrong temperature.
+      await request(app.getHttpServer())
+        .post('/api/sensors')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({
+          deviceId: 'e2e-alert-probe',
+          label: 'e2e Alarmsonde',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+          temperatureOffsetC: 10,
+        })
+        .expect(201);
+
+      // Raw 45 + offset 10 = 55 °C calibrated — past the 50 °C absolute line.
+      await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .set('X-Sensor-Token', SENSOR_TOKEN)
+        .send({
+          deviceId: 'e2e-alert-probe',
+          observedAt: new Date().toISOString(),
+          temperatureC: 45,
+          soilMoisturePct: 12,
+        })
+        .expect(202);
+
+      const alerts = await waitFor(
+        async () => {
+          const r = await request(app.getHttpServer())
+            .get('/api/alerts?criticalOnly=true&unacknowledgedOnly=true&limit=5');
+          const hit = r.body.find(
+            (e: { level: string }) => e.level === 'CRITICAL_SENSOR_HEAT',
+          );
+          return hit ?? undefined;
+        },
+        20_000,
+        'sensor-heat alert',
+      );
+
+      // An ordinary alert in every way that matters downstream.
+      expect(alerts.weather.temperatureC).toBe(55);
+      expect(alerts.zone).not.toBeNull();
+      await request(app.getHttpServer())
+        .post(`/api/alerts/${alerts.id}/acknowledge`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(200);
+    });
+
+    it('does not alert twice for the same episode', async () => {
+      // Self-contained: the suite deletes sensors after every test, so this
+      // one registers its own probe and sends both readings itself.
+      await request(app.getHttpServer())
+        .post('/api/sensors')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({
+          deviceId: 'e2e-cooldown-probe',
+          label: 'e2e Cooldownsonde',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+        })
+        .expect(201);
+
+      for (const [offsetMs, temp] of [[0, 56], [60_000, 54]] as const) {
+        await request(app.getHttpServer())
+          .post('/api/sensors/readings')
+          .set('X-Sensor-Token', SENSOR_TOKEN)
+          .send({
+            deviceId: 'e2e-cooldown-probe',
+            observedAt: new Date(Date.now() + offsetMs).toISOString(),
+            temperatureC: temp,
+          })
+          .expect(202);
+        await new Promise((r) => setTimeout(r, 400));
+      }
+
+      const res = await request(app.getHttpServer())
+        .get('/api/alerts?criticalOnly=true&limit=10')
+        .expect(200);
+      const sensorAlerts = res.body.filter(
+        (e: { level: string }) => e.level === 'CRITICAL_SENSOR_HEAT',
+      );
+      // Both readings are fire-grade; the second is the same fire.
+      expect(sensorAlerts).toHaveLength(1);
+    });
+
+    it('flags an abnormal CLIMB long before any absolute line', async () => {
+      await request(app.getHttpServer())
+        .post('/api/sensors')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({
+          deviceId: 'e2e-climb-probe',
+          label: 'e2e Anstiegssonde',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+        })
+        .expect(201);
+
+      // A believable evening: ~20 °C for hours, then a jump to 38 — sixteen
+      // degrees above the baseline median, nowhere near 50.
+      const base = Date.now() - 5 * 3_600_000;
+      for (const [offsetH, temp] of [[0, 20], [1, 20.4], [2, 19.8], [3, 20.1]] as const) {
+        await request(app.getHttpServer())
+          .post('/api/sensors/readings')
+          .set('X-Sensor-Token', SENSOR_TOKEN)
+          .send({
+            deviceId: 'e2e-climb-probe',
+            observedAt: new Date(base + offsetH * 3_600_000).toISOString(),
+            temperatureC: temp,
+          })
+          .expect(202);
+      }
+      await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .set('X-Sensor-Token', SENSOR_TOKEN)
+        .send({
+          deviceId: 'e2e-climb-probe',
+          observedAt: new Date().toISOString(),
+          temperatureC: 38,
+        })
+        .expect(202);
+
+      await waitFor(
+        async () => {
+          const r = await request(app.getHttpServer())
+            .get('/api/alerts?criticalOnly=true&limit=10');
+          return r.body.some(
+            (e: { level: string; weather: { temperatureC: number } }) =>
+              e.level === 'CRITICAL_SENSOR_HEAT' && e.weather.temperatureC === 38,
+          )
+            ? true
+            : undefined;
+        },
+        20_000,
+        'climb-triggered sensor alert',
+      );
+    });
+
+    it('stays silent on a cold morning warming into a hot noon', async () => {
+      await request(app.getHttpServer())
+        .post('/api/sensors')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({
+          deviceId: 'e2e-morning-probe',
+          label: 'e2e Morgensonde',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+        })
+        .expect(201);
+
+      // 8 → 26 °C is an eighteen-degree climb — and pure weather. The 35 °C
+      // floor exists precisely so this never pages anyone.
+      const base = Date.now() - 5 * 3_600_000;
+      for (const [offsetH, temp] of [[0, 8], [1, 9], [2, 11], [3, 14]] as const) {
+        await request(app.getHttpServer())
+          .post('/api/sensors/readings')
+          .set('X-Sensor-Token', SENSOR_TOKEN)
+          .send({
+            deviceId: 'e2e-morning-probe',
+            observedAt: new Date(base + offsetH * 3_600_000).toISOString(),
+            temperatureC: temp,
+          })
+          .expect(202);
+      }
+      await request(app.getHttpServer())
+        .post('/api/sensors/readings')
+        .set('X-Sensor-Token', SENSOR_TOKEN)
+        .send({
+          deviceId: 'e2e-morning-probe',
+          observedAt: new Date().toISOString(),
+          temperatureC: 26,
+        })
+        .expect(202);
+      await new Promise((r) => setTimeout(r, 600));
+
+      const res = await request(app.getHttpServer())
+        .get('/api/alerts?criticalOnly=true&limit=20')
+        .expect(200);
+      expect(
+        res.body.some(
+          (e: { level: string; weather: { temperatureC: number } }) =>
+            e.level === 'CRITICAL_SENSOR_HEAT' && e.weather.temperatureC === 26,
+        ),
+      ).toBe(false);
     });
 
     it('stores a retransmitted uplink once, not twice', async () => {

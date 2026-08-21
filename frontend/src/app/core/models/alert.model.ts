@@ -18,6 +18,7 @@ export enum AlertLevel {
   CRITICAL_ORDNANCE_HEAT = 'CRITICAL_ORDNANCE_HEAT',
   CRITICAL_THERMAL_ANOMALY = 'CRITICAL_THERMAL_ANOMALY',
   CRITICAL_SMOULDERING = 'CRITICAL_SMOULDERING',
+  CRITICAL_SENSOR_HEAT = 'CRITICAL_SENSOR_HEAT',
 }
 
 /** True for every critical level — keeps the check in exactly one place. */
@@ -74,6 +75,8 @@ export interface AnomalyAlert {
   acknowledgedAt?: string | null;
   /** What the crew found — 'confirmed' | 'nothing_found' — on history entries. */
   outcome?: string | null;
+  /** Present only on CRITICAL_SENSOR_HEAT — which probe measured it. */
+  sensor?: { deviceId: string; label: string };
   /** Present only on CRITICAL_SMOULDERING — the persistence evidence. */
   smouldering?: {
     passes: number;

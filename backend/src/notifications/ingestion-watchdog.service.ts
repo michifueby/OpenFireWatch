@@ -19,6 +19,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import IORedis from 'ioredis';
 
+import { recoveredText, stalledText } from './notification-texts';
 import { NotificationService } from './notification.service';
 
 /** Must match the workers' `BUS.CONDITIONS_KEY`. */
@@ -75,8 +76,7 @@ export class IngestionWatchdog implements OnModuleInit, OnModuleDestroy {
             // Timestamped, so a later recovery is a new message rather than a
             // duplicate of the previous one.
             dedupeKey: `ingestion:recovered:${Date.now()}`,
-            title: 'Datenaufnahme läuft wieder',
-            body: 'OpenFireWatch empfängt wieder Satelliten- und Wetterdaten.',
+            ...recoveredText(),
             data: {},
             url: publicUrl(),
             occurredAt: new Date().toISOString(),
@@ -94,15 +94,7 @@ export class IngestionWatchdog implements OnModuleInit, OnModuleDestroy {
         kind: 'ingestion.stalled',
         severity: 'critical',
         dedupeKey: `ingestion:stalled:${Date.now()}`,
-        title: 'OpenFireWatch empfängt keine Daten mehr',
-        body: [
-          'Seit mehreren Abfragezyklen ist keine Datenaufnahme mehr gelungen.',
-          'Die Karte zeigt weiterhin den letzten bekannten Stand — sie ist',
-          'aber nicht mehr aktuell, und neue Hitzequellen werden derzeit',
-          'nicht erkannt.',
-          '',
-          'Bitte den Betrieb der Dienste prüfen.',
-        ].join('\n'),
+        ...stalledText(),
         data: { conditionsKey: CONDITIONS_KEY },
         url: publicUrl(),
         occurredAt: new Date().toISOString(),

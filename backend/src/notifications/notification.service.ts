@@ -34,6 +34,7 @@ import {
   NotificationSeverity,
   SEVERITY_ORDER,
 } from './notification.model';
+import { criticalAlertText } from './notification-texts';
 
 /** Must match the workers' `BUS.ALERTS_CHANNEL`. */
 const ALERTS_CHANNEL = 'alerts:anomalies';
@@ -201,30 +202,28 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
         acquiredAt: string;
         zone?: { name?: { de?: string; en?: string } } | null;
         weather?: { temperatureC?: number; soilMoisturePct?: number };
+        sensor?: { deviceId: string; label: string };
       };
       if (!alert.level?.startsWith('CRITICAL_')) return;
 
-      const zone = alert.zone?.name?.de ?? alert.zone?.name?.en ?? 'außerhalb aller Zonen';
-      const temperature = alert.weather?.temperatureC;
-      const soil = alert.weather?.soilMoisturePct;
+      const { title, body } = criticalAlertText({
+        level: alert.level,
+        zoneName: alert.zone?.name?.de ?? alert.zone?.name?.en ?? null,
+        temperatureC: alert.weather?.temperatureC,
+        soilMoisturePct: alert.weather?.soilMoisturePct,
+        latitude: alert.latitude,
+        longitude: alert.longitude,
+        acquiredAt: alert.acquiredAt,
+        sensorLabel: alert.sensor?.label,
+      });
 
       await this.notify({
         kind: 'alert.critical',
         severity: 'critical',
         // Per anomaly: the same detection re-evaluated is the same news.
         dedupeKey: `alert:${alert.id}`,
-        title: `${humanLevel(alert.level)} — ${zone}`,
-        body: [
-          `Zone: ${zone}`,
-          temperature !== undefined ? `Temperatur: ${temperature} °C` : null,
-          soil !== undefined ? `Bodenfeuchte: ${soil} %` : null,
-          `Koordinaten: ${alert.latitude.toFixed(4)}, ${alert.longitude.toFixed(4)}`,
-          `Satellitenaufnahme: ${new Date(alert.acquiredAt).toLocaleString('de-AT')}`,
-          '',
-          'Kein Ersatz für den Notruf 122.',
-        ]
-          .filter(Boolean)
-          .join('\n'),
+        title,
+        body,
         data: { ...alert },
         url: process.env.PUBLIC_URL?.trim() || 'https://openfirewatch.org',
         occurredAt: new Date().toISOString(),
@@ -278,14 +277,3 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
   }
 }
 
-/** Level constants read as SHOUTING; notifications are read by people. */
-function humanLevel(level: string): string {
-  const names: Record<string, string> = {
-    CRITICAL_PHOSPHORUS_FIRE: 'Phosphorbrand',
-    CRITICAL_WILDFIRE: 'Waldbrand',
-    CRITICAL_ORDNANCE_HEAT: 'Hitze an Munitionsstandort',
-    CRITICAL_SMOULDERING: 'Glutnest',
-    CRITICAL_THERMAL_ANOMALY: 'Thermische Anomalie',
-  };
-  return names[level] ?? level;
-}

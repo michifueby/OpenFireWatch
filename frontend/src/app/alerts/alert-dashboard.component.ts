@@ -191,6 +191,13 @@ import {
                 ▸ {{ i18n.pick(warning.zone.name) }}
               </div>
 
+              <!-- A probe raised this itself — say which one, because "go
+                   look" starts with knowing where the instrument stands. -->
+              <div class="evidence" *ngIf="warning.sensor as sensor">
+                <ofw-icon name="sensor" />
+                {{ i18n.t('sensorMeasuredBy') }}: {{ sensor.label }}
+              </div>
+
               <!-- Why the button did nothing, next to the button that did
                    nothing — the operator key is unlocked in the zones panel,
                    which is not where anyone would think to look on their own. -->

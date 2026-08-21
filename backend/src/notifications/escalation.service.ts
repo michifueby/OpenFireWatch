@@ -16,6 +16,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { DatabaseService } from '../database/database.service';
+import { escalationText } from './notification-texts';
 import { NotificationService } from './notification.service';
 
 /** How often to look. The delay itself decides when a reminder is due. */
@@ -96,17 +97,14 @@ export class EscalationService implements OnModuleInit, OnModuleDestroy {
           // sweep is how a channel gets muted, and a muted channel warns
           // nobody — the dedupe store enforces the "once".
           dedupeKey: `escalate:${row.anomaly_id}`,
-          title: `Unquittierter Alarm — seit ${minutes} Minuten`,
-          body: [
-            `Alarm #${row.anomaly_id} (${row.alert_level}) wurde vor`,
-            `${minutes} Minuten gemeldet und bisher von niemandem übernommen.`,
-            '',
-            `Zone: ${row.name_de ?? row.name ?? 'außerhalb aller Zonen'}`,
-            `Koordinaten: ${row.latitude.toFixed(4)}, ${row.longitude.toFixed(4)}`,
-            '',
-            'Übernehmen heißt: QUITT auf der Karte drücken.',
-            'Kein Ersatz für den Notruf 122.',
-          ].join('\n'),
+          ...escalationText({
+            anomalyId: Number(row.anomaly_id),
+            level: row.alert_level,
+            minutes,
+            zoneName: row.name_de ?? row.name ?? null,
+            latitude: row.latitude,
+            longitude: row.longitude,
+          }),
           data: {
             anomalyId: Number(row.anomaly_id),
             level: row.alert_level,

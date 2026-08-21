@@ -374,6 +374,10 @@ Hitze an einem Ort mit Munition --- unabhängig vom Wetter. \\[4pt]
 \textsc{Glutnest} & rot &
 Eine schwache Wärmequelle blieb über mehrere Satellitenüberflüge am selben
 Fleck. Typisches Muster für schwelende Glut. \\[4pt]
+\textsc{Hitze an Bodensonde} & rot &
+Eine Bodensonde hat die Hitze \emph{selbst gemessen} --- über 50\,\textdegree C,
+oder ein ungewöhnlicher Anstieg gegenüber den Stunden davor. Der Fall, den
+kein Satellit sieht. \\[4pt]
 \textsc{Thermische Anomalie} & rot &
 Auffällige Hitze in einer Zone ohne spezielles Gefahrenmodell. \\[4pt]
 \textsc{Erhöht} & orange &
@@ -513,6 +517,13 @@ letzten Messwerten und dem Akkustand.
         Standortaufzeichnung erhalten.
 \end{itemize}
 
+Sensoren melden nicht nur --- sie \emph{alarmieren} auch selbst: Misst eine
+Sonde über 50\,\textdegree C oder einen ungewöhnlichen Temperaturanstieg
+gegenüber den Stunden davor, entsteht ein regulärer Alarm
+(\textsc{Hitze an Bodensonde}) mit allem, was dazugehört: Karte, Quittierung,
+Eskalation, Benachrichtigung. Je Sonde wird eine Hitzeepisode nur einmal
+gemeldet.
+
 Auf der Karte erscheinen Sensoren als kleine türkise Punkte mit einem
 Info-Fenster. Ein Sensor, der länger nicht meldet (leerer Akku, Funkloch),
 wird \emph{nicht} weiterverwendet --- die Bewertung fällt dann auf die
@@ -567,12 +578,12 @@ Diese Grenzen sind keine vorübergehenden Mängel, sondern folgen aus der
 Technik. Wer sie kennt, kann die Meldungen richtig einordnen.
 
 \begin{description}[leftmargin=0pt, style=nextline]
-  \item[Verdeckte Glut bleibt unsichtbar.]
+  \item[Verdeckte Glut bleibt für Satelliten unsichtbar.]
     Glut, die unter der Erdoberfläche, im Wurzelwerk oder unter geschlossenem
     Kronendach schwelt, sehen die Satelliten \textbf{nicht}. Sie ist zu kühl,
-    zu klein und abgeschirmt. Dafür braucht es weiterhin Wärmebildtechnik vor
-    Ort oder per Drohne. Was das System findet, ist die \emph{Signatur} an der
-    Oberfläche.
+    zu klein und abgeschirmt. Eine \emph{Bodensonde} schließt diese Lücke ---
+    aber nur an ihrem Standort, für wenige Quadratmeter. Für die Fläche
+    braucht es weiterhin Wärmebildtechnik vor Ort oder per Drohne.
 
   \item[Zeitverzug von Stunden.]
     Ein Satellit sieht einen Ort nur bei seinem Überflug, typischerweise wenige
