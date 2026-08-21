@@ -45,6 +45,9 @@ export interface TranslationDict {
   conditionsTemp: string;
   conditionsSoil: string;
   conditionsHumidity: string;
+  conditionsWind: string;
+  /** "aus SO" / "from SE" — direction the wind comes from. */
+  windFrom: string;
   conditionsAsOf: string;
   // --- Ignition-window outlook --------------------------------------------------
   forecastTitle: string;
@@ -229,6 +232,8 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsTemp: 'AIR TEMPERATURE',
     conditionsSoil: 'SOIL MOISTURE',
     conditionsHumidity: 'HUMIDITY',
+    conditionsWind: 'WIND',
+    windFrom: 'from {dir}',
     conditionsAsOf: 'as of',
     forecastTitle: 'IGNITION OUTLOOK · 7 DAYS',
     forecastNone: 'no ignition window in the next 7 days',
@@ -420,6 +425,8 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsTemp: 'LUFTTEMPERATUR',
     conditionsSoil: 'BODENFEUCHTE',
     conditionsHumidity: 'LUFTFEUCHTE',
+    conditionsWind: 'WIND',
+    windFrom: 'aus {dir}',
     conditionsAsOf: 'Stand',
     forecastTitle: 'ZÜNDFENSTER-VORHERSAGE · 7 TAGE',
     forecastNone: 'kein Zündfenster in den nächsten 7 Tagen',

@@ -1,5 +1,5 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Header } from '@nestjs/common';
+import { ApiOkResponse, ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 
 import { HistoryService, ZoneHistory } from './history.service';
 
@@ -22,5 +22,18 @@ export class HistoryController {
   @ApiOkResponse({ description: 'Per-zone ignition-window days by year and month.' })
   summary(): Promise<{ zones: ZoneHistory[]; generatedAt: string }> {
     return this.history.summary();
+  }
+
+  @Get('ignition-windows.csv')
+  // The BOM is for German-locale Excel, which otherwise mangles umlauts in
+  // zone names; every other consumer ignores it.
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="zuendfenster-tage.csv"')
+  @ApiProduces('text/csv')
+  @ApiOperation({
+    summary: 'The same record as day-level CSV, for spreadsheets and reports',
+  })
+  async csv(): Promise<string> {
+    return '\ufeff' + (await this.history.ignitionDaysCsv());
   }
 }

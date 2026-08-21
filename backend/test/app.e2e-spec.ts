@@ -820,6 +820,25 @@ describe('OpenFireWatch pipeline (e2e)', () => {
       }
     });
 
+    it('exports the record as CSV a German-locale spreadsheet can open', async () => {
+      await seedHours([
+        { at: '2022-07-10T13:00+02:00', temperatureC: 32, soilMoisturePct: 10 },
+        { at: '2022-07-10T14:00+02:00', temperatureC: 33, soilMoisturePct: 9 },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/history/ignition-windows.csv')
+        .expect(200)
+        .expect('Content-Type', /text\/csv/);
+
+      // BOM first, so Excel decodes umlauts in zone names; semicolons,
+      // because a German locale treats the comma as a decimal sign.
+      expect(res.text.startsWith('\ufeff')).toBe(true);
+      const lines = res.text.replace('\ufeff', '').trim().split('\r\n');
+      expect(lines[0]).toBe('zone_id;zone;datum;stunden_im_fenster');
+      expect(lines.some((l) => l.endsWith(';2022-07-10;2'))).toBe(true);
+    });
+
     it('names the data source rather than hiding the soil-layer difference', async () => {
       await seedHours([
         { at: '2018-07-01T14:00+02:00', temperatureC: 32, soilMoisturePct: 10 },

@@ -68,10 +68,13 @@ export interface ZoneHistory {
  * the heat and the dryness never met.
  */
 const WINDOW_DAYS_SQL = `
-  SELECT date_part('year',  local_at)::int  AS year,
-         date_part('month', local_at)::int  AS month,
-         local_at::date                     AS day,
-         count(*)::int                      AS hours
+  SELECT date_part('year',  local_at)::int       AS year,
+         date_part('month', local_at)::int       AS month,
+         -- As TEXT, deliberately. A date column comes back as a JS Date at
+         -- the server's local midnight, and converting that to ISO shifts it
+         -- into the previous day for every timezone east of Greenwich.
+         to_char(local_at::date, 'YYYY-MM-DD')   AS day,
+         count(*)::int                           AS hours
     FROM (
       SELECT observed_at AT TIME ZONE 'Europe/Vienna' AS local_at
         FROM zone_weather_history
@@ -143,7 +146,7 @@ export class HistoryService implements OnModuleInit {
     const { rows } = await this.db.query<{
       year: number;
       month: number;
-      day: Date;
+      day: string;
       hours: number;
     }>(WINDOW_DAYS_SQL, [
       zoneId,
@@ -168,6 +171,50 @@ export class HistoryService implements OnModuleInit {
       years,
       averageDaysPerYear,
     };
+  }
+
+  /**
+   * Day-level export rows: one line per zone and ignition-window day.
+   *
+   * Semicolon-delimited on purpose: the audience is an Austrian authority
+   * opening the file in a German-locale Excel, which treats the comma as a
+   * decimal sign and shreds comma-separated files into one column.
+   */
+  async ignitionDaysCsv(): Promise<string> {
+    const { rows: zones } = await this.db.query<{
+      id: string;
+      name_de: string | null;
+      name: string | null;
+      hazard_type: string | null;
+    }>(`SELECT id, name_de, name, hazard_type FROM high_risk_zones
+         WHERE is_active ORDER BY id;`);
+
+    const lines = ['zone_id;zone;datum;stunden_im_fenster'];
+    for (const zone of zones) {
+      const profile =
+        HAZARD_PROFILES[zone.hazard_type ?? 'generic'] ?? HAZARD_PROFILES['generic']!;
+      if (!profile.requiresIgnitionWeather) continue;
+
+      const { rows } = await this.db.query<{ day: string; hours: number }>(
+        WINDOW_DAYS_SQL,
+        [
+          Number(zone.id),
+          PHOSPHORUS_IGNITION.IGNITION_TEMPERATURE_C,
+          PHOSPHORUS_IGNITION.CRITICAL_SOIL_MOISTURE_PCT,
+        ],
+      );
+      for (const row of rows) {
+        lines.push(
+          [
+            zone.id,
+            csvField(zone.name_de ?? zone.name ?? ''),
+            row.day,
+            row.hours,
+          ].join(';'),
+        );
+      }
+    }
+    return lines.join('\r\n') + '\r\n';
   }
 
   /**
@@ -199,9 +246,14 @@ export class HistoryService implements OnModuleInit {
   }
 }
 
+/** Quote a field so names containing the delimiter survive the trip. */
+function csvField(value: string): string {
+  return /[";\r\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value;
+}
+
 /** Fold day rows into years, keeping the longest continuous run of hours. */
 function groupByYear(
-  rows: { year: number; month: number; day: Date; hours: number }[],
+  rows: { year: number; month: number; day: string; hours: number }[],
 ): YearSummary[] {
   const years = new Map<number, YearSummary>();
 

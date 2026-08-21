@@ -109,6 +109,18 @@ import {
                   <dt>{{ i18n.t('conditionsHumidity') }}</dt>
                   <dd class="c-hum">{{ c.relativeHumidityPct | number: '1.0-0' }}&nbsp;%</dd>
                 </div>
+                <!-- Spread direction is what a responder wants wind FOR; the
+                     row disappears when the station has no anemometer rather
+                     than showing a dash pretending to be a reading. -->
+                <div class="cond" *ngIf="c.windSpeedKmh != null">
+                  <dt>{{ i18n.t('conditionsWind') }}</dt>
+                  <dd class="c-wind">
+                    {{ c.windSpeedKmh | number: '1.0-0' }}&nbsp;km/h
+                    <ng-container *ngIf="c.windDirectionDeg != null">
+                      {{ windFrom(c.windDirectionDeg) }}
+                    </ng-container>
+                  </dd>
+                </div>
               </dl>
               <p class="c-meta">
                 {{ i18n.t('conditionsStation') }} {{ c.stationId }} ·
@@ -1237,6 +1249,20 @@ export class AlertDashboardComponent implements OnDestroy {
       zone.hoursUntilNextWindow !== null &&
       zone.hoursUntilNextWindow <= 72
     );
+  }
+
+  /**
+   * Degrees → the eight compass points a person actually reasons in.
+   * DD states where the wind comes FROM, which is also what a fire-spread
+   * question needs: smoke and spread run the opposite way.
+   */
+  windFrom(degrees: number): string {
+    const points =
+      this.i18n.locale() === 'de'
+        ? ['N', 'NO', 'O', 'SO', 'S', 'SW', 'W', 'NW']
+        : ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const index = Math.round(((degrees % 360) + 360) % 360 / 45) % 8;
+    return this.i18n.t('windFrom').replace('{dir}', points[index]!);
   }
 
   /** Coarse class for colour-coding a history row by severity. */

@@ -44,6 +44,14 @@ paired with a daily minimum cannot express that.
 curl -s https://openfirewatch.org/api/history/ignition-windows
 ```
 
+For spreadsheets and reports, the same record exports day by day as CSV —
+semicolon-delimited with a UTF-8 BOM, so a German-locale Excel opens it
+without mangling either the columns or the umlauts:
+
+```bash
+curl -sO https://openfirewatch.org/api/history/ignition-windows.csv
+```
+
 The same table also accepts measured values (`source = 'measured'`), so the
 record improves as the deployment's own ground sensors accumulate.
 

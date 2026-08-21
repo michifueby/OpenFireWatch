@@ -25,6 +25,8 @@ export interface CurrentConditions {
   cycleAt?: string;
   temperatureC?: number;
   relativeHumidityPct?: number;
+  windSpeedKmh?: number | null;
+  windDirectionDeg?: number | null;
   soilMoisturePct?: number;
   stationId?: string;
   area?: string;

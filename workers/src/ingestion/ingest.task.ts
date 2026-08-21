@@ -74,6 +74,8 @@ export async function ingestDetections(job: Job): Promise<number> {
     observedAt: station.observedAt,
     temperatureC: station.temperatureC,
     relativeHumidityPct: station.relativeHumidityPct,
+    windSpeedKmh: station.windSpeedKmh,
+    windDirectionDeg: station.windDirectionDeg,
     soilMoisturePct,
     stationId: station.stationId,
     area: area.bbox,
@@ -102,7 +104,7 @@ export async function ingestDetections(job: Job): Promise<number> {
         temperatureC: station.temperatureC, // TL
         relativeHumidityPct: station.relativeHumidityPct, // RF
         soilMoisturePct,
-        windSpeedKmh: null,
+        windSpeedKmh: station.windSpeedKmh,
         observedAt: station.observedAt,
       },
     } satisfies Record<keyof DetectionReportDto, unknown>);

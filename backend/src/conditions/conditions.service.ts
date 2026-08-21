@@ -44,6 +44,8 @@ export interface CurrentConditions {
   observedAt?: string;
   cycleAt?: string;
   temperatureC?: number;
+  windSpeedKmh?: number | null;
+  windDirectionDeg?: number | null;
   relativeHumidityPct?: number;
   soilMoisturePct?: number;
   stationId?: string;
@@ -88,6 +90,8 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
       observedAt: snapshot.observedAt,
       cycleAt: snapshot.cycleAt,
       temperatureC: snapshot.temperatureC,
+      windSpeedKmh: snapshot.windSpeedKmh ?? null,
+      windDirectionDeg: snapshot.windDirectionDeg ?? null,
       relativeHumidityPct: snapshot.relativeHumidityPct,
       soilMoisturePct: snapshot.soilMoisturePct,
       stationId: snapshot.stationId,
@@ -176,6 +180,9 @@ interface Snapshot {
   cycleAt: string;
   temperatureC: number;
   relativeHumidityPct: number;
+  /** Nullable: not every station carries an anemometer. */
+  windSpeedKmh?: number | null;
+  windDirectionDeg?: number | null;
   soilMoisturePct: number;
   stationId: string;
   area: string;

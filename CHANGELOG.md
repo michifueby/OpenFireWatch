@@ -41,6 +41,12 @@ still a question, not a commitment.
 
 ### Added
 
+- **Wind in the conditions panel.** The TAWES station reports it and nothing
+  showed it; for a responder, wind is the spread-direction question. Shown as
+  "10 km/h aus SO", and the row disappears when the station has no anemometer
+  rather than pretending a dash is a reading.
+- **CSV export of the seasonal record.** `GET /api/history/ignition-windows.csv`
+  — semicolon-delimited with a BOM, so a German-locale Excel opens it intact.
 - **Escalation for unacknowledged alerts.** A critical alert that nobody has
   taken within `NOTIFY_ESCALATE_MINUTES` (default 15) triggers one reminder
   through every configured channel — once per alert, never repeated, and never
@@ -120,6 +126,14 @@ still a question, not a commitment.
   Seven hand-drawn icons, no icon library and nothing fetched at runtime.
 
 ### Fixed
+
+- Rebuilding the backend container left the site's API answering 502 until
+  the frontend was restarted too: nginx pins the upstream IP it resolves at
+  startup. It now re-resolves per request via Docker's DNS, so a backend
+  redeploy no longer looks like a backend crash.
+- The CSV export shifted every ignition-window day into the previous date on
+  any server east of Greenwich — a date column round-tripped through a local
+  JS Date. The database now formats the date as text.
 
 - Aerial and terrain base maps rendered as a checkerboard of black gaps: four
   of the five basemap.at hostnames the service is commonly documented with do
