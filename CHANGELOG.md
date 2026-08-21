@@ -13,6 +13,8 @@ still a question, not a commitment.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-21
+
 ### Added
 
 - **Ignition-window forecast.** The phosphorus rule read forwards instead of
@@ -143,7 +145,8 @@ describes what that deployment does.
 - Critical markers were lost if an alert arrived while the map style was
   still loading, and were never restored after a reload.
 
-[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/michifueby/OpenFireWatch/releases/tag/v0.1.0
