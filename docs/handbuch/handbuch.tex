@@ -1,7 +1,10 @@
 % =============================================================================
 % OpenFireWatch — Handbuch (Deutsch)
-% Übersetzt für drei Lesergruppen: Einsatzkräfte, interessierte Öffentlichkeit
-% und Entwickler. Übersetzung mit: latexmk -pdf handbuch.tex
+%
+% Geschrieben für drei Lesergruppen: Einsatzkräfte, interessierte
+% Öffentlichkeit und Entwicklerinnen und Entwickler.
+%
+% Erzeugen des PDF:  latexmk -pdf handbuch.tex
 % =============================================================================
 \documentclass[11pt,a4paper,DIV=12,parskip=half]{scrartcl}
 
@@ -9,7 +12,7 @@
 \usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{lmodern}
-% Deutsche Anführungszeichen („so"), sprachabhängig über babel gesteuert.
+% Deutsche Anführungszeichen (\enquote{so}), sprachabhängig über babel.
 \usepackage[autostyle=true,german=quotes]{csquotes}
 \usepackage{microtype}
 \usepackage{graphicx}
@@ -27,7 +30,16 @@
 \definecolor{ofwGrau}{HTML}{4A5568}
 \definecolor{ofwHell}{HTML}{F4F5F7}
 
-\hypersetup{colorlinks=true, linkcolor=ofwRot, urlcolor=ofwRot}
+\hypersetup{colorlinks=true, linkcolor=ofwRot, urlcolor=ofwRot,
+  pdftitle={OpenFireWatch — Handbuch},
+  pdfauthor={Michael Fueby},
+  pdfsubject={Geografisches Frühwarnsystem für thermische Anomalien},
+  pdflang={de-AT}}
+
+% Das Inhaltsverzeichnis führt Abschnitte und Unterabschnitte auf. Ohne diese
+% Zeile bliebe es bei den Kapiteln, und wer gezielt etwas sucht — etwa
+% \enquote{Sensoren} oder \enquote{Alarmstufen} — fände es dort nicht.
+\setcounter{tocdepth}{2}
 
 % --- Kopf- und Fußzeile ------------------------------------------------------
 \pagestyle{fancy}
@@ -81,7 +93,8 @@ Entwickelt von Michael Fueby \quad$\cdot$\quad Open Source (MIT-Lizenz)\par}
 \newpage
 
 % =============================================================================
-\section{Wie Sie dieses Handbuch lesen}
+\section*{Wie Sie dieses Handbuch lesen}
+\addcontentsline{toc}{section}{Wie Sie dieses Handbuch lesen}
 
 Dieses Handbuch richtet sich an drei sehr unterschiedliche Lesergruppen. Damit
 niemand Kapitel lesen muss, die ihn nicht betreffen, ist jeder Abschnitt
@@ -100,8 +113,8 @@ privat interessiert &
 Kapitel \ref{sec:was} und \ref{sec:urteil}. Dort steht in Alltagssprache,
 was das System tut und warum. \\[4pt]
 Betreiber der Anlage &
-zusätzlich Kapitel \ref{sec:zonen}: Gefahrenzonen anlegen, ändern und
-stilllegen. \\[4pt]
+zusätzlich Kapitel \ref{sec:zonen}: Gefahrenzonen und Bodensensoren anlegen,
+ändern und stilllegen. \\[4pt]
 Entwicklerin oder Entwickler &
 zusätzlich Kapitel \ref{sec:technik} und die Verweise am Ende. \\
 \bottomrule
@@ -132,15 +145,17 @@ längerer Dürre aus, reißt er auf --- und Sauerstoff gelangt an die Munition.
 Inzwischen wird auch der Wald bei \textbf{St.\,Egyden am Steinfeld} überwacht,
 wo es tatsächlich gebrannt hat.
 
-\subsection*{Die Kette in vier Schritten}
+\subsection{Die Kette in vier Schritten}
 
 \begin{enumerate}[leftmargin=*]
-  \item \textbf{Satellitendaten.} Alle fünf Minuten fragt das System die
-    NASA-Satelliten ab. Deren Instrumente messen die Wärmestrahlung der
-    Erdoberfläche und melden Punkte, an denen es auffällig heiß ist.
-  \item \textbf{Wetterdaten.} Dazu kommen die aktuelle Lufttemperatur und
+  \item \textbf{Satellitendaten.} Alle fünf Minuten ruft das System beim
+    NASA-Dienst FIRMS die neuesten Auswertungen ab. Die Instrumente an Bord
+    messen die Wärmestrahlung der Erdoberfläche und melden Stellen, an denen
+    es auffällig heiß ist.
+  \item \textbf{Wetterdaten.} Hinzu kommen die aktuelle Lufttemperatur und
     Luftfeuchte einer Messstation der GeoSphere Austria sowie die Feuchte der
-    obersten Bodenschicht.
+    obersten Bodenschicht. Steht in der betroffenen Zone ein Bodensensor,
+    treten dessen gemessene Werte an die Stelle dieser Schätzung.
   \item \textbf{Bewertung.} Jeder Hitzepunkt wird geprüft: Liegt er in einer
     hinterlegten Gefahrenzone? Und erfüllt er die Kriterien, die für
     \emph{diese Art} von Gefahr gelten?
@@ -160,10 +175,13 @@ Umstände, die zu genau dieser Gefahr passen.
 \section{Die Lagekarte lesen}\label{sec:karte}
 \zielgruppe{Einsatzkräfte und alle, die die Karte im Betrieb nutzen}
 
-Die Karte erreichen Sie unter \url{https://openfirewatch.org}. Sie funktioniert
-im Browser auf Handy, Tablet und Rechner; es ist keine Anmeldung nötig. Die
-Sprache richtet sich nach Ihrem Gerät, unten links können Sie zwischen Deutsch
-und Englisch umschalten.
+Die Karte erreichen Sie unter \url{https://openfirewatch.org}. Sie läuft im
+Browser auf Mobiltelefon, Tablet und Rechner; eine Anmeldung ist nicht nötig
+und es muss nichts installiert werden.
+
+Die Sprache richtet sich zunächst nach der Einstellung Ihres Geräts. Umschalten
+können Sie jederzeit über die Schaltflächen \textbf{DE} und \textbf{EN} --- am
+Rechner unten links, am Telefon oben rechts.
 
 \subsection{Was Sie auf der Karte sehen}
 
@@ -176,8 +194,10 @@ Rot umrandete Fläche & Eine \textbf{Gefahrenzone}. Nur innerhalb dieser
 Flächen löst eine Detektion einen Alarm aus. \\[4pt]
 Kleiner gelber Punkt & Eine erfasste Hitzequelle, die \emph{keinen} Alarm
 ausgelöst hat --- zur Einordnung der Lage. \\[4pt]
-Pulsierender roter Punkt & Ein \textbf{kritischer Alarm}. Anklicken zeigt alle
-Messwerte. \\
+Pulsierender roter Punkt & Ein \textbf{kritischer Alarm}. Ein Klick oder Tipp
+darauf zeigt sämtliche Messwerte. \\[4pt]
+Kleiner türkiser Punkt & Ein \textbf{Bodensensor}. Türkis bedeutet: Er meldet
+aktuelle Werte. Grau bedeutet: Er meldet nicht mehr. \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -204,41 +224,85 @@ Luftbild und Gelände stammen von \texttt{basemap.at}, der amtlichen
 Alarme, Gefahrenzonen und Sensoren bleiben beim Wechsel unverändert sichtbar;
 es wechselt ausschließlich der Untergrund.
 
-\subsection{Das Lagepanel rechts oben}
+\subsection{Am Telefon}
+
+Am Mobiltelefon ist die Karte das Wichtigste, deshalb ist die Aufteilung dort
+eine andere. Das Lagepanel liegt nicht rechts, sondern als \emph{Leiste am
+unteren Rand}.
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Zugeklappt} zeigt es eine einzige Zeile: die Lage in Kurzform.
+        Angezeigt wird stets das Dringendste --- eine unterbrochene Verbindung
+        zuerst (denn dann sind alle Werte veraltet), dann die Zahl der offenen
+        Alarme, dann die Zone, die ihrer Schwelle am nächsten ist, und
+        andernfalls \enquote{Lage ruhig}.
+  \item \textbf{Antippen} klappt es auf. Sie sehen dieselben Inhalte wie am
+        Rechner und können nach unten scrollen.
+  \item Trifft ein \textbf{kritischer Alarm} ein, klappt die Leiste von selbst
+        auf, und die Karte rückt die Fundstelle in den sichtbaren Streifen
+        oberhalb --- nicht in die Bildmitte, die dann verdeckt wäre.
+\end{itemize}
+
+Die Bedienelemente sind auf Fingerbedienung ausgelegt; die Anzeige
+berücksichtigt Aussparungen wie Kamerastege moderner Geräte.
+
+\subsection{Das Lagepanel}
 
 \begin{center}
-\includegraphics[width=0.62\textwidth]{img/lagepanel.png}
+% Nach der Höhe begrenzt, nicht nach der Breite: das Panel ist gut doppelt so
+% hoch wie breit, und über die Breite skaliert füllte es fast eine Seite.
+\includegraphics[height=0.7\textheight]{img/lagepanel.png}
 \end{center}
 
-Das Panel hat drei Bereiche, von oben nach unten:
+Am Rechner steht das Panel rechts oben, am Telefon unten (siehe voriger
+Abschnitt). Es hat drei Bereiche, von oben nach unten:
 
 \paragraph{Bedingungen.} Die aktuell gemessenen Werte --- Lufttemperatur,
 Bodenfeuchte, Luftfeuchte --- und darunter für jede Zone, \emph{wie weit sie
 von einem Alarm entfernt ist}. Das ist der vorausschauende Teil: Sie sehen
 morgens, ob heute ein kritischer Tag wird.
 
-Im abgebildeten Beispiel steht beim Föhrenwald \enquote{Boden bereits trocken
-genug --- nur noch 3{,}6\,\textdegree C bis zur Zündung}. Das heißt: Eine der
-beiden Voraussetzungen für eine Selbstentzündung ist bereits erfüllt, es fehlt
-nur noch Wärme. Solche Zonen sind orange markiert.
+Im abgebildeten Beispiel steht beim Föhrenwald \enquote{7{,}6\,\textdegree C
+und 0{,}3\,\% vom Zündfenster entfernt}. Beide Bedingungen sind also noch
+nicht erfüllt --- es müsste deutlich wärmer \emph{und} etwas trockener werden.
+
+Ist eine der beiden bereits erfüllt, sagt die Zeile das ausdrücklich, etwa
+\enquote{Boden bereits trocken genug --- nur noch 3{,}6\,\textdegree C bis zur
+Zündung}. Solche Zonen werden orange hervorgehoben: Dann entscheidet allein
+noch die Temperatur, und ein einziger heißer Nachmittag genügt.
+
+Steht in einer Zone ein Bodensensor und meldet er aktuelle Werte, fließen
+dessen Messwerte hier ein --- nicht mehr die Schätzung für die ganze Region
+(siehe Abschnitt \ref{sec:sensoren}).
+
+Bei einer Zone, bei der \enquote{eskaliert bei jeder glaubwürdigen Detektion}
+steht, gibt es keinen Abstand zu berechnen: Sie ist dauerhaft scharf. Solche
+Zeilen bleiben deshalb bewusst grau. Rot ist einem tatsächlichen Zustand
+vorbehalten --- eine Zeile, die immer rot leuchtet, gewöhnt das Auge an Rot,
+und genau das wäre im Ernstfall gefährlich.
 
 \paragraph{Aktuelle Alarme.} Jeder Eintrag nennt die Alarmstufe, die betroffene
 Zone, Temperatur, Bodenfeuchte, die Koordinaten und den Zeitpunkt der
-Satellitenaufnahme. Mit \textbf{QUITT} bestätigen Sie einen Alarm: er
-verschwindet aus der Liste, der pulsierende Punkt auf der Karte hört auf, und
-im Verlauf bleibt der Eintrag mit einem grünen Haken und dem Zeitpunkt
-erhalten.
+Satellitenaufnahme.
 
-Eine Quittierung gilt \emph{für alle} --- auf jedem Gerät, das die Karte
-geöffnet hat, und auch nach einem Neuladen. Damit sie niemand Fremdes auslösen
-kann, ist sie wie das Bearbeiten von Zonen durch den Betreiber-Schlüssel
-geschützt: Ohne entsperrtes Panel \enquote{Gefahrenzonen} bleibt der Alarm
-stehen und die Oberfläche sagt Ihnen, warum. Wer die Karte nur ansieht, kann
-also nichts abschalten.
+Mit \textbf{QUITT} übernehmen Sie einen Alarm. Er verschwindet daraufhin aus
+der Liste, der pulsierende Punkt auf der Karte hört auf zu pulsieren, und im
+Verlauf bleibt der Eintrag mit einem grünen Haken und dem Zeitpunkt der
+Übernahme erhalten. Der Fundort bleibt als gelber Punkt weiterhin sichtbar ---
+quittieren heißt \emph{übernommen}, nicht \emph{erledigt}.
 
-\paragraph{Verlauf.} Über \enquote{Verlauf anzeigen} sehen Sie alle Bewertungen
-der letzten sieben Tage --- auch die, die zu keinem Alarm geführt haben. Dieser
-Bereich beantwortet Fragen wie \enquote{Was war heute Nacht?}.
+Eine Quittierung gilt \textbf{für alle}: auf jedem Gerät, das die Karte
+geöffnet hat, und auch nach dem Neuladen. Genau deshalb ist sie geschützt.
+Ohne entsperrtes Panel \enquote{Gefahrenzonen} bleibt der Alarm stehen, und
+die Oberfläche nennt Ihnen den Grund. Wer die Karte nur ansieht, kann also
+keine Warnung abschalten, auf die sich eine Mannschaft verlässt.
+
+\paragraph{Verlauf.} Über \enquote{Verlauf anzeigen} sehen Sie sämtliche
+Bewertungen der letzten sieben Tage --- auch jene, die zu keinem Alarm geführt
+haben. Dieser Bereich beantwortet Fragen wie \enquote{Was war heute Nacht?}
+und macht nachvollziehbar, worauf das System wie reagiert hat. Bereits
+übernommene Alarme stehen dort mit einem grünen Haken und blasser --- erledigt
+im Sinne von \enquote{jemand kümmert sich}, nicht gelöscht.
 
 \subsection{Die Alarmstufen}
 
@@ -308,14 +372,14 @@ Gefahrenmodell. \\
 \end{tabularx}
 \end{center}
 
-\subsection*{Glaubwürdigkeit}
+\subsection{Glaubwürdigkeit einer Detektion}
 
 Die Satelliten liefern zu jeder Detektion eine eigene Bewertung, wie sicher sie
 sich sind. Nur eine ausdrücklich \emph{niedrige} Einstufung unterdrückt einen
 Alarm --- so fallen bekannte Störquellen wie Sonnenreflexionen heraus, ohne
 dass eine fehlende Angabe stillschweigend zu einer Abwertung führt.
 
-\subsection*{Glutnester}
+\subsection{Glutnester}
 
 Eine Flammenfront wandert. Ein Glutnest bleibt liegen und strahlt schwach
 weiter. Genau das nutzt das System: Findet es über mindestens zwei getrennte
@@ -339,24 +403,26 @@ erweitert.
 \subsection{Zone anlegen}
 
 \begin{enumerate}[leftmargin=*]
-  \item Oben links auf \textbf{Gefahrenzonen} klicken.
+  \item Oben links \textbf{Gefahrenzonen} öffnen.
   \item \textbf{Entsperren}: den Betreiber-Schlüssel eingeben. Er gilt nur für
-    diesen Browser-Tab und ist beim Schließen wieder weg --- das ist Absicht,
-    damit an einem gemeinsam genutzten Rechner nichts zurückbleibt.
-  \item \textbf{+ Neue Zone} wählen und auf der Karte die Eckpunkte
-    anklicken. Die Fläche wird beim Zeichnen angezeigt. Mit
-    \enquote{Punkt zurück} nehmen Sie den letzten Punkt zurück, ein Doppelklick
-    oder \enquote{Fertig} schließt die Fläche.
+    diesen Browser-Tab und ist beim Schließen wieder verschwunden --- das ist
+    Absicht, damit an einem gemeinsam genutzten Rechner nichts zurückbleibt.
+  \item \textbf{+ Neue Zone} wählen und auf der Karte die Eckpunkte setzen.
+    Die entstehende Fläche wird sofort dargestellt. \enquote{Punkt zurück}
+    nimmt den zuletzt gesetzten Eckpunkt zurück, \enquote{Fertig} schließt die
+    Fläche.
   \item Namen auf \textbf{Deutsch und Englisch} eingeben und die Gefahrenart
-    wählen. Beide Sprachen sind nötig, weil dieselbe Meldung an Nutzer in
-    beiden Sprachen geht.
-  \item \textbf{Zone speichern}. Sie erscheint sofort auf der Karte.
+    wählen. Beide Sprachen sind erforderlich, weil dieselbe Meldung Nutzer in
+    beiden Sprachen erreicht.
+  \item \textbf{Zone speichern}. Sie erscheint unmittelbar auf der Karte.
 \end{enumerate}
 
 \subsection{Zone ändern oder stilllegen}
 
 \textbf{Bearbeiten} ändert Namen und Gefahrenart; über
-\enquote{Umriss neu zeichnen} lässt sich die Fläche ersetzen.
+\enquote{Umriss neu zeichnen} lässt sich die Fläche ersetzen. Das ist der
+übliche Weg, wenn eine Grenze nachgeschärft wird --- die Zone behält dabei
+ihre Kennung und damit ihre gesamte Alarmhistorie.
 
 \textbf{Stilllegen} beendet die Alarmierung für diese Zone sofort. Sie wird
 dabei bewusst \emph{nicht gelöscht}: Alle Alarme, die sie je ausgelöst hat,
@@ -370,7 +436,7 @@ ein echter Waldbrand an einem kühlen Tag nur als \enquote{Erhöht} gemeldet
 wird.
 \end{hinweis}
 
-\subsection{Bodensensoren}
+\subsection{Bodensensoren}\label{sec:sensoren}
 
 Alle Wetterwerte, die in die Bewertung einfließen, sind zunächst
 \emph{regionale} Werte: eine Messstation und ein Modellpunkt stehen für ein
@@ -443,6 +509,12 @@ Technik. Wer sie kennt, kann die Meldungen richtig einordnen.
     verbindlichen Einsatz müssen sie durch die Grenzen der zuständigen Stelle
     ersetzt werden.
 
+  \item[Die Schwellenwerte sind begründete Annahmen.]
+    Die 30\,\textdegree C und 20\,\% Bodenfeuchte stammen aus der
+    Fachliteratur zum Verhalten von weißem Phosphor, nicht aus Messungen im
+    Föhrenwald. Sie sind eine nachvollziehbare Näherung und ausdrücklich zur
+    fachlichen Prüfung gestellt.
+
   \item[Kein zertifiziertes System.]
     OpenFireWatch ist ein quelloffenes Werkzeug ohne Zulassung als
     Warnsystem, ohne zugesicherte Verfügbarkeit und ohne
@@ -466,19 +538,25 @@ verdeckte Glut. Es ergänzt bestehende Verfahren, es ersetzt keines davon.
 \toprule
 \textbf{Quelle} & \textbf{Liefert} & \textbf{Anmerkung} \\
 \midrule
-NASA FIRMS (VIIRS) & Hitzepunkte & Zugangsschlüssel nötig, kostenfrei;
-5000 Abfragen je 10 Minuten, genutzt werden 2 \\
+NASA FIRMS (VIIRS) & Hitzepunkte & kostenfreier Zugangsschlüssel nötig;
+erlaubt sind 5000 Abfragen je 10 Minuten, genutzt werden zwei \\
 GeoSphere Austria & Temperatur, Luftfeuchte & Station des TAWES-Netzes,
 ohne Schlüssel \\
-Open-Meteo & Bodenfeuchte & oberste Schicht (1--3\,cm), ohne Schlüssel \\
+Open-Meteo & Bodenfeuchte & oberste Bodenschicht (1--3\,cm), ohne Schlüssel \\
+Eigene Bodensensoren & Temperatur, Bodenfeuchte & örtliche Messung; hat
+Vorrang vor den regionalen Werten \\
 OpenStreetMap & Zonengeometrie & Grundlage der mitgelieferten Zonen \\
+CARTO & Kartenhintergrund & dunkle Standardansicht, weltweit \\
+basemap.at & Luftbild, Gelände & amtliche österreichische Basiskarte,
+CC~BY~4.0; nur Österreich \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
 \subsection{Aufbau}
 
-Fünf Dienste, gestartet mit einem einzigen Befehl über Docker Compose:
+Fünf Dienste, die mit einem einzigen Befehl über Docker Compose starten (im
+öffentlichen Betrieb kommt Caddy als TLS-Endpunkt hinzu):
 
 \begin{description}[leftmargin=0pt, style=nextline, itemsep=2pt]
   \item[workers] Hintergrundprozesse (Node.js, BullMQ), die die externen
@@ -497,30 +575,54 @@ Fünf Dienste, gestartet mit einem einzigen Befehl über Docker Compose:
 
 \subsection{Schnittstelle}
 
-Lesende Zugriffe sind öffentlich, schreibende benötigen den Betreiber-Schlüssel
-im Kopffeld \texttt{X-API-Key}. Ist kein Schlüssel konfiguriert, werden
-schreibende Zugriffe abgewiesen statt ungeschützt zugelassen.
+Lesende Zugriffe sind öffentlich --- ein Lagebild ist zum Ansehen da. Für
+schreibende gibt es zwei getrennte Zugangsdaten:
+
+\begin{description}[leftmargin=0pt, style=nextline, itemsep=2pt]
+  \item[(B) Betreiber-Schlüssel, Kopffeld \texttt{X-API-Key}.] Zonen und
+    Sensoren verwalten, Alarme quittieren, Probealarm auslösen.
+  \item[(G) Gateway-Token, Kopffeld \texttt{X-Sensor-Token}.] Ausschließlich
+    Messwerte einliefern. Getrennt gehalten, weil ein LoRaWAN-Gateway
+    üblicherweise in einem Schuppen steht: Wer es erreicht, soll damit keine
+    Gefahrenzone verändern können.
+\end{description}
+
+Ist ein Schlüssel nicht konfiguriert, werden die zugehörigen Zugriffe
+abgewiesen, statt ungeschützt zugelassen zu werden.
 
 \begin{center}
 \begin{tabularx}{\textwidth}{@{}l l X@{}}
 \toprule
 \textbf{Methode} & \textbf{Pfad} & \textbf{Zweck} \\
 \midrule
-GET & \texttt{/api/health} & Betriebsprüfung \\
+GET & \texttt{/api/health} & Betriebsprüfung, Version und Commit \\
 GET & \texttt{/api/risk-zones} & Zonen als GeoJSON \\
 GET & \texttt{/api/anomalies} & erfasste Hitzepunkte \\
 GET & \texttt{/api/alerts} & Verlauf der Bewertungen \\
 GET & \texttt{/api/conditions} & Bedingungen und Zonenbereitschaft \\
-POST & \texttt{/api/risk-zones} & Zone anlegen \quad\textbf{(Schlüssel)} \\
-PUT & \texttt{/api/risk-zones/\{id\}} & Zone ersetzen \quad\textbf{(Schlüssel)} \\
-DELETE & \texttt{/api/risk-zones/\{id\}} & Zone stilllegen \quad\textbf{(Schlüssel)} \\
-POST & \texttt{/api/simulate-fire} & Probealarm \quad\textbf{(Schlüssel)} \\
+GET & \texttt{/api/sensors} & Bodensensoren samt Meldestatus \\
+POST & \texttt{/api/risk-zones} & Zone anlegen \quad\textbf{(B)} \\
+PUT & \texttt{/api/risk-zones/\{id\}} & Zone ersetzen \quad\textbf{(B)} \\
+DELETE & \texttt{/api/risk-zones/\{id\}} & Zone stilllegen \quad\textbf{(B)} \\
+POST & \texttt{/api/sensors} & Sensor registrieren \quad\textbf{(B)} \\
+PUT & \texttt{/api/sensors/\{id\}} & Sensor ändern \quad\textbf{(B)} \\
+DELETE & \texttt{/api/sensors/\{id\}} & Sensor stilllegen \quad\textbf{(B)} \\
+POST & \texttt{/api/alerts/\{id\}/acknowledge} & Alarm quittieren \quad\textbf{(B)} \\
+POST & \texttt{/api/simulate-fire} & Probealarm \quad\textbf{(B)} \\
+POST & \texttt{/api/sensors/readings} & Messwerte annehmen \quad\textbf{(G)} \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-Die vollständige, stets aktuelle Beschreibung steht unter
-\url{https://openfirewatch.org/api/docs}.
+Die vollständige und stets aktuelle Beschreibung erzeugt das System selbst aus
+dem Quelltext: \url{https://openfirewatch.org/api/docs}.
+
+\begin{hinweis}[Welche Fassung läuft gerade?]
+\texttt{GET /api/health} nennt Version und Commit, aus dem das Abbild gebaut
+wurde. Zwischen zwei Veröffentlichungen ändert sich die Versionsnummer nicht
+--- die Frage \enquote{Ist die eben eingespielte Korrektur wirklich aktiv?}
+beantwortet daher nur der Commit.
+\end{hinweis}
 
 \subsection{Selbst betreiben}
 
@@ -552,8 +654,10 @@ Kritik daran ist wertvoller als Zustimmung.
 \vfill
 \begin{center}
 \color{ofwGrau}\small
-Kartengrundlage \textcopyright\ CARTO und OpenStreetMap-Mitwirkende \quad$\cdot$\quad
-Satellitendaten: NASA FIRMS \quad$\cdot$\quad Wetterdaten: GeoSphere Austria, Open-Meteo\\
+Kartengrundlage: \textcopyright\ CARTO und OpenStreetMap-Mitwirkende,
+\textcopyright\ basemap.at (CC~BY~4.0) \quad$\cdot$\quad
+Satellitendaten: NASA FIRMS \quad$\cdot$\quad
+Wetterdaten: GeoSphere Austria, Open-Meteo\\
 OpenFireWatch ist ein unabhängiges Projekt und steht in keiner Verbindung zur NASA.
 \end{center}
 
