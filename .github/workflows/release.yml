@@ -72,11 +72,15 @@ jobs:
         run: |
           # Notes come from CHANGELOG.md, which is written for people rather
           # than assembled from commit subjects.
+          # index(), not a regex match: a version heading contains [ and ],
+          # which as a pattern is a character class and matches nothing —
+          # silently producing an empty release note.
           awk -v v="## [${{ steps.next.outputs.version }}]" '
-            $0 ~ v {found=1; next}
+            index($0, v) == 1 {found = 1; next}
             found && /^## \[/ {exit}
             found {print}
           ' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "error: no changelog section for v${{ steps.next.outputs.version }}" >&2; exit 1; }
           gh release create "v${{ steps.next.outputs.version }}" \
             --title "OpenFireWatch v${{ steps.next.outputs.version }}" \
             --notes-file notes.md
