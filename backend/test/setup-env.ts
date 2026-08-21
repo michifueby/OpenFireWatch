@@ -32,3 +32,9 @@ process.env.OPERATOR_API_KEY = 'e2e-test-operator-key';
 // The sensor intake has its own credential (a gateway must not hold the
 // operator key); the suite exercises accept and reject paths for it too.
 process.env.SENSOR_INGEST_TOKEN = 'e2e-test-sensor-token';
+
+// Notification channels are configured per test: the suite asserts that an
+// unconfigured channel is skipped, so nothing may be set here by default.
+delete process.env.NOTIFY_WEBHOOK_URL;
+delete process.env.NOTIFY_TELEGRAM_BOT_TOKEN;
+delete process.env.NOTIFY_TELEGRAM_CHAT_ID;

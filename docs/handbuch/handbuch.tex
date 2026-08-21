@@ -473,6 +473,39 @@ Offset) wird beim Sensor hinterlegt und wirkt auch rückwirkend auf alle
 gespeicherten Messwerte, weil diese roh aufbewahrt werden.
 \end{hinweis}
 
+\subsection{Benachrichtigungen}\label{sec:benachrichtigungen}
+
+Ein Alarm, der nur auf einer Karte erscheint, erreicht um drei Uhr früh
+niemanden --- und das ist genau die Zeit, zu der niemand hinsieht und zu der
+es am ehesten darauf ankommt. Auf Wunsch meldet OpenFireWatch deshalb
+selbstständig:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Kritische Alarme}, einmal je Ereignis. Dieselbe Detektion
+        erneut bewertet löst keine zweite Meldung aus.
+  \item \textbf{Ausfall der Datenaufnahme.} Kommen über mehrere Abfragezyklen
+        keine Daten mehr herein, wird das gemeldet --- und ebenso, wenn es
+        wieder läuft. Ein Warnsystem, das stillschweigend ausfällt, ist
+        gefährlicher als gar keines, weil man sich weiterhin darauf verlässt.
+\end{itemize}
+
+Zwei Wege stehen bereit: ein \textbf{Webhook}, über den sich beliebige
+Systeme anbinden lassen (eigene Alarmierung, Chatdienste, ein
+E-Mail-Verteiler), und \textbf{Telegram}, also eine Nachricht in einen
+Gruppenchat der Mannschaft. Beides ist kostenlos und in wenigen Minuten
+eingerichtet; die Anleitung steht in \texttt{docs/notifications.md}.
+
+Ob überhaupt etwas versendet wird, entscheidet allein die Konfiguration: Ohne
+eingerichteten Kanal bleibt alles stumm. Die Einrichtung lässt sich jederzeit
+mit einer ausdrücklich als Test gekennzeichneten Meldung überprüfen --- ohne
+auf einen echten Vorfall warten zu müssen.
+
+\begin{warnung}[Auch eine Benachrichtigung ist keine Alarmierung]
+Diese Meldungen sind ein Hinweis an eine Person, kein Einsatzbefehl. Sie
+ersetzen weder den Notruf noch die Alarmierung über die Landeswarnzentrale.
+Jede Meldung trägt diesen Hinweis am Ende mit.
+\end{warnung}
+
 % =============================================================================
 \section{Was das System nicht kann}\label{sec:grenzen}
 \zielgruppe{besonders für Einsatzkräfte --- bitte vollständig lesen}
@@ -514,6 +547,11 @@ Technik. Wer sie kennt, kann die Meldungen richtig einordnen.
     Fachliteratur zum Verhalten von weißem Phosphor, nicht aus Messungen im
     Föhrenwald. Sie sind eine nachvollziehbare Näherung und ausdrücklich zur
     fachlichen Prüfung gestellt.
+
+  \item[Benachrichtigungen hängen an fremden Diensten.]
+    Eine Meldung erreicht ihr Ziel nur, wenn Internetverbindung, Chatdienst
+    beziehungsweise Empfängersystem gerade funktionieren. Fehlversuche werden
+    wiederholt und protokolliert, aber nicht garantiert zugestellt.
 
   \item[Kein zertifiziertes System.]
     OpenFireWatch ist ein quelloffenes Werkzeug ohne Zulassung als

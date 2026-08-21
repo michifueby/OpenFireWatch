@@ -107,6 +107,9 @@ OpenFireWatch is **fault-tolerant and event-driven by design**. Every layer is d
 - 🧩 **Event-driven decoupling** — Redis as the event bus; every component can restart independently without data loss.
 - 🗃️ **Idempotent deduplication** — database-level unique constraints make re-ingesting the same satellite pass a no-op.
 - 🗺️ **Switchable base maps** — dark command-centre styling, 30 cm aerial imagery and terrain relief (aerial/terrain from [basemap.at](https://basemap.at/), CC BY 4.0, Austria only).
+- 🔔 **Notifications that leave the screen** — critical alerts and a dead-man's
+  switch for stalled ingestion, delivered over a signed webhook or Telegram.
+  Deduplicated, retried, recorded; a new channel is one class and one line.
 - 📜 **Strict validation & OpenAPI** — `class-validator` DTOs guard every endpoint; interactive Swagger docs at `/api/docs`.
 - 🌍 **Bilingual UI (EN/DE)** — the interface follows the browser language and can be switched live; risk-zone labels are stored per language (`name_en` / `name_de`) and travel inside the alert payload, because one broadcast reaches clients with different languages.
 - 🐳 **One-command dev environment** — the entire stack (DB, broker, API, workers, frontend) via a single `docker compose up`.

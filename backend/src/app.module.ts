@@ -7,6 +7,7 @@ import { ConditionsModule } from './conditions/conditions.module';
 import { DatabaseModule } from './database/database.module';
 import { EvaluationModule } from './evaluation/evaluation.module';
 import { HealthController } from './health/health.controller';
+import { NotificationsModule } from './notifications/notifications.module';
 import { RiskZonesModule } from './risk-zones/risk-zones.module';
 import { SensorsModule } from './sensors/sensors.module';
 import { SimulationModule } from './simulation/simulation.module';
@@ -23,6 +24,8 @@ import { SimulationModule } from './simulation/simulation.module';
     ConditionsModule, // current conditions + per-zone readiness
     SensorsModule, // ground sensor registry + LoRaWAN intake
     SimulationModule, // POST /api/simulate-fire end-to-end drill trigger
+    NotificationsModule, // relays critical alerts off the map, and watches
+    // that ingestion is still running at all
   ],
   controllers: [HealthController],
 })

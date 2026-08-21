@@ -13,6 +13,17 @@ still a question, not a commitment.
 
 ## [Unreleased]
 
+### Added
+
+- **Notification channels.** Critical alerts and a dead-man's switch for
+  stalled ingestion are delivered off the map through configurable channels:
+  a generic HMAC-signed webhook (which reaches anything — existing alerting,
+  chat, an email relay) and Telegram. Deduplicated per event across replicas,
+  retried with backoff, and every delivery outcome recorded so *was anyone
+  told?* has an answer. A fresh deployment notifies nobody until a channel is
+  configured. Adding a channel is one class and one line — see
+  [docs/notifications.md](docs/notifications.md).
+
 ## [0.2.0] — 2026-08-21
 
 ### Added

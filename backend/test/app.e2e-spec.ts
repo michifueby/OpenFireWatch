@@ -465,6 +465,180 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('notifications', () => {
+    /**
+     * A local HTTP server standing in for whatever the operator points the
+     * webhook at. Using the real channel against a real socket exercises the
+     * signature, the timeout and the JSON body — a mocked channel would
+     * assert only that the dispatcher calls a function.
+     */
+    let received: { headers: Record<string, string>; body: any }[] = [];
+    let hookServer: import('node:http').Server;
+    let hookUrl: string;
+
+    beforeAll(async () => {
+      const http = await import('node:http');
+      hookServer = http.createServer((req, res) => {
+        let raw = '';
+        req.on('data', (chunk) => (raw += chunk));
+        req.on('end', () => {
+          received.push({
+            headers: req.headers as Record<string, string>,
+            body: JSON.parse(raw || '{}'),
+          });
+          res.writeHead(204).end();
+        });
+      });
+      await new Promise<void>((resolve) => hookServer.listen(0, '127.0.0.1', resolve));
+      const address = hookServer.address() as import('node:net').AddressInfo;
+      hookUrl = `http://127.0.0.1:${address.port}/hook`;
+    });
+
+    afterAll(async () => {
+      await new Promise<void>((resolve) => hookServer.close(() => resolve()));
+    });
+
+    beforeEach(() => {
+      received = [];
+      delete process.env.NOTIFY_WEBHOOK_URL;
+      delete process.env.NOTIFY_WEBHOOK_SECRET;
+    });
+
+    /** Give the dispatcher a moment: delivery is deliberately off the
+     *  request path, so the response returns before the POST lands. */
+    const settle = () => new Promise((r) => setTimeout(r, 400));
+
+    it('reports which channels exist, and that none is configured by default', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/notifications/channels')
+        .expect(200);
+
+      const names = res.body.map((c: { name: string }) => c.name).sort();
+      expect(names).toEqual(['telegram', 'webhook']);
+      // Nothing configured → nothing is delivered anywhere. A deployment that
+      // never set this up must not be told it has notifications.
+      expect(res.body.every((c: { configured: boolean }) => !c.configured)).toBe(true);
+    });
+
+    it('refuses to let a stranger send messages to the crew', async () => {
+      await request(app.getHttpServer()).post('/api/notifications/test').expect(401);
+      await request(app.getHttpServer())
+        .post('/api/notifications/test')
+        .set('X-API-Key', 'wrong-key')
+        .expect(401);
+    });
+
+    it('delivers to a configured webhook, signed', async () => {
+      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      process.env.NOTIFY_WEBHOOK_SECRET = 'e2e-secret';
+
+      const res = await request(app.getHttpServer())
+        .post('/api/notifications/test')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+      expect(res.body.dispatchedTo).toContain('webhook');
+
+      await settle();
+      expect(received).toHaveLength(1);
+      expect(received[0].body).toEqual(
+        expect.objectContaining({ source: 'openfirewatch', kind: 'test' }),
+      );
+
+      // The signature must cover the exact bytes sent, or a receiver that
+      // verifies it would reject every genuine notification.
+      const { createHmac } = await import('node:crypto');
+      const expected =
+        'sha256=' +
+        createHmac('sha256', 'e2e-secret')
+          .update(JSON.stringify(received[0].body))
+          .digest('hex');
+      expect(received[0].headers['x-openfirewatch-signature']).toBe(expected);
+    });
+
+    it('omits the signature when no secret is set, rather than sending a fake one', async () => {
+      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+
+      await request(app.getHttpServer())
+        .post('/api/notifications/test')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+
+      await settle();
+      expect(received).toHaveLength(1);
+      expect(received[0].headers['x-openfirewatch-signature']).toBeUndefined();
+    });
+
+    it('relays a real critical alert, and only once', async () => {
+      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+
+      await request(app.getHttpServer())
+        .post('/api/simulate-fire')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+
+      const alert = await waitFor(
+        async () => (received.length > 0 ? received[0] : undefined),
+        20_000,
+        'notification for a critical alert',
+      );
+      expect(alert.body.kind).toBe('alert.critical');
+      expect(alert.body.severity).toBe('critical');
+      expect(alert.body.title).toContain('Phosphorbrand');
+      // The body is read by a person on a phone, so it carries the numbers
+      // rather than only a machine payload.
+      expect(alert.body.body).toContain('32');
+      expect(alert.body.data.id).toBeDefined();
+
+      // Re-publishing the same anomaly must not send a second message: the
+      // dedupe key is the anomaly, not the delivery attempt.
+      const anomalyId = alert.body.data.id;
+      const before = received.length;
+      const publisher = new IORedis({ host: '127.0.0.1', port: 6379, db: 15 });
+      await publisher.publish(
+        'alerts:anomalies',
+        JSON.stringify({ ...alert.body.data, id: anomalyId }),
+      );
+      await settle();
+      await publisher.quit();
+      expect(received.length).toBe(before);
+    });
+
+    it('records every delivery, so "was anyone told?" has an answer', async () => {
+      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      await request(app.getHttpServer())
+        .post('/api/notifications/test')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+      await settle();
+
+      const { rows } = await db.query(
+        `SELECT channel, status FROM notification_deliveries
+          WHERE kind = 'test' ORDER BY created_at DESC LIMIT 1;`,
+      );
+      expect(rows[0]).toEqual({ channel: 'webhook', status: 'sent' });
+    });
+
+    it('records a failure instead of losing it', async () => {
+      // A port nothing listens on: the channel throws, the dispatcher retries,
+      // and the outcome still has to end up on the record.
+      process.env.NOTIFY_WEBHOOK_URL = 'http://127.0.0.1:1/nowhere';
+
+      await request(app.getHttpServer())
+        .post('/api/notifications/test')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+      // Two retries with backoff before it gives up.
+      await new Promise((r) => setTimeout(r, 8_000));
+
+      const { rows } = await db.query(
+        `SELECT status, error FROM notification_deliveries
+          WHERE kind = 'test' ORDER BY created_at DESC LIMIT 1;`,
+      );
+      expect(rows[0].status).toBe('failed');
+      expect(rows[0].error).toBeTruthy();
+    }, 20_000);
+  });
+
   describe('acknowledgement', () => {
     /** Raise a real critical alert and return the anomaly id it produced. */
     async function raiseCriticalAlert(): Promise<number> {
