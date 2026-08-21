@@ -107,6 +107,9 @@ OpenFireWatch is **fault-tolerant and event-driven by design**. Every layer is d
 - 🧩 **Event-driven decoupling** — Redis as the event bus; every component can restart independently without data loss.
 - 🗃️ **Idempotent deduplication** — database-level unique constraints make re-ingesting the same satellite pass a no-op.
 - 🗺️ **Switchable base maps** — dark command-centre styling, 30 cm aerial imagery and terrain relief (aerial/terrain from [basemap.at](https://basemap.at/), CC BY 4.0, Austria only).
+- 📊 **Seasonal record** — how often each zone has met its ignition criteria
+  over a decade, by month. The live map says what is happening; this says how
+  unusual it is.
 - 🔮 **Ignition-window forecast** — the phosphorus rule read forwards: a
   seven-day outlook per zone saying when temperature and topsoil moisture next
   meet the ignition criteria *at the same hour*, warned about three days out.

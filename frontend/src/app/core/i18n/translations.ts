@@ -54,6 +54,16 @@ export interface TranslationDict {
   forecastWindow: string;
   forecastLeadTime: string;
   forecastPeak: string;
+  // --- Seasonal record ----------------------------------------------------------
+  seasonShow: string;
+  seasonHide: string;
+  seasonTitle: string;
+  seasonEmpty: string;
+  seasonAverage: string;
+  seasonYear: string;
+  seasonDays: string;
+  seasonPeak: string;
+  seasonSource: string;
   ack: string;
   ackAria: string;
   /** Acknowledging is a guarded write; these explain that and record it. */
@@ -199,6 +209,16 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     forecastWindow: '{day}, {from}–{to}',
     forecastLeadTime: 'in {hours} h',
     forecastPeak: 'up to {temp} °C · soil down to {soil} %',
+    seasonShow: 'Show seasonal record',
+    seasonHide: 'Hide seasonal record',
+    seasonTitle: 'IGNITION WINDOWS BY SEASON',
+    seasonEmpty: 'No history collected yet.',
+    seasonAverage: '{days} days per year on average',
+    seasonYear: '{year}',
+    seasonDays: '{days} d',
+    seasonPeak: 'longest single spell {hours} h',
+    seasonSource:
+      'Reanalysis weather, soil layer 0–7 cm (the live rule uses 1–3 cm; the two differ by about 2 percentage points).',
     ack: 'ACK',
     sheetAlert: 'ACTIVE ALERT',
     sheetAlerts: 'ACTIVE ALERTS',
@@ -354,6 +374,16 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     forecastWindow: '{day}, {from}–{to} Uhr',
     forecastLeadTime: 'in {hours} h',
     forecastPeak: 'bis {temp} °C · Boden bis {soil} %',
+    seasonShow: 'Saisonauswertung anzeigen',
+    seasonHide: 'Saisonauswertung ausblenden',
+    seasonTitle: 'ZÜNDFENSTER NACH SAISON',
+    seasonEmpty: 'Noch keine Historie erfasst.',
+    seasonAverage: 'im Mittel {days} Tage pro Jahr',
+    seasonYear: '{year}',
+    seasonDays: '{days} T',
+    seasonPeak: 'längste Einzelphase {hours} h',
+    seasonSource:
+      'Reanalyse-Wetterdaten, Bodenschicht 0–7 cm (die Regel arbeitet mit 1–3 cm; beide unterscheiden sich um rund 2 Prozentpunkte).',
     ack: 'QUITT',
     sheetAlert: 'AKTIVER ALARM',
     sheetAlerts: 'AKTIVE ALARME',

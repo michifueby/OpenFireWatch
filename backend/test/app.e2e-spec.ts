@@ -465,6 +465,178 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('seasonal ignition history', () => {
+    /** The seeded phosphorus zone — the only weather-gated one. */
+    let phosphorusZoneId: number;
+
+    beforeAll(async () => {
+      const { rows } = await db.query<{ id: string }>(
+        `SELECT id FROM high_risk_zones WHERE hazard_type = 'white_phosphorus' AND is_active LIMIT 1;`,
+      );
+      phosphorusZoneId = Number(rows[0]!.id);
+    });
+
+    /** Seed hourly weather as the backfill would. */
+    async function seedHours(
+      hours: { at: string; temperatureC: number; soilMoisturePct: number }[],
+    ): Promise<void> {
+      for (const hour of hours) {
+        await db.query(
+          `INSERT INTO zone_weather_history
+             (zone_id, observed_at, temperature_c, soil_moisture_pct, source)
+           VALUES ($1, $2, $3, $4, 'test')
+           ON CONFLICT (zone_id, observed_at) DO NOTHING;`,
+          [phosphorusZoneId, hour.at, hour.temperatureC, hour.soilMoisturePct],
+        );
+      }
+    }
+
+    beforeEach(async () => {
+      await db.query(`DELETE FROM zone_weather_history;`);
+    });
+
+    afterAll(async () => {
+      await db.query(`DELETE FROM zone_weather_history;`);
+    });
+
+    /** `any` on purpose: this asserts the API's JSON shape, so typing it here
+     *  would only restate the thing under test. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const zoneOf = (body: any) =>
+      body.zones.find((z: any) => z.zoneId === phosphorusZoneId);
+
+    it('counts a day only where both criteria meet in the same hour', async () => {
+      await seedHours([
+        // Hot but damp, then dry but cool, on the same day: no ignition hour.
+        { at: '2021-07-01T13:00+02:00', temperatureC: 35, soilMoisturePct: 40 },
+        { at: '2021-07-01T04:00+02:00', temperatureC: 10, soilMoisturePct: 5 },
+        // A day where they genuinely coincide.
+        { at: '2021-07-05T14:00+02:00', temperatureC: 31, soilMoisturePct: 12 },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/history/ignition-windows')
+        .expect(200);
+      const zone = zoneOf(res.body);
+
+      expect(zone.years).toHaveLength(1);
+      expect(zone.years[0]).toEqual(
+        expect.objectContaining({ year: 2021, days: 1, hours: 1 }),
+      );
+    });
+
+    it('groups days by year and month, and keeps the longest single spell', async () => {
+      await seedHours([
+        // A three-hour spell on one July day.
+        { at: '2022-07-10T12:00+02:00', temperatureC: 32, soilMoisturePct: 10 },
+        { at: '2022-07-10T13:00+02:00', temperatureC: 34, soilMoisturePct: 9 },
+        { at: '2022-07-10T14:00+02:00', temperatureC: 33, soilMoisturePct: 9 },
+        // A single hour in August.
+        { at: '2022-08-02T15:00+02:00', temperatureC: 31, soilMoisturePct: 11 },
+        // Another year entirely.
+        { at: '2023-06-20T15:00+02:00', temperatureC: 31, soilMoisturePct: 11 },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/history/ignition-windows')
+        .expect(200);
+      const zone = zoneOf(res.body);
+
+      expect(zone.years.map((y: { year: number }) => y.year)).toEqual([2022, 2023]);
+      const y22 = zone.years[0];
+      expect(y22).toEqual(
+        expect.objectContaining({ days: 2, hours: 4, longestWindowHours: 3 }),
+      );
+      expect(y22.months).toEqual([
+        { month: 7, days: 1, hours: 3 },
+        { month: 8, days: 1, hours: 1 },
+      ]);
+    });
+
+    it('leaves the running year out of the average', async () => {
+      const thisYear = new Date().getFullYear();
+      await seedHours([
+        { at: `2020-07-01T14:00+02:00`, temperatureC: 32, soilMoisturePct: 10 },
+        { at: `2021-07-01T14:00+02:00`, temperatureC: 32, soilMoisturePct: 10 },
+        { at: `2021-07-02T14:00+02:00`, temperatureC: 32, soilMoisturePct: 10 },
+        { at: `2021-07-03T14:00+02:00`, temperatureC: 32, soilMoisturePct: 10 },
+        // Half a season in the current year would drag the mean down and read
+        // as a trend rather than as the calendar not being finished.
+        { at: `${thisYear}-07-01T14:00+02:00`, temperatureC: 32, soilMoisturePct: 10 },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/history/ignition-windows')
+        .expect(200);
+      const zone = zoneOf(res.body);
+
+      // (1 day in 2020 + 3 days in 2021) / 2 complete years = 2.0
+      expect(zone.averageDaysPerYear).toBe(2);
+      expect(zone.years.some((y: { year: number }) => y.year === thisYear)).toBe(true);
+    });
+
+    it('applies the same thresholds as the live rule, at their exact edges', async () => {
+      await seedHours([
+        { at: '2019-07-01T14:00+02:00', temperatureC: 30, soilMoisturePct: 19.9 },
+        { at: '2019-07-02T14:00+02:00', temperatureC: 29.9, soilMoisturePct: 19.9 },
+        { at: '2019-07-03T14:00+02:00', temperatureC: 30, soilMoisturePct: 20 },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/history/ignition-windows')
+        .expect(200);
+
+      // Only the first hour qualifies: >= 30 °C and strictly below 20 %.
+      expect(zoneOf(res.body).years[0].days).toBe(1);
+    });
+
+    it('reports no history for zones whose escalation ignores weather', async () => {
+      // The seeded database holds only the phosphorus zone, so this test
+      // brings its own wildfire zone rather than assuming one exists.
+      await request(app.getHttpServer())
+        .post('/api/risk-zones')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({
+          nameDe: 'e2e-zone Saison Waldbrand',
+          nameEn: 'e2e-zone season wildfire',
+          hazardType: 'wildfire',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[[16.3, 47.7], [16.31, 47.7], [16.31, 47.71], [16.3, 47.71], [16.3, 47.7]]],
+          },
+        })
+        .expect(201);
+
+      try {
+        const res = await request(app.getHttpServer())
+          .get('/api/history/ignition-windows')
+          .expect(200);
+
+        const wildfire = res.body.zones.find(
+          (z: { hazardType: string }) => z.hazardType === 'wildfire',
+        );
+        // Reporting "0 ignition days" for a zone that escalates on any
+        // detection would read as a decade of safety it never had.
+        expect(wildfire.weatherGated).toBe(false);
+        expect(wildfire.years).toEqual([]);
+        expect(wildfire.averageDaysPerYear).toBeNull();
+      } finally {
+        await db.query(`DELETE FROM high_risk_zones WHERE name_de LIKE 'e2e-zone Saison%';`);
+      }
+    });
+
+    it('names the data source rather than hiding the soil-layer difference', async () => {
+      await seedHours([
+        { at: '2018-07-01T14:00+02:00', temperatureC: 32, soilMoisturePct: 10 },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/history/ignition-windows')
+        .expect(200);
+      expect(zoneOf(res.body).sources).toContain('test');
+    });
+  });
+
   describe('ignition-window forecast', () => {
     /** Publish a forecast as the workers would, so the API can be asked. */
     async function publishForecast(

@@ -8,6 +8,7 @@ import { DatabaseModule } from './database/database.module';
 import { EvaluationModule } from './evaluation/evaluation.module';
 import { ForecastModule } from './forecast/forecast.module';
 import { HealthController } from './health/health.controller';
+import { HistoryModule } from './history/history.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RiskZonesModule } from './risk-zones/risk-zones.module';
 import { SensorsModule } from './sensors/sensors.module';
@@ -24,6 +25,7 @@ import { SimulationModule } from './simulation/simulation.module';
     AnomaliesModule, // REST read model (GeoJSON)
     ConditionsModule, // current conditions + per-zone readiness
     ForecastModule, // the ignition rule read forwards: when does the window open
+    HistoryModule, // ...and read backwards: how often has it been open before
     SensorsModule, // ground sensor registry + LoRaWAN intake
     SimulationModule, // POST /api/simulate-fire end-to-end drill trigger
     NotificationsModule, // relays critical alerts off the map, and watches

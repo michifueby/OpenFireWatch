@@ -34,6 +34,7 @@ import {
   ingestDetections,
 } from './ingestion/ingest.task';
 import { closeForecastRedis, refreshForecast } from './ingestion/forecast.task';
+import { backfillHistory, closeHistoryPool } from './ingestion/history-backfill.task';
 import { createRedisConnection } from './redis';
 import { APP_VERSION, GIT_REVISION } from './version';
 
@@ -97,12 +98,21 @@ async function main(): Promise<void> {
     { name: 'refresh-forecast' },
   );
 
+  // Weather history for the seasonal analysis: mostly a no-op, since a closed
+  // year is fetched exactly once.
+  await ingestionQueue.upsertJobScheduler(
+    'backfill-history',
+    { every: config.HISTORY_BACKFILL_INTERVAL * 1_000 },
+    { name: 'backfill-history' },
+  );
+
   const ingestionWorker = new Worker(
     BUS.INGESTION_QUEUE,
-    async (job) =>
-      job.name === 'refresh-forecast'
-        ? refreshForecast(job)
-        : ingestDetections(job),
+    async (job) => {
+      if (job.name === 'refresh-forecast') return refreshForecast(job);
+      if (job.name === 'backfill-history') return backfillHistory(job);
+      return ingestDetections(job);
+    },
     {
       connection: createRedisConnection(),
       concurrency: 1, // never two overlapping ingestion cycles
@@ -142,6 +152,7 @@ async function main(): Promise<void> {
       closeMonitoringAreaPool(),
       closeConditionsRedis(),
       closeForecastRedis(),
+      closeHistoryPool(),
     ]);
     process.exit(0);
   };

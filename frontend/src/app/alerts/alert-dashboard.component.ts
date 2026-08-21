@@ -29,6 +29,11 @@ import {
   ZoneForecast,
 } from '../core/services/forecast.service';
 import {
+  HistoryService,
+  YearSummary,
+  ZoneHistory,
+} from '../core/services/history.service';
+import {
   LOCKED,
   RealTimeAlertService,
 } from '../core/services/real-time-alert.service';
@@ -211,6 +216,39 @@ import {
               </dl>
             </li>
           </ul>
+
+          <!-- How often the window has been open in past seasons. Collapsed:
+               it is context for a decision, not part of the live picture. -->
+          <footer class="history-toggle">
+            <button type="button" (click)="toggleSeason()">
+              {{ showSeason() ? i18n.t('seasonHide') : i18n.t('seasonShow') }}
+            </button>
+          </footer>
+
+          <section class="season" *ngIf="showSeason()">
+            <h3>{{ i18n.t('seasonTitle') }}</h3>
+
+            <p class="empty" *ngIf="!seasonZones().length">
+              {{ i18n.t('seasonEmpty') }}
+            </p>
+
+            <div class="season-zone" *ngFor="let z of seasonZones()">
+              <div class="s-zone-name">{{ i18n.pick(z.name) }}</div>
+              <div class="s-average" *ngIf="z.averageDaysPerYear !== null">
+                {{ averageLabel(z) }}
+              </div>
+
+              <ul class="season-bars">
+                <li *ngFor="let y of z.years" [class.current]="isCurrentYear(y)">
+                  <span class="s-year">{{ y.year }}</span>
+                  <span class="s-bar" [style.width.%]="barWidth(y, z)"></span>
+                  <span class="s-days">{{ daysLabel(y) }}</span>
+                </li>
+              </ul>
+
+              <p class="s-source">{{ i18n.t('seasonSource') }}</p>
+            </div>
+          </section>
 
           <!-- The database has recorded every verdict since day one; this is the
                part of it a responder can actually look at. Collapsed by default
@@ -593,6 +631,86 @@ import {
         }
       }
 
+      .season {
+        padding: 0 0.6rem 0.7rem;
+
+        h3 {
+          margin: 0 0 0.4rem;
+          font-family: $font-mono;
+          font-size: 0.66rem;
+          letter-spacing: 0.12em;
+          color: #8f99ab;
+        }
+      }
+
+      .season-zone {
+        margin-bottom: 0.7rem;
+      }
+
+      .s-zone-name {
+        font-size: 0.76rem;
+        color: #c6ccd6;
+      }
+
+      .s-average {
+        font-family: $font-mono;
+        font-size: 0.7rem;
+        color: #8f99ab;
+      }
+
+      .season-bars {
+        list-style: none;
+        margin: 0.4rem 0 0;
+        padding: 0;
+        display: grid;
+        gap: 0.2rem;
+        font-family: $font-mono;
+        font-size: 0.68rem;
+        font-variant-numeric: tabular-nums;
+
+        li {
+          display: grid;
+          /* The day column fits "999 T" without clipping; at 2.6rem a
+             three-digit count lost its unit. */
+          grid-template-columns: 2.6rem 1fr 3.4rem;
+          align-items: center;
+          gap: 0.4rem;
+          color: #8f99ab;
+
+          /* The running year is not comparable with the closed ones beside
+             it — half a summer would otherwise read as a low year. */
+          &.current {
+            color: #c6ccd6;
+
+            .s-bar {
+              background: repeating-linear-gradient(
+                90deg,
+                #ffa023 0 4px,
+                transparent 4px 7px
+              );
+            }
+          }
+        }
+      }
+
+      .s-bar {
+        height: 0.5rem;
+        min-width: 1px;
+        border-radius: 2px;
+        background: #ffa023;
+      }
+
+      .s-days {
+        text-align: right;
+      }
+
+      .s-source {
+        margin: 0.4rem 0 0;
+        font-size: 0.66rem;
+        line-height: 1.4;
+        color: #8f99ab;
+      }
+
       .history {
         padding: 0 0.6rem 0.7rem;
 
@@ -849,6 +967,9 @@ export class AlertDashboardComponent implements OnDestroy {
   /** History stays collapsed until asked for — the live picture comes first. */
   readonly showHistory = signal(false);
 
+  /** Same for the seasonal record, which is context rather than news. */
+  readonly showSeason = signal(false);
+
   /**
    * Why the last acknowledgement did not go through, and which alert it was
    * about. One at a time: a responder is acting on one alarm, and a column of
@@ -967,6 +1088,42 @@ export class AlertDashboardComponent implements OnDestroy {
     return (z.temperatureGapC ?? 1) <= 0 || (z.soilMoistureGapPct ?? 1) < 0;
   }
 
+  /** Opened on demand; the fetch happens once and is then cached. */
+  async toggleSeason(): Promise<void> {
+    this.showSeason.set(!this.showSeason());
+    if (this.showSeason()) await this.history.load();
+  }
+
+  /** Only zones the question applies to — see ForecastService. */
+  seasonZones(): ZoneHistory[] {
+    return (this.history.history()?.zones ?? []).filter(
+      (zone) => zone.weatherGated && zone.years.length > 0,
+    );
+  }
+
+  averageLabel(zone: ZoneHistory): string {
+    return this.i18n
+      .t('seasonAverage')
+      .replace('{days}', String(zone.averageDaysPerYear ?? 0));
+  }
+
+  daysLabel(year: YearSummary): string {
+    return this.i18n.t('seasonDays').replace('{days}', String(year.days));
+  }
+
+  isCurrentYear(year: YearSummary): boolean {
+    return year.year === new Date().getFullYear();
+  }
+
+  /**
+   * Bar length relative to the worst year on record, so the shape of a decade
+   * is readable at a glance without an axis.
+   */
+  barWidth(year: YearSummary, zone: ZoneHistory): number {
+    const worst = Math.max(...zone.years.map((y) => y.days), 1);
+    return Math.round((year.days / worst) * 100);
+  }
+
   /**
    * One line per zone: when its ignition window next opens, or why the
    * question does not apply.
@@ -1034,6 +1191,7 @@ export class AlertDashboardComponent implements OnDestroy {
     readonly i18n: TranslationService,
     readonly cond: ConditionsService,
     readonly forecast: ForecastService,
+    readonly history: HistoryService,
   ) {
     // A critical escalation opens the sheet by itself. On a desktop the panel
     // is always on screen, so this changes nothing there; on a phone it is

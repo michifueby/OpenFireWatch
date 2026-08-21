@@ -17,6 +17,13 @@ still a question, not a commitment.
 
 ### Added
 
+- **Seasonal ignition history.** How often each zone has actually met its
+  ignition criteria, by year and month, over a decade of reanalysis weather
+  backfilled per zone. The project's own records could never answer this —
+  they are written only when a satellite detects something — so a hot, dry day
+  without a detection left no trace. For the Föhrenwald: 13.8 days per year on
+  average, with 2024 and 2026 the two highest in the record. See
+  [docs/seasonal-history.md](docs/seasonal-history.md).
 - **Ignition-window forecast.** The phosphorus rule read forwards instead of
   backwards: a seven-day hourly outlook per weather-gated zone saying when
   temperature and topsoil moisture are next expected to meet the ignition

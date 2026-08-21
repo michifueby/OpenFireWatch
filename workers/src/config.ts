@@ -50,6 +50,12 @@ const EnvSchema = z.object({
    * free service deserves not to be asked every five minutes.
    */
   FORECAST_POLL_INTERVAL: z.coerce.number().int().min(600).default(3600),
+  /**
+   * How often to look for gaps in the weather history. Daily: a closed year
+   * is fetched once and skipped forever after, so this run is almost always
+   * a handful of queries that find nothing to do.
+   */
+  HISTORY_BACKFILL_INTERVAL: z.coerce.number().int().min(3600).default(86400),
 
   // --- GeoSphere Austria (TAWES station network, 10-minute cadence) -----------
   /**
