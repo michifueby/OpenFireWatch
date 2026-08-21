@@ -113,13 +113,43 @@ is still a question rather than a commitment.
 
 ### Cutting a release
 
+You do not. Pushing to `main` does it: once CI is green, the release workflow
+works out whether the commits since the last tag call for a release, and if
+they do it bumps the version, moves the `[Unreleased]` changelog section under
+the new heading, tags, and publishes a GitHub release.
+
+The version is **derived from the commit messages**, which is the whole reason
+the project uses Conventional Commits:
+
+| Commit prefix | Effect |
+| --- | --- |
+| `feat:` | minor — `0.1.0` → `0.2.0` |
+| `fix:` / `perf:` | patch — `0.1.0` → `0.1.1` |
+| `feat!:`, or `BREAKING CHANGE:` in the body | major — but see below |
+| `docs:` `build:` `ci:` `chore:` `refactor:` `style:` `test:` | no release; rides along in the next one |
+
+Below `1.0.0` a breaking change bumps the **minor**, not the major. SemVer
+reserves `0.x` for exactly that, and reaching `1.0.0` by accident because
+somebody renamed a field would spend a signal this project has committed to
+meaning something specific.
+
+That makes the commit prefix load-bearing. A capability added under `chore:`
+ships without a version change and without a changelog entry — nothing fails,
+the release simply stops describing what is in it.
+
+Run it by hand when you want to see or force the decision:
+
 ```bash
-scripts/version.sh 0.2.0
-# move the Unreleased entries in CHANGELOG.md under [0.2.0] with today's date
-git commit -am "release: v0.2.0"
-git tag -a v0.2.0 -m "OpenFireWatch v0.2.0"
-git push --follow-tags
+scripts/release.sh --print     # just the next version, or nothing
+scripts/release.sh --dry-run   # what it would do, and why
+scripts/release.sh             # bump, changelog, commit, tag
 ```
+
+Write the `[Unreleased]` section as you go — the release moves it verbatim.
+It is deliberately not generated from commit subjects: those describe a diff,
+and the changelog is read by people who do not read diffs. If nothing is
+written there, the subjects go in marked as needing a rewrite, because an
+empty entry is worse than an untidy one.
 
 ### Deploying
 

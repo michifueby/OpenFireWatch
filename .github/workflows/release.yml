@@ -1,0 +1,82 @@
+# =============================================================================
+# OpenFireWatch — automatic release
+#
+# Runs after CI passes on `main` and cuts a release IF the commits since the
+# last tag call for one. Nothing to remember, nothing to type: the version
+# follows from what was actually committed.
+#
+# Why it waits for CI: a tag is a promise that the code at that commit works.
+# Tagging first and testing after would put that promise on something nobody
+# has checked yet.
+#
+# A run that finds only docs/chore/build commits does nothing at all — those
+# ride along in the next real release rather than causing one.
+#
+# To stop releasing automatically, disable this workflow; scripts/release.sh
+# does exactly the same thing by hand.
+# =============================================================================
+
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+# The release commit and tag are pushed back to the repository.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Cut a release if the commits call for one
+    runs-on: ubuntu-latest
+    # Never tag a red build.
+    if: github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # Full history and tags: the bump is computed from the commits since
+          # the last tag, and a shallow clone has neither.
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Identify as the release bot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine the next version
+        id: next
+        run: echo "version=$(scripts/release.sh --print)" >> "$GITHUB_OUTPUT"
+
+      - name: Cut the release
+        if: steps.next.outputs.version != ''
+        run: |
+          scripts/release.sh
+          # The release commit itself is a `release:` commit, which the bump
+          # rules ignore — so this push cannot trigger a second release.
+          git push --follow-tags
+
+      - name: Publish it on GitHub
+        if: steps.next.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Notes come from CHANGELOG.md, which is written for people rather
+          # than assembled from commit subjects.
+          awk -v v="## [${{ steps.next.outputs.version }}]" '
+            $0 ~ v {found=1; next}
+            found && /^## \[/ {exit}
+            found {print}
+          ' CHANGELOG.md > notes.md
+          gh release create "v${{ steps.next.outputs.version }}" \
+            --title "OpenFireWatch v${{ steps.next.outputs.version }}" \
+            --notes-file notes.md
