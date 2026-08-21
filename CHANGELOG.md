@@ -21,6 +21,11 @@ still a question, not a commitment.
   detection lands in a zone with a fresh reading, the measured values replace
   the regional estimate as the ignition rule's inputs — and the alert names
   the sensor. Stale sensors fall back to the regional estimate.
+- **Switchable base maps.** Dark (global), aerial imagery and terrain — the
+  latter two from basemap.at, the official Austrian basemap under CC BY 4.0,
+  whose orthophoto resolves single trees and forest tracks at 30 cm. The
+  choice is remembered, and Austria-only sources are marked as such so nobody
+  outside their coverage stares at blank tiles.
 - **Sensor management in the UI.** The hazard-zones panel lists each zone's
   sensors with reporting state, values and battery; placing a sensor is a tap
   on the map, and its zone is derived from the position. Register, edit,

@@ -47,8 +47,16 @@ export class ZoneDrawService {
   private cursor: Position | null = null;
   private keyHandler?: (event: KeyboardEvent) => void;
 
-  /** Called once by MapComponent when the map style has loaded. */
+  /**
+   * Called by MapComponent whenever a style finishes loading — which happens
+   * again on every basemap switch, because MapLibre discards every source and
+   * layer with the old style. Handlers are registered once; the layers are
+   * rebuilt each time, and any draft in progress is repainted so switching
+   * the basemap mid-drawing does not silently lose the corners already
+   * placed.
+   */
   attach(map: MapLibreMap): void {
+    const firstAttach = this.map !== map;
     this.map = map;
 
     map.addSource(DRAFT_SOURCE, {
@@ -83,9 +91,14 @@ export class ZoneDrawService {
       },
     });
 
-    map.on('click', this.onClick);
-    map.on('mousemove', this.onMouseMove);
-    map.on('dblclick', this.onDoubleClick);
+    if (firstAttach) {
+      map.on('click', this.onClick);
+      map.on('mousemove', this.onMouseMove);
+      map.on('dblclick', this.onDoubleClick);
+    }
+
+    // Repaint whatever was on screen before the style went away.
+    this.render();
   }
 
   /** Enter drawing mode, optionally seeding it with an existing outline. */

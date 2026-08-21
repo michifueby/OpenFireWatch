@@ -16,6 +16,7 @@
  * `map.remove()` is called explicitly.
  */
 
+import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   Component,
@@ -23,9 +24,20 @@ import {
   OnDestroy,
   ViewChild,
   effect,
+  signal,
 } from '@angular/core';
 import maplibregl, { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import { Subscription } from 'rxjs';
+
+import {
+  Basemap,
+  BASEMAPS,
+  BASE_LAYER,
+  BASE_SOURCE,
+  buildStyle,
+  readStoredBasemap,
+  storeBasemap,
+} from './basemaps';
 
 import { TranslationService } from '../core/i18n/translation.service';
 import { ConditionsService } from '../core/services/conditions.service';
@@ -69,9 +81,111 @@ interface SensorPopupProps {
 @Component({
   selector: 'ofw-map',
   standalone: true,
-  template: `<div #mapContainer class="map"></div>`,
+  imports: [CommonModule],
+  template: `
+    <div #mapContainer class="map"></div>
+
+    <!-- Basemap switcher. Bottom-left on a desktop, where it is out of the
+         way of both panels; the phone layout moves it (see the styles). -->
+    <div class="basemaps" role="group" [attr.aria-label]="i18n.t('basemapAria')">
+      <button
+        *ngFor="let option of basemaps"
+        type="button"
+        [class.active]="option.id === basemap().id"
+        [attr.aria-pressed]="option.id === basemap().id"
+        [attr.title]="
+          option.austriaOnly ? i18n.t('basemapAustriaOnly') : null
+        "
+        (click)="selectBasemap(option)"
+      >
+        {{ i18n.t(option.labelKey) }}
+        <!-- Coverage is a property of the source, not a detail: outside
+             Austria these tiles are simply blank, and an operator should
+             learn that from the button rather than from an empty map. -->
+        <span class="coverage" *ngIf="option.austriaOnly" aria-hidden="true">AT</span>
+      </button>
+    </div>
+  `,
   styles: [
     `
+      .basemaps {
+        position: fixed;
+        z-index: 3;
+        left: 1rem;
+        bottom: 4.25rem; // clear of the credit bar
+        display: flex;
+        gap: 1px;
+        padding: 1px;
+        border: 1px solid rgba(230, 232, 238, 0.26);
+        border-radius: 999px;
+        background: rgba(7, 12, 20, 0.88);
+        backdrop-filter: blur(6px);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+
+        button {
+          min-height: 2rem;
+          padding: 0.35rem 0.8rem;
+          border: none;
+          border-radius: 999px;
+          background: transparent;
+          color: #97a1b3;
+          font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+          font-size: 0.72rem;
+          letter-spacing: 0.06em;
+          cursor: pointer;
+
+          &:hover {
+            color: #e6e8ee;
+          }
+
+          // The active basemap is stated, not implied by a subtle tint:
+          // which ground you are looking at changes how you read everything
+          // drawn on top of it.
+          &.active {
+            background: rgba(230, 232, 238, 0.14);
+            color: #e6e8ee;
+          }
+
+          .coverage {
+            margin-left: 0.3rem;
+            padding: 0.05rem 0.25rem;
+            border-radius: 3px;
+            background: rgba(230, 232, 238, 0.12);
+            font-size: 0.6rem;
+            letter-spacing: 0.04em;
+            vertical-align: 1px;
+          }
+        }
+      }
+
+      // Phone: the bottom-left corner belongs to the situation sheet, so the
+      // switcher moves up beside the top-left launcher instead.
+      @media (max-width: 640px) {
+        .basemaps {
+          left: calc(0.75rem + var(--ofw-safe-left));
+          // Clear of the launcher above it, which ends around 3.25rem.
+          top: calc(4.25rem + var(--ofw-safe-top));
+          bottom: auto;
+          // Never wider than the screen: three labels plus coverage chips is
+          // a lot of horizontal text for 375 px.
+          max-width: calc(100vw - 1.5rem - var(--ofw-safe-left) - var(--ofw-safe-right));
+
+          button {
+            min-height: 2.25rem;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.68rem;
+            white-space: nowrap;
+
+            .coverage {
+              margin-left: 0.25rem;
+              padding: 0.05rem 0.2rem;
+              font-size: 0.56rem;
+            }
+          }
+        }
+      }
+
       :host,
       .map {
         display: block;
@@ -104,9 +218,16 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   /** Zone ids the overlay currently reflects, to detect changes cheaply. */
   private knownZoneIds = '';
 
+  /** Layer-scoped handlers outlive their layer; bind them exactly once. */
+  private sensorHandlersBound = false;
+
+  readonly basemaps = BASEMAPS;
+  /** The basemap on screen; restored from the operator's last choice. */
+  readonly basemap = signal<Basemap>(readStoredBasemap());
+
   constructor(
     private readonly alerts: RealTimeAlertService,
-    private readonly i18n: TranslationService,
+    readonly i18n: TranslationService,
     private readonly draw: ZoneDrawService,
     private readonly zoneApi: ZoneApiService,
     private readonly sensorApi: SensorApiService,
@@ -151,10 +272,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     this.map = new maplibregl.Map({
       container: this.mapContainer.nativeElement,
-      // CartoDB "Dark Matter": free, high-quality dark basemap that lets the
-      // red hazard styling carry all the visual weight (attribution included
-      // in the style; check Carto's terms before heavy production use).
-      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+      style: buildStyle(this.basemap()),
       center: NEUNKIRCHEN_LNG_LAT,
       zoom: 10,
       attributionControl: { compact: true },
@@ -185,20 +303,74 @@ export class MapComponent implements AfterViewInit, OnDestroy {
       };
     }
 
-    // Sources/layers can only be added once the style has loaded.
-    this.map.on('load', () => {
-      this.drawRiskZones();
-      this.initSensorLayer();
-      this.initAnomalyLayer();
-      // Drawing layers are registered last so the draft paints on top.
-      this.draw.attach(this.map);
-      void this.loadRiskZones();
-      void this.loadSensors();
-      void this.loadAnomalyHistory();
-      // Anything that streamed in while the style was still loading is
-      // already collected; this is the first moment it can be painted.
-      this.refreshAnomalySource();
-    });
+    // `styledata` rather than `load`: `load` waits for the base map's TILES,
+    // and a raster basemap whose tiles are slow (or never arrive, on a
+    // throttled tab) would leave the hazard overlay uninstalled — a map
+    // showing ground with no zones on it, which is this app's worst failure.
+    // `styledata` fires as soon as the style itself is usable, which is all
+    // addSource needs. installOverlay is idempotent, so the repeat firings
+    // this event is known for cost nothing.
+    this.map.on('styledata', () => this.installOverlay());
+  }
+
+  /**
+   * Switch the ground underneath the hazard overlay.
+   *
+   * `setStyle` throws away every source and layer that is not part of the new
+   * style, so everything this component drew has to be reinstalled — that is
+   * what the `styledata` handler above is for. The camera position is kept:
+   * an operator switching to aerial imagery is asking "what does THIS look
+   * like", and moving the view would answer a different question.
+   */
+  selectBasemap(option: Basemap): void {
+    if (option.id === this.basemap().id) return;
+    this.basemap.set(option);
+    storeBasemap(option.id);
+
+    // Swap the ground, keep everything drawn on it. `setStyle` would discard
+    // the hazard zones, sensors and detections and require rebuilding them
+    // on a style event; this touches one source and cannot lose anything.
+    // Replace the base source outright rather than calling setTiles: that
+    // swaps the imagery but re-applies the source's ORIGINAL attribution,
+    // which would leave CARTO's credit standing under basemap.at aerial
+    // photography. These tiles are free precisely on condition of correct
+    // credit, so the attribution has to travel with them.
+    const style = buildStyle(option);
+    // Insert the new base below the first overlay layer, so the hazard zones,
+    // sensors and detections keep painting on top of the ground rather than
+    // disappearing beneath it.
+    const firstOverlayLayer = this.map
+      .getStyle()
+      .layers.find((layer) => layer.id !== BASE_LAYER)?.id;
+
+    if (this.map.getLayer(BASE_LAYER)) this.map.removeLayer(BASE_LAYER);
+    if (this.map.getSource(BASE_SOURCE)) this.map.removeSource(BASE_SOURCE);
+    this.map.addSource(BASE_SOURCE, style.sources[BASE_SOURCE]);
+    this.map.addLayer(style.layers[0], firstOverlayLayer);
+  }
+
+  /**
+   * (Re)build everything this component draws on top of the basemap.
+   * Idempotent by construction: called on first load and after every style
+   * change, and each step adds a source that the style itself never carries.
+   */
+  private installOverlay(): void {
+    // Every source below is added together, so one is enough to tell whether
+    // this already ran — which makes a duplicate event harmless instead of
+    // an "source already exists" throw that would abort the rebuild.
+    if (this.map.getSource(RISK_ZONE_SOURCE)) return;
+
+    this.drawRiskZones();
+    this.initSensorLayer();
+    this.initAnomalyLayer();
+    // Drawing layers are registered last so the draft paints on top.
+    this.draw.attach(this.map);
+    void this.loadRiskZones();
+    void this.loadSensors();
+    void this.loadAnomalyHistory();
+    // Anything that streamed in while the style was loading is already
+    // collected; this is the first moment it can be painted.
+    this.refreshAnomalySource();
   }
 
   /**
@@ -301,6 +473,9 @@ export class MapComponent implements AfterViewInit, OnDestroy {
         'circle-stroke-width': 1.5,
       },
     });
+
+    if (this.sensorHandlersBound) return;
+    this.sensorHandlersBound = true;
 
     this.map.on('click', SENSORS_LAYER, (event) => {
       const feature = event.features?.[0];

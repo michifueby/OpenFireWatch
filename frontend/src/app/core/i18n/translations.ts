@@ -62,7 +62,12 @@ export interface TranslationDict {
   labelCoords: string;
   labelAcquired: string;
 
-  // --- Map (marker + popup) ----------------------------------------------------
+  // --- Map (basemap switcher, marker, popup) -----------------------------------
+  basemapAria: string;
+  basemapDark: string;
+  basemapAerial: string;
+  basemapTerrain: string;
+  basemapAustriaOnly: string;
   criticalMarkerTitle: string;
   popupZone: string;
   popupTemperature: string;
@@ -194,6 +199,11 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     labelCoords: 'LAT / LON',
     labelAcquired: 'ACQUIRED',
 
+    basemapAria: 'Base map',
+    basemapDark: 'Dark',
+    basemapAerial: 'Aerial',
+    basemapTerrain: 'Terrain',
+    basemapAustriaOnly: 'Austria only',
     criticalMarkerTitle: 'CRITICAL ALERT',
     popupZone: 'Zone',
     popupTemperature: 'Temperature',
@@ -337,6 +347,11 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     labelCoords: 'LAT / LON',
     labelAcquired: 'ERFASST',
 
+    basemapAria: 'Kartenart',
+    basemapDark: 'Dunkel',
+    basemapAerial: 'Luftbild',
+    basemapTerrain: 'Gelände',
+    basemapAustriaOnly: 'nur Österreich',
     criticalMarkerTitle: 'KRITISCHER ALARM',
     popupZone: 'Zone',
     popupTemperature: 'Temperatur',
