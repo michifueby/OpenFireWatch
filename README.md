@@ -107,6 +107,10 @@ OpenFireWatch is **fault-tolerant and event-driven by design**. Every layer is d
 - 🧩 **Event-driven decoupling** — Redis as the event bus; every component can restart independently without data loss.
 - 🗃️ **Idempotent deduplication** — database-level unique constraints make re-ingesting the same satellite pass a no-op.
 - 🗺️ **Switchable base maps** — dark command-centre styling, 30 cm aerial imagery and terrain relief (aerial/terrain from [basemap.at](https://basemap.at/), CC BY 4.0, Austria only).
+- 🔮 **Ignition-window forecast** — the phosphorus rule read forwards: a
+  seven-day outlook per zone saying when temperature and topsoil moisture next
+  meet the ignition criteria *at the same hour*, warned about three days out.
+  Satellites report a fire hours late; this prepares for one days early.
 - 🔔 **Notifications that leave the screen** — critical alerts and a dead-man's
   switch for stalled ingestion, delivered over a signed webhook or Telegram.
   Deduplicated, retried, recorded; a new channel is one class and one line.

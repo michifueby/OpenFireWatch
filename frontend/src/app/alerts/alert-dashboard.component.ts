@@ -24,6 +24,11 @@ import {
   ZoneReadiness,
 } from '../core/services/conditions.service';
 import {
+  ForecastService,
+  IgnitionWindow,
+  ZoneForecast,
+} from '../core/services/forecast.service';
+import {
   LOCKED,
   RealTimeAlertService,
 } from '../core/services/real-time-alert.service';
@@ -117,6 +122,31 @@ import {
                 </li>
               </ul>
             </ng-container>
+          </section>
+
+          <!-- The rule read forwards. Placed under the conditions because it
+               answers the next question a reader has: not "how close is it
+               now?" but "when does it get there?" -->
+          <section class="outlook" *ngIf="forecast.forecast() as f">
+            <h3>{{ i18n.t('forecastTitle') }}</h3>
+
+            <p class="empty" *ngIf="!f.available">
+              {{ i18n.t('forecastUnavailable') }}
+            </p>
+
+            <ul class="outlook-list" *ngIf="f.available">
+              <li
+                *ngFor="let z of f.zones"
+                [class.imminent]="isImminent(z)"
+                [class.upcoming]="!isImminent(z) && z.windows.length > 0"
+              >
+                <span class="o-name">{{ i18n.pick(z.name) }}</span>
+                <span class="o-state">{{ outlook(z) }}</span>
+                <span class="o-detail" *ngIf="z.windows[0] as w">
+                  {{ windowDetail(w) }}
+                </span>
+              </li>
+            </ul>
           </section>
 
           <p class="empty" *ngIf="(alerts.activeWarnings$ | async)?.length === 0">
@@ -468,6 +498,76 @@ import {
       .r-state {
         font-family: $font-mono;
         font-size: 0.7rem;
+        color: #8f99ab;
+      }
+
+      .outlook {
+        padding: 0.6rem 0.9rem;
+        border-bottom: 1px solid rgba(230, 232, 238, 0.12);
+
+        h3 {
+          margin: 0 0 0.4rem;
+          font-family: $font-mono;
+          font-size: 0.66rem;
+          letter-spacing: 0.12em;
+          color: #8f99ab;
+        }
+      }
+
+      .outlook-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 0.35rem;
+
+        li {
+          padding-left: 0.5rem;
+          border-left: 2px solid #3a4560;
+          font-size: 0.74rem;
+          color: #9aa4b2;
+
+          /* A window inside three days is something to act on; one further
+             out is worth knowing but not worth alarming about. */
+          &.upcoming {
+            border-left-color: #ffa023;
+          }
+
+          &.imminent {
+            border-left-color: $alert-red;
+
+            .o-state {
+              color: $alert-red;
+            }
+          }
+        }
+      }
+
+      .o-name {
+        display: block;
+        color: #c6ccd6;
+      }
+
+      /*
+       * Neutral by default. "Escalates on detection" and "no window ahead"
+       * are not states to be alarmed about, and a coloured row that never
+       * changes teaches the eye to stop reading the colour — the same trap
+       * the conditions list fell into.
+       */
+      .o-state {
+        font-family: $font-mono;
+        font-size: 0.7rem;
+        color: #8f99ab;
+      }
+
+      .outlook-list li.upcoming .o-state {
+        color: #ffa023;
+      }
+
+      .o-detail {
+        display: block;
+        font-family: $font-mono;
+        font-size: 0.68rem;
         color: #8f99ab;
       }
 
@@ -867,6 +967,49 @@ export class AlertDashboardComponent implements OnDestroy {
     return (z.temperatureGapC ?? 1) <= 0 || (z.soilMoistureGapPct ?? 1) < 0;
   }
 
+  /**
+   * One line per zone: when its ignition window next opens, or why the
+   * question does not apply.
+   */
+  outlook(zone: ZoneForecast): string {
+    if (!zone.weatherGated) return this.i18n.t('forecastNotWeatherGated');
+    const next = zone.windows[0];
+    if (!next) return this.i18n.t('forecastNone');
+
+    const start = new Date(next.from);
+    const day = start.toLocaleDateString(
+      this.i18n.locale() === 'de' ? 'de-AT' : 'en-GB',
+      { weekday: 'long', day: '2-digit', month: '2-digit' },
+    );
+    const window = this.i18n
+      .t('forecastWindow')
+      .replace('{day}', day)
+      .replace('{from}', next.from.slice(11, 16))
+      .replace('{to}', next.to.slice(11, 16));
+
+    const lead = this.i18n
+      .t('forecastLeadTime')
+      .replace('{hours}', String(zone.hoursUntilNextWindow ?? 0));
+    return `${window} · ${lead}`;
+  }
+
+  /** The peak values inside the window — what makes it a window. */
+  windowDetail(window: IgnitionWindow): string {
+    return this.i18n
+      .t('forecastPeak')
+      .replace('{temp}', String(window.peakTemperatureC))
+      .replace('{soil}', String(window.minSoilMoisturePct));
+  }
+
+  /** Within three days: close enough to plan around. */
+  isImminent(zone: ZoneForecast): boolean {
+    return (
+      zone.windows.length > 0 &&
+      zone.hoursUntilNextWindow !== null &&
+      zone.hoursUntilNextWindow <= 72
+    );
+  }
+
   /** Coarse class for colour-coding a history row by severity. */
   levelClass(level: string): 'critical' | 'elevated' | 'info' {
     if (level.startsWith('CRITICAL')) return 'critical';
@@ -890,6 +1033,7 @@ export class AlertDashboardComponent implements OnDestroy {
     readonly alerts: RealTimeAlertService,
     readonly i18n: TranslationService,
     readonly cond: ConditionsService,
+    readonly forecast: ForecastService,
   ) {
     // A critical escalation opens the sheet by itself. On a desktop the panel
     // is always on screen, so this changes nothing there; on a phone it is

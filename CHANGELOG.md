@@ -13,6 +13,17 @@ still a question, not a commitment.
 
 ## [Unreleased]
 
+### Added
+
+- **Ignition-window forecast.** The phosphorus rule read forwards instead of
+  backwards: a seven-day hourly outlook per weather-gated zone saying when
+  temperature and topsoil moisture are next expected to meet the ignition
+  criteria at the same hour. Shown in the situation panel and, inside a
+  three-day horizon, sent through the notification channels as a warning. The
+  detection pipeline can only report a fire a satellite has already seen —
+  this is the same rule used to prepare rather than to report. See
+  [docs/forecast.md](docs/forecast.md).
+
 ## [0.3.0] — 2026-08-21
 
 ### Added

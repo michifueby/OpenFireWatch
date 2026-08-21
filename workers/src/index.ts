@@ -33,6 +33,7 @@ import {
   detectionReportsQueue,
   ingestDetections,
 } from './ingestion/ingest.task';
+import { closeForecastRedis, refreshForecast } from './ingestion/forecast.task';
 import { createRedisConnection } from './redis';
 import { APP_VERSION, GIT_REVISION } from './version';
 
@@ -88,10 +89,25 @@ async function main(): Promise<void> {
     await ingestionQueue.removeJobScheduler(retired);
   }
 
-  const ingestionWorker = new Worker(BUS.INGESTION_QUEUE, ingestDetections, {
-    connection: createRedisConnection(),
-    concurrency: 1, // never two overlapping ingestion cycles
-  });
+  // Forecast refresh shares the queue but is its own scheduled job: it runs
+  // on a different rhythm and must not delay a detection cycle.
+  await ingestionQueue.upsertJobScheduler(
+    'refresh-forecast',
+    { every: config.FORECAST_POLL_INTERVAL * 1_000 },
+    { name: 'refresh-forecast' },
+  );
+
+  const ingestionWorker = new Worker(
+    BUS.INGESTION_QUEUE,
+    async (job) =>
+      job.name === 'refresh-forecast'
+        ? refreshForecast(job)
+        : ingestDetections(job),
+    {
+      connection: createRedisConnection(),
+      concurrency: 1, // never two overlapping ingestion cycles
+    },
+  );
   ingestionWorker.on('failed', moveToDeadLetter(BUS.INGESTION_QUEUE));
   // Log-and-continue: a worker-level error (e.g. Redis blip) must not exit.
   ingestionWorker.on('error', (error) =>
@@ -109,6 +125,7 @@ async function main(): Promise<void> {
     `OpenFireWatch workers v${APP_VERSION} (${GIT_REVISION}) up — ` +
       `FIRMS ${config.FIRMS_SOURCE} every ${config.FIRMS_POLL_INTERVAL}s, ` +
       `weather from TAWES station ${config.GEOSPHERE_STATION_ID}, ` +
+      `ignition forecast every ${config.FORECAST_POLL_INTERVAL}s, ` +
       (area
         ? `area [${area.bbox}] (${area.origin === 'zones' ? 'derived from active zones' : 'FIRMS_AREA override'})`
         : 'area pending (no active zones yet)'),
@@ -124,6 +141,7 @@ async function main(): Promise<void> {
       deadLetterQueue.close(),
       closeMonitoringAreaPool(),
       closeConditionsRedis(),
+      closeForecastRedis(),
     ]);
     process.exit(0);
   };

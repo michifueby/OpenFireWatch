@@ -465,6 +465,121 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('ignition-window forecast', () => {
+    /** Publish a forecast as the workers would, so the API can be asked. */
+    async function publishForecast(
+      hours: { at: string; temperatureC: number; soilMoisturePct: number }[],
+      hazardType = 'white_phosphorus',
+    ): Promise<void> {
+      await redis.set(
+        'forecast:current',
+        JSON.stringify({
+          generatedAt: new Date().toISOString(),
+          zones: [
+            {
+              zoneId: 1,
+              name: { de: 'Testzone', en: 'Test zone' },
+              hazardType,
+              hours,
+            },
+          ],
+        }),
+        'EX',
+        300,
+      );
+    }
+
+    /**
+     * `n` hours from now, in the shape the workers publish: local wall clock
+     * with its UTC offset. Writing these without the offset is what exposed
+     * the real bug — an unqualified timestamp is read in the server's own
+     * zone, which silently shifted every window inside a UTC container.
+     */
+    const hourAt = (offset: number): string =>
+      new Date(Date.now() + offset * 3_600_000).toISOString().slice(0, 16) + '+00:00';
+
+    afterEach(async () => {
+      await redis.del('forecast:current');
+    });
+
+    it('says the outlook is unknown rather than implying safety', async () => {
+      await redis.del('forecast:current');
+      const res = await request(app.getHttpServer()).get('/api/forecast').expect(200);
+
+      // An empty zone list would read as "no ignition window ahead", which is
+      // the opposite of what a missing forecast means.
+      expect(res.body.available).toBe(false);
+      expect(res.body.zones).toEqual([]);
+    });
+
+    it('finds a window only where BOTH criteria hold in the same hour', async () => {
+      // Hot but damp, then dry but cool: a daily max/min comparison would
+      // report a window here that never existed.
+      await publishForecast([
+        { at: hourAt(1), temperatureC: 34, soilMoisturePct: 40 },
+        { at: hourAt(2), temperatureC: 12, soilMoisturePct: 5 },
+      ]);
+
+      const res = await request(app.getHttpServer()).get('/api/forecast').expect(200);
+      expect(res.body.zones[0].windows).toEqual([]);
+      expect(res.body.zones[0].hoursUntilNextWindow).toBeNull();
+    });
+
+    it('groups consecutive qualifying hours into one window with its peaks', async () => {
+      await publishForecast([
+        { at: hourAt(1), temperatureC: 20, soilMoisturePct: 8 },
+        { at: hourAt(2), temperatureC: 31, soilMoisturePct: 9 },
+        { at: hourAt(3), temperatureC: 34, soilMoisturePct: 7 },
+        { at: hourAt(4), temperatureC: 30, soilMoisturePct: 6 },
+        { at: hourAt(5), temperatureC: 22, soilMoisturePct: 6 },
+        // A separate spell later on must not merge with the first.
+        { at: hourAt(30), temperatureC: 33, soilMoisturePct: 9 },
+      ]);
+
+      const res = await request(app.getHttpServer()).get('/api/forecast').expect(200);
+      const zone = res.body.zones[0];
+
+      expect(zone.windows).toHaveLength(2);
+      expect(zone.windows[0]).toEqual(
+        expect.objectContaining({ peakTemperatureC: 34, minSoilMoisturePct: 6 }),
+      );
+      expect(zone.hoursUntilNextWindow).toBeGreaterThanOrEqual(1);
+      expect(zone.hoursUntilNextWindow).toBeLessThanOrEqual(3);
+    });
+
+    it('refuses to forecast a zone whose escalation does not depend on weather', async () => {
+      // Conditions that would be a window for phosphorus.
+      await publishForecast(
+        [{ at: hourAt(1), temperatureC: 35, soilMoisturePct: 5 }],
+        'wildfire',
+      );
+
+      const res = await request(app.getHttpServer()).get('/api/forecast').expect(200);
+      const zone = res.body.zones[0];
+
+      // Saying "no ignition window" about a wildfire zone would read as
+      // reassurance the system has no basis for.
+      expect(zone.weatherGated).toBe(false);
+      expect(zone.windows).toEqual([]);
+    });
+
+    it('uses the same thresholds as the live rule, not its own copy', async () => {
+      // Exactly on the temperature threshold and just under the soil one:
+      // qualifies. A forecast that disagreed with the evaluator here would
+      // be the drift the shared constants exist to prevent.
+      await publishForecast([
+        { at: hourAt(1), temperatureC: 30, soilMoisturePct: 19.9 },
+        { at: hourAt(6), temperatureC: 29.9, soilMoisturePct: 19.9 },
+        { at: hourAt(8), temperatureC: 30, soilMoisturePct: 20 },
+      ]);
+
+      const res = await request(app.getHttpServer()).get('/api/forecast').expect(200);
+      const windows = res.body.zones[0].windows;
+      expect(windows).toHaveLength(1);
+      expect(windows[0].peakTemperatureC).toBe(30);
+    });
+  });
+
   describe('notifications', () => {
     /**
      * A local HTTP server standing in for whatever the operator points the

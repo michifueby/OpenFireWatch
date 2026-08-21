@@ -44,6 +44,12 @@ const EnvSchema = z.object({
   POSTGRES_PASSWORD: z.string().min(1, 'POSTGRES_PASSWORD is required'),
   /** Polling interval in seconds (FIRMS NRT updates every ~5–10 minutes). */
   FIRMS_POLL_INTERVAL: z.coerce.number().int().min(60).default(300),
+  /**
+   * How often the seven-day ignition forecast is refreshed. Hourly by
+   * default: the forecast does not change meaningfully in between, and a
+   * free service deserves not to be asked every five minutes.
+   */
+  FORECAST_POLL_INTERVAL: z.coerce.number().int().min(600).default(3600),
 
   // --- GeoSphere Austria (TAWES station network, 10-minute cadence) -----------
   /**
@@ -84,4 +90,10 @@ export const BUS = {
    * yesterday's weather as if it were current.
    */
   CONDITIONS_KEY: 'conditions:current',
+  /**
+   * Seven-day hourly forecast per zone, refreshed hourly. Like the conditions
+   * snapshot it expires on its own, so a stopped worker leaves no week-old
+   * forecast looking current.
+   */
+  FORECAST_KEY: 'forecast:current',
 } as const;

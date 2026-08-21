@@ -6,6 +6,7 @@ import { AnomaliesModule } from './anomalies/anomalies.module';
 import { ConditionsModule } from './conditions/conditions.module';
 import { DatabaseModule } from './database/database.module';
 import { EvaluationModule } from './evaluation/evaluation.module';
+import { ForecastModule } from './forecast/forecast.module';
 import { HealthController } from './health/health.controller';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RiskZonesModule } from './risk-zones/risk-zones.module';
@@ -22,6 +23,7 @@ import { SimulationModule } from './simulation/simulation.module';
     AlertsModule, // relays Redis alerts to Socket.IO clients
     AnomaliesModule, // REST read model (GeoJSON)
     ConditionsModule, // current conditions + per-zone readiness
+    ForecastModule, // the ignition rule read forwards: when does the window open
     SensorsModule, // ground sensor registry + LoRaWAN intake
     SimulationModule, // POST /api/simulate-fire end-to-end drill trigger
     NotificationsModule, // relays critical alerts off the map, and watches

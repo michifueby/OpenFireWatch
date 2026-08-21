@@ -46,6 +46,14 @@ export interface TranslationDict {
   conditionsSoil: string;
   conditionsHumidity: string;
   conditionsAsOf: string;
+  // --- Ignition-window outlook --------------------------------------------------
+  forecastTitle: string;
+  forecastNone: string;
+  forecastUnavailable: string;
+  forecastNotWeatherGated: string;
+  forecastWindow: string;
+  forecastLeadTime: string;
+  forecastPeak: string;
   ack: string;
   ackAria: string;
   /** Acknowledging is a guarded write; these explain that and record it. */
@@ -184,6 +192,13 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsSoil: 'SOIL MOISTURE',
     conditionsHumidity: 'HUMIDITY',
     conditionsAsOf: 'as of',
+    forecastTitle: 'IGNITION OUTLOOK · 7 DAYS',
+    forecastNone: 'no ignition window in the next 7 days',
+    forecastUnavailable: 'No recent forecast — outlook unknown.',
+    forecastNotWeatherGated: 'escalates on detection — not a weather question',
+    forecastWindow: '{day}, {from}–{to}',
+    forecastLeadTime: 'in {hours} h',
+    forecastPeak: 'up to {temp} °C · soil down to {soil} %',
     ack: 'ACK',
     sheetAlert: 'ACTIVE ALERT',
     sheetAlerts: 'ACTIVE ALERTS',
@@ -332,6 +347,13 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsSoil: 'BODENFEUCHTE',
     conditionsHumidity: 'LUFTFEUCHTE',
     conditionsAsOf: 'Stand',
+    forecastTitle: 'ZÜNDFENSTER-VORHERSAGE · 7 TAGE',
+    forecastNone: 'kein Zündfenster in den nächsten 7 Tagen',
+    forecastUnavailable: 'Keine aktuelle Vorhersage — Ausblick unbekannt.',
+    forecastNotWeatherGated: 'eskaliert bei Detektion — keine Wetterfrage',
+    forecastWindow: '{day}, {from}–{to} Uhr',
+    forecastLeadTime: 'in {hours} h',
+    forecastPeak: 'bis {temp} °C · Boden bis {soil} %',
     ack: 'QUITT',
     sheetAlert: 'AKTIVER ALARM',
     sheetAlerts: 'AKTIVE ALARME',

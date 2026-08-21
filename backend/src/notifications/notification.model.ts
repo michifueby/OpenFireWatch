@@ -23,6 +23,8 @@ export type NotificationKind =
   | 'ingestion.stalled'
   /** Ingestion is running again after a stall. */
   | 'ingestion.recovered'
+  /** The ignition rule, read forwards: conditions are coming, nothing burns yet. */
+  | 'forecast.ignition-window'
   /** Somebody pressed the test button; proves the wiring end to end. */
   | 'test';
 

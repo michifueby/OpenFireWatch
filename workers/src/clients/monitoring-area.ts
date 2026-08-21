@@ -125,6 +125,52 @@ const clamp = (n: number, lo: number, hi: number): number =>
   Math.min(hi, Math.max(lo, n));
 const round4 = (n: number): number => Math.round(n * 10_000) / 10_000;
 
+/** A zone and the point that stands for it in a point-based lookup. */
+export interface ZonePoint {
+  id: number;
+  nameDe: string;
+  nameEn: string;
+  hazardType: string;
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * Every active zone with a representative interior point.
+ *
+ * `ST_PointOnSurface`, not `ST_Centroid`: the centroid of a concave shape —
+ * and the Föhrenwald outline is distinctly concave — can fall outside the
+ * polygon entirely. A forecast fetched for a point in the neighbouring field
+ * would describe the wrong ground.
+ */
+export async function listZonePoints(): Promise<ZonePoint[]> {
+  const { rows } = await pool.query<{
+    id: string;
+    name_de: string | null;
+    name_en: string | null;
+    name: string | null;
+    hazard_type: string | null;
+    latitude: number;
+    longitude: number;
+  }>(`
+    SELECT id, name_de, name_en, name, hazard_type,
+           ST_Y(ST_PointOnSurface(geom)) AS latitude,
+           ST_X(ST_PointOnSurface(geom)) AS longitude
+      FROM high_risk_zones
+     WHERE is_active
+     ORDER BY id;
+  `);
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    nameDe: row.name_de ?? row.name ?? '',
+    nameEn: row.name_en ?? row.name ?? '',
+    hazardType: row.hazard_type ?? 'generic',
+    latitude: row.latitude,
+    longitude: row.longitude,
+  }));
+}
+
 /** Release the pool during graceful shutdown. */
 export async function closeMonitoringAreaPool(): Promise<void> {
   await pool.end();
