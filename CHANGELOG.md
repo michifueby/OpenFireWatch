@@ -13,6 +13,8 @@ still a question, not a commitment.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-21
+
 ### Added
 
 - **Ground sensors (LoRaWAN).** Intake for temperature/soil-moisture sensors
@@ -108,5 +110,6 @@ describes what that deployment does.
 - Critical markers were lost if an alert arrived while the map style was
   still loading, and were never restored after a reload.
 
-[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/michifueby/OpenFireWatch/releases/tag/v0.1.0
