@@ -11,6 +11,7 @@ import { HealthController } from './health/health.controller';
 import { HistoryModule } from './history/history.module';
 import { IncidentsModule } from './incidents/incidents.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ReportModule } from './report/report.module';
 import { RiskZonesModule } from './risk-zones/risk-zones.module';
 import { SensorsModule } from './sensors/sensors.module';
 import { SimulationModule } from './simulation/simulation.module';
@@ -30,6 +31,7 @@ import { SimulationModule } from './simulation/simulation.module';
     IncidentsModule, // real events, laid against both — the thresholds' report card
     SensorsModule, // ground sensor registry + LoRaWAN intake
     SimulationModule, // POST /api/simulate-fire end-to-end drill trigger
+    ReportModule, // everything above, dated and on paper — the meeting document
     NotificationsModule, // relays critical alerts off the map, and watches
     // that ingestion is still running at all
   ],

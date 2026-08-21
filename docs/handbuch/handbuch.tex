@@ -321,6 +321,13 @@ Ohne entsperrtes Panel \enquote{Gefahrenzonen} bleibt der Alarm stehen, und
 die Oberfläche nennt Ihnen den Grund. Wer die Karte nur ansieht, kann also
 keine Warnung abschalten, auf die sich eine Mannschaft verlässt.
 
+\paragraph{Lagebericht.} Über das Infofenster (unten links, \enquote{Lagebericht
+(PDF)}) erzeugt das System auf Knopfdruck einen datierten Bericht mit allem,
+was dieses Kapitel beschreibt: aktuelle Lage, offene Alarme, Vorhersage,
+Saisonauswertung, Ereignis-Validierung, Sondenstatus --- und den Grenzen des
+Systems im Dokument selbst. Gedacht für Besprechungen und Behördenkontakte:
+dieselben Zahlen wie am Bildschirm, zitierfähig auf Papier.
+
 \paragraph{Saisonauswertung.} Über \enquote{Saisonauswertung anzeigen} sehen
 Sie, an wie vielen Tagen jeder Jahres seit 2017 das Zündfenster tatsächlich
 offen war --- mit der Verteilung über die Monate.
@@ -703,6 +710,7 @@ abgewiesen, statt ungeschützt zugelassen zu werden.
 \textbf{Methode} & \textbf{Pfad} & \textbf{Zweck} \\
 \midrule
 GET & \texttt{/api/health} & Betriebsprüfung, Version und Commit \\
+GET & \texttt{/api/report/lagebericht.pdf} & Lagebericht als PDF \\
 GET & \texttt{/api/risk-zones} & Zonen als GeoJSON \\
 GET & \texttt{/api/anomalies} & erfasste Hitzepunkte \\
 GET & \texttt{/api/alerts} & Verlauf der Bewertungen \\

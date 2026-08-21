@@ -6,5 +6,6 @@ import { ConditionsService } from './conditions.service';
 @Module({
   controllers: [ConditionsController],
   providers: [ConditionsService],
+  exports: [ConditionsService],
 })
 export class ConditionsModule {}

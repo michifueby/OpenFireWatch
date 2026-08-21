@@ -141,6 +141,7 @@ export interface TranslationDict {
   aboutStep4Label: string;
   aboutStep4: string;
   developedBy: string;
+  reportLink: string;
   openSource: string;
 
   // --- Zone editor -------------------------------------------------------------
@@ -335,6 +336,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
       'Critical events appear immediately as a pulsating red dot on the map — ' +
       'with all readings first responders need.',
     developedBy: 'Developed by',
+    reportLink: 'Situation report (PDF)',
     openSource: 'Open Source (MIT)',
 
     zonesTitle: 'HAZARD ZONES',
@@ -530,6 +532,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
       'Kritische Ereignisse erscheinen ohne Verzögerung als pulsierender ' +
       'roter Punkt auf der Karte — mit allen Messwerten für die Einsatzkräfte.',
     developedBy: 'Entwickelt von',
+    reportLink: 'Lagebericht (PDF)',
     openSource: 'Open Source (MIT)',
 
     zonesTitle: 'GEFAHRENZONEN',

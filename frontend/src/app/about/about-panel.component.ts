@@ -50,6 +50,12 @@ import { APP_VERSION } from '../core/version';
           <strong>{{ i18n.t('aboutStep4Label') }}</strong> {{ i18n.t('aboutStep4') }}
         </li>
       </ol>
+      <!-- The dated document for a meeting: same numbers as this screen,
+           generated fresh on every click. -->
+      <p class="report-line">
+        <a [href]="reportUrl()" download>{{ i18n.t('reportLink') }}</a>
+      </p>
+
       <p class="credit-line">
         <!-- Version first: it is the one line worth quoting back when
              something looks wrong. -->
@@ -265,6 +271,22 @@ import { APP_VERSION } from '../core/version';
           color: #e6e8ee;
         }
 
+        .report-line {
+          margin: 0.8rem 0 0;
+          font-size: 0.78rem;
+
+          a {
+            color: #ffd166;
+            text-decoration: none;
+            border-bottom: 1px dotted rgba(255, 209, 102, 0.5);
+
+            &:hover {
+              color: #ffe08a;
+              border-bottom-style: solid;
+            }
+          }
+        }
+
         .credit-line {
           margin: 0.8rem 0 0;
           padding-top: 0.6rem;
@@ -344,6 +366,11 @@ export class AboutPanelComponent {
 
   /** Compiled-in release version — see scripts/version.sh. */
   readonly version = APP_VERSION;
+
+  /** The report follows the language the reader is looking at. */
+  reportUrl(): string {
+    return `/api/report/lagebericht.pdf?lang=${this.i18n.locale()}`;
+  }
 
   constructor(readonly i18n: TranslationService) {}
 }

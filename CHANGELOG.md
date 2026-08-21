@@ -57,6 +57,14 @@ still a question, not a commitment.
 
 ### Added
 
+- **Situation report as PDF.** `GET /api/report/lagebericht.pdf` (linked from
+  the info panel) renders the whole picture into one dated document: current
+  conditions and readiness, open alerts, the ignition forecast, the seasonal
+  record with drawn year bars, the incident report card, sensors — and the
+  system's limits inside the document itself, so the report cannot be quoted
+  without its assumptions. German by default, `?lang=en` for English; the
+  same numbers the API serves, never computed separately.
+
 - **Sensor-raised alerts.** A ground probe can now raise an alarm itself —
   the case no satellite sees: smouldering under the surface or under a closed
   canopy. Absolute threshold (50 °C) or an abnormal climb (+15 K over the

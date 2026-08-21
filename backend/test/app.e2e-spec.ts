@@ -465,6 +465,38 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('situation report', () => {
+    it('serves a dated, freshly generated PDF', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/report/lagebericht.pdf')
+        .expect(200)
+        .expect('Content-Type', /application\/pdf/);
+
+      // A real PDF, not an HTML error page with a PDF header.
+      expect(res.body.subarray(0, 5).toString()).toBe('%PDF-');
+      // A report with all sections cannot plausibly be tiny.
+      expect(res.body.length).toBeGreaterThan(2_000);
+
+      const today = new Date().toISOString().slice(0, 10);
+      expect(res.headers['content-disposition']).toContain(
+        `openfirewatch-lagebericht-${today}.pdf`,
+      );
+      // A cached situation report is a contradiction in terms.
+      expect(res.headers['cache-control']).toBe('no-store');
+    });
+
+    it('speaks English on request and German on anything else', async () => {
+      await request(app.getHttpServer())
+        .get('/api/report/lagebericht.pdf?lang=en')
+        .expect(200);
+      // An unknown language must fall back, not fail: the report is the
+      // document somebody needs in a hurry.
+      await request(app.getHttpServer())
+        .get('/api/report/lagebericht.pdf?lang=fr')
+        .expect(200);
+    });
+  });
+
   describe('incident register and validation', () => {
     let phosphorusZoneId: number;
 
