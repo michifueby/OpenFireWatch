@@ -31,6 +31,8 @@ export interface AlertHistoryEntry {
   weather: { temperatureC: number; soilMoisturePct: number };
   /** When somebody took responsibility for this alert, or null if nobody has. */
   acknowledgedAt: string | null;
+  /** What the crew found: 'confirmed', 'nothing_found', or null. */
+  outcome: string | null;
 }
 
 const HISTORY_SQL = `
@@ -39,6 +41,7 @@ const HISTORY_SQL = `
          ve.soil_moisture_pct,
          ve.evaluated_at,
          ve.acknowledged_at,
+         ve.outcome,
          a.id  AS anomaly_id,
          a.source,
          a.acquired_at,
@@ -91,6 +94,7 @@ export class AlertHistoryService {
       soil_moisture_pct: string | number;
       evaluated_at: Date;
       acknowledged_at: Date | null;
+      outcome: string | null;
       anomaly_id: string;
       source: string;
       acquired_at: Date;
@@ -133,6 +137,7 @@ export class AlertHistoryService {
         soilMoisturePct: Number(row.soil_moisture_pct),
       },
       acknowledgedAt: row.acknowledged_at?.toISOString() ?? null,
+      outcome: row.outcome,
     }));
   }
 
@@ -163,5 +168,25 @@ export class AlertHistoryService {
       return { acknowledgedAt: existing[0].acknowledged_at.toISOString() };
     }
     throw new NotFoundException(`No evaluated alert for anomaly ${anomalyId}.`);
+  }
+
+  /**
+   * Record what the crew found. Overwrites are allowed — see the schema note:
+   * an outcome states what turned out to be true, and correcting it is
+   * legitimate in a way that rewriting an acknowledgement would not be.
+   */
+  async setOutcome(
+    anomalyId: number,
+    outcome: 'confirmed' | 'nothing_found',
+  ): Promise<void> {
+    const { rowCount } = await this.db.query(
+      `UPDATE validated_events
+          SET outcome = $2, outcome_at = now()
+        WHERE anomaly_id = $1;`,
+      [anomalyId, outcome],
+    );
+    if (rowCount === 0) {
+      throw new NotFoundException(`No evaluated alert for anomaly ${anomalyId}.`);
+    }
   }
 }

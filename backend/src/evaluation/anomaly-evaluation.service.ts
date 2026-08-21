@@ -420,6 +420,15 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
       ALTER TABLE validated_events
         ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ;
     `);
+    // What the crew found when they went. Unlike acknowledged_at — which
+    // keeps its first timestamp, because "who took it first" is a fact — an
+    // outcome may be overwritten: it records what turned out to be true, and
+    // corrections to that are legitimate.
+    await this.db.query(`
+      ALTER TABLE validated_events
+        ADD COLUMN IF NOT EXISTS outcome    TEXT,
+        ADD COLUMN IF NOT EXISTS outcome_at TIMESTAMPTZ;
+    `);
     await this.db.query(`
       CREATE INDEX IF NOT EXISTS idx_validated_events_level_time
         ON validated_events (alert_level, evaluated_at DESC);

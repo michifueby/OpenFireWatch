@@ -167,6 +167,38 @@ export class RealTimeAlertService implements OnDestroy {
     throw new Error(body?.message ?? `HTTP ${response.status}`);
   }
 
+  /**
+   * Record what the crew found. Same guard as acknowledging: it feeds the
+   * validation statistics, so it cannot be something a passer-by can set.
+   * On success the history is reloaded — the record is the truth, not the
+   * local array.
+   */
+  async setOutcome(
+    alertId: number,
+    outcome: 'confirmed' | 'nothing_found',
+  ): Promise<void> {
+    const key = this.operatorKey.read();
+    if (!key) throw new Error(LOCKED);
+
+    const response = await fetch(`/api/alerts/${alertId}/outcome`, {
+      method: 'POST',
+      headers: { 'X-API-Key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ outcome }),
+    });
+    if (response.ok) {
+      await this.loadHistory();
+      return;
+    }
+    if (response.status === 401 || response.status === 503) {
+      this.operatorKey.clear();
+      throw new Error(LOCKED);
+    }
+    const body = (await response.json().catch(() => null)) as {
+      message?: string;
+    } | null;
+    throw new Error(body?.message ?? `HTTP ${response.status}`);
+  }
+
   /** Drop an acknowledged alert from the active list and stamp the history. */
   private applyAcknowledgement(alertId: number, acknowledgedAt: string): void {
     this.warningsSubject.next(

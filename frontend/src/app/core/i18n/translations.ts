@@ -64,6 +64,34 @@ export interface TranslationDict {
   seasonDays: string;
   seasonPeak: string;
   seasonSource: string;
+  // --- Incident register ---------------------------------------------------------
+  incidentsTitle: string;
+  incidentAdd: string;
+  incidentEmpty: string;
+  incidentPlaceHint: string;
+  incidentKind: string;
+  kindFire: string;
+  kindDrill: string;
+  kindObservation: string;
+  incidentWhen: string;
+  incidentTitleField: string;
+  incidentNotes: string;
+  incidentSave: string;
+  incidentDelete: string;
+  incidentDeleteConfirm: string;
+  incidentNeedFields: string;
+  incidentInWindow: string;
+  incidentNotInWindow: string;
+  incidentWindowUnknown: string;
+  incidentAlerted: string;
+  incidentNotAlerted: string;
+  incidentSummary: string;
+  incidentOutcomes: string;
+  // --- Alert outcome --------------------------------------------------------------
+  outcomeConfirm: string;
+  outcomeNothing: string;
+  outcomeConfirmed: string;
+  outcomeNothingFound: string;
   ack: string;
   ackAria: string;
   /** Acknowledging is a guarded write; these explain that and record it. */
@@ -219,6 +247,32 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     seasonPeak: 'longest single spell {hours} h',
     seasonSource:
       'Reanalysis weather, soil layer 0–7 cm (the live rule uses 1–3 cm; the two differ by about 2 percentage points).',
+    incidentsTitle: 'INCIDENTS',
+    incidentAdd: '+ Incident',
+    incidentEmpty: 'No incidents recorded yet. Past events count too — each one tests the thresholds.',
+    incidentPlaceHint: 'Tap the map where it happened. The zone follows from the position.',
+    incidentKind: 'Type',
+    kindFire: 'Fire',
+    kindDrill: 'Drill',
+    kindObservation: 'Observation',
+    incidentWhen: 'When it happened',
+    incidentTitleField: 'Title',
+    incidentNotes: 'Notes (optional)',
+    incidentSave: 'Save incident',
+    incidentDelete: 'Delete',
+    incidentDeleteConfirm: 'Delete this entry for good? It is a manual record; corrections are legitimate.',
+    incidentNeedFields: 'Title, type and time are required.',
+    incidentInWindow: 'ignition window was OPEN',
+    incidentNotInWindow: 'window was closed',
+    incidentWindowUnknown: 'window unknown for that hour',
+    incidentAlerted: 'alert was raised',
+    incidentNotAlerted: 'no alert raised',
+    incidentSummary: '{fires} fires · {inWindow} of {applicable} in an open window · {alerted} with an alert',
+    incidentOutcomes: 'Crew feedback on alerts: {confirmed} confirmed · {nothing} nothing found',
+    outcomeConfirm: 'Confirmed',
+    outcomeNothing: 'Nothing found',
+    outcomeConfirmed: 'confirmed on site',
+    outcomeNothingFound: 'checked — nothing found',
     ack: 'ACK',
     sheetAlert: 'ACTIVE ALERT',
     sheetAlerts: 'ACTIVE ALERTS',
@@ -384,6 +438,32 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     seasonPeak: 'längste Einzelphase {hours} h',
     seasonSource:
       'Reanalyse-Wetterdaten, Bodenschicht 0–7 cm (die Regel arbeitet mit 1–3 cm; beide unterscheiden sich um rund 2 Prozentpunkte).',
+    incidentsTitle: 'EREIGNISSE',
+    incidentAdd: '+ Ereignis',
+    incidentEmpty: 'Noch keine Ereignisse erfasst. Auch vergangene zählen — jedes prüft die Schwellenwerte.',
+    incidentPlaceHint: 'Auf die Karte tippen, wo es passiert ist. Die Zone ergibt sich aus der Position.',
+    incidentKind: 'Art',
+    kindFire: 'Brand',
+    kindDrill: 'Übung',
+    kindObservation: 'Beobachtung',
+    incidentWhen: 'Zeitpunkt',
+    incidentTitleField: 'Bezeichnung',
+    incidentNotes: 'Anmerkungen (optional)',
+    incidentSave: 'Ereignis speichern',
+    incidentDelete: 'Löschen',
+    incidentDeleteConfirm: 'Eintrag endgültig löschen? Er ist eine manuelle Erfassung; Korrekturen sind legitim.',
+    incidentNeedFields: 'Bezeichnung, Art und Zeitpunkt sind erforderlich.',
+    incidentInWindow: 'Zündfenster war OFFEN',
+    incidentNotInWindow: 'Fenster war geschlossen',
+    incidentWindowUnknown: 'Fenster für diese Stunde unbekannt',
+    incidentAlerted: 'Alarm wurde ausgelöst',
+    incidentNotAlerted: 'kein Alarm ausgelöst',
+    incidentSummary: '{fires} Brände · {inWindow} von {applicable} im offenen Fenster · {alerted} mit Alarm',
+    incidentOutcomes: 'Einsatz-Rückmeldungen: {confirmed} bestätigt · {nothing} ohne Befund',
+    outcomeConfirm: 'Bestätigt',
+    outcomeNothing: 'Ohne Befund',
+    outcomeConfirmed: 'vor Ort bestätigt',
+    outcomeNothingFound: 'geprüft — nichts gefunden',
     ack: 'QUITT',
     sheetAlert: 'AKTIVER ALARM',
     sheetAlerts: 'AKTIVE ALARME',

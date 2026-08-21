@@ -22,6 +22,12 @@ import { TranslationService } from '../core/i18n/translation.service';
 import { IconComponent } from '../shared/icon.component';
 import { TranslationDict } from '../core/i18n/translations';
 import {
+  IncidentApiService,
+  IncidentEntry,
+  IncidentKind,
+  IncidentSummary,
+} from '../incidents/incident-api.service';
+import {
   SensorApiService,
   SensorInfo,
 } from '../sensors/sensor-api.service';
@@ -31,6 +37,17 @@ import {
   ZoneListItem,
 } from './zone-api.service';
 import { ZoneDrawService } from './zone-draw.service';
+
+/** What the incident form edits. */
+interface IncidentDraft {
+  kind: IncidentKind;
+  /** Local datetime-local value; converted to ISO on save. */
+  occurredAt: string;
+  title: string;
+  notes: string;
+  latitude: number | null;
+  longitude: number | null;
+}
 
 /** What the sensor form edits. */
 interface SensorDraft {
@@ -92,12 +109,20 @@ export class ZoneEditorComponent implements OnDestroy {
   /** Calibration inputs stay hidden until asked for — most sensors need none. */
   readonly showCalibration = signal(false);
 
+  // --- Incidents -------------------------------------------------------------
+
+  readonly incidents = signal<IncidentEntry[]>([]);
+  readonly incidentSummary = signal<IncidentSummary | null>(null);
+  readonly incidentDraft = signal<IncidentDraft | null>(null);
+  readonly confirmingIncidentDelete = signal<number | null>(null);
+
   private keyInput = '';
 
   constructor(
     readonly i18n: TranslationService,
     readonly api: ZoneApiService,
     readonly sensorApi: SensorApiService,
+    readonly incidentApi: IncidentApiService,
     readonly draw: ZoneDrawService,
   ) {
     // Both effects adopt map gestures into form state, so both WRITE signals.
@@ -117,12 +142,16 @@ export class ZoneEditorComponent implements OnDestroy {
       { allowSignalWrites: true },
     );
 
-    // A point-pick click places the sensor; adopt it into the sensor draft.
+    // A point-pick click lands in whichever form is waiting for one — the
+    // sensor draft and the incident draft are never open at the same time.
     effect(
       () => {
         const point = this.draw.pickedPoint();
         if (!point) return;
         this.sensorDraft.update((d) =>
+          d ? { ...d, longitude: point[0], latitude: point[1] } : d,
+        );
+        this.incidentDraft.update((d) =>
           d ? { ...d, longitude: point[0], latitude: point[1] } : d,
         );
       },
@@ -140,13 +169,18 @@ export class ZoneEditorComponent implements OnDestroy {
   async refresh(): Promise<void> {
     try {
       // One failing list must not blank the other; each falls back alone.
-      const [zones, sensors] = await Promise.all([
+      const [zones, sensors, incidents] = await Promise.all([
         this.api.list().catch(() => null),
         this.sensorApi.list().catch(() => null),
+        this.incidentApi.list().catch(() => null),
       ]);
       if (zones) this.zones.set(zones);
       else this.error.set('Could not load zones.');
       if (sensors) this.sensors.set(sensors);
+      if (incidents) {
+        this.incidents.set(incidents.incidents);
+        this.incidentSummary.set(incidents.summary);
+      }
     } catch {
       this.error.set('Could not load zones.');
     }
@@ -458,6 +492,143 @@ export class ZoneEditorComponent implements OnDestroy {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  // --- Incident draft --------------------------------------------------------
+
+  startNewIncident(): void {
+    this.error.set(null);
+    this.notice.set(null);
+    // Preset to "now", in the local format datetime-local expects. Most
+    // entries record something that just happened; historical ones edit it.
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    this.incidentDraft.set({
+      kind: 'fire',
+      occurredAt: now.toISOString().slice(0, 16),
+      title: '',
+      notes: '',
+      latitude: null,
+      longitude: null,
+    });
+    this.draw.startPointPick();
+  }
+
+  repositionIncident(): void {
+    this.draw.startPointPick();
+  }
+
+  setIncidentKind(value: IncidentKind): void {
+    this.incidentDraft.update((d) => (d ? { ...d, kind: value } : d));
+  }
+
+  setIncidentWhen(value: string): void {
+    this.incidentDraft.update((d) => (d ? { ...d, occurredAt: value } : d));
+  }
+
+  setIncidentTitle(value: string): void {
+    this.incidentDraft.update((d) => (d ? { ...d, title: value } : d));
+  }
+
+  setIncidentNotes(value: string): void {
+    this.incidentDraft.update((d) => (d ? { ...d, notes: value } : d));
+  }
+
+  cancelIncidentDraft(): void {
+    this.draw.cancel();
+    this.incidentDraft.set(null);
+    this.error.set(null);
+  }
+
+  async saveIncident(): Promise<void> {
+    const draft = this.incidentDraft();
+    if (!draft) return;
+    if (!draft.title.trim() || !draft.occurredAt) {
+      this.error.set(this.i18n.t('incidentNeedFields'));
+      return;
+    }
+    if (draft.latitude === null || draft.longitude === null) {
+      this.error.set(this.i18n.t('sensorNeedPosition'));
+      return;
+    }
+
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      await this.incidentApi.create({
+        // datetime-local carries no zone; Date interprets it as local time,
+        // which is exactly what somebody typing a wall-clock time means.
+        occurredAt: new Date(draft.occurredAt).toISOString(),
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        kind: draft.kind,
+        title: draft.title.trim(),
+        notes: draft.notes.trim() || undefined,
+      });
+      this.notice.set(this.i18n.t('zonesSaved'));
+      this.incidentDraft.set(null);
+      this.draw.clearPoint();
+      await this.refresh();
+    } catch (err) {
+      this.error.set((err as Error).message);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  askDeleteIncident(incident: IncidentEntry): void {
+    this.confirmingIncidentDelete.set(incident.id);
+  }
+
+  abortDeleteIncident(): void {
+    this.confirmingIncidentDelete.set(null);
+  }
+
+  async deleteIncident(incident: IncidentEntry): Promise<void> {
+    this.confirmingIncidentDelete.set(null);
+    this.busy.set(true);
+    try {
+      await this.incidentApi.remove(incident.id);
+      await this.refresh();
+    } catch (err) {
+      this.error.set((err as Error).message);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** The two validation verdicts, phrased for a reader. */
+  windowLabel(incident: IncidentEntry): string {
+    if (incident.inIgnitionWindow === null)
+      return this.i18n.t('incidentWindowUnknown');
+    return this.i18n.t(
+      incident.inIgnitionWindow ? 'incidentInWindow' : 'incidentNotInWindow',
+    );
+  }
+
+  kindLabel(kind: IncidentKind): string {
+    const keys = {
+      fire: 'kindFire',
+      drill: 'kindDrill',
+      observation: 'kindObservation',
+    } as const;
+    return this.i18n.t(keys[kind]);
+  }
+
+  summaryLine(summary: IncidentSummary): string {
+    return this.i18n
+      .t('incidentSummary')
+      .replace('{fires}', String(summary.fires))
+      .replace('{inWindow}', String(summary.firesInWindow))
+      .replace('{applicable}', String(summary.firesWindowApplicable))
+      .replace('{alerted}', String(summary.firesAlerted));
+  }
+
+  outcomesLine(summary: IncidentSummary): string {
+    return this.i18n
+      .t('incidentOutcomes')
+      .replace('{confirmed}', String(summary.alertsConfirmed))
+      .replace('{nothing}', String(summary.alertsNothingFound));
   }
 
   ngOnDestroy(): void {

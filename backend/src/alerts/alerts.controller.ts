@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -8,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { IsIn } from 'class-validator';
 import {
   ApiHeader,
   ApiNotFoundResponse,
@@ -21,6 +23,12 @@ import { API_KEY_HEADER, ApiKeyGuard } from '../auth/api-key.guard';
 import { AlertHistoryEntry, AlertHistoryService } from './alert-history.service';
 import { AlertsGateway } from './alerts.gateway';
 import { QueryAlertsDto } from './query-alerts.dto';
+
+/** Body of POST :id/outcome — the crew's finding, nothing else. */
+class SetOutcomeDto {
+  @IsIn(['confirmed', 'nothing_found'])
+  outcome!: 'confirmed' | 'nothing_found';
+}
 
 /**
  * Past evaluations. Reads are public, like every other read: a situation
@@ -71,5 +79,26 @@ export class AlertsController {
     // record everyone else will load on their next visit.
     await this.gateway.announceAcknowledgement(event);
     return event;
+  }
+
+  @Post(':id/outcome')
+  @HttpCode(200)
+  @UseGuards(ApiKeyGuard)
+  @ApiHeader({ name: API_KEY_HEADER, required: true })
+  @ApiOperation({
+    summary: 'Record what the crew found for this alert',
+    description:
+      'confirmed = there really was something; nothing_found = the crew ' +
+      'checked and found nothing. Feeds the validation statistics; may be ' +
+      'corrected by posting again.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid operator key.' })
+  @ApiNotFoundResponse({ description: 'No evaluated alert with that id.' })
+  async setOutcome(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: SetOutcomeDto,
+  ): Promise<{ id: number; outcome: string }> {
+    await this.history.setOutcome(id, dto.outcome);
+    return { id, outcome: dto.outcome };
   }
 }

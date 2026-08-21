@@ -261,11 +261,13 @@ import {
 
           <section class="history" *ngIf="showHistory()">
             <h3>{{ i18n.t('historyTitle') }}</h3>
+            <p class="ack-error" *ngIf="outcomeError()">{{ outcomeError() }}</p>
 
             <p class="empty" *ngIf="(alerts.history$ | async)?.length === 0">
               {{ i18n.t('historyEmpty') }}
             </p>
 
+            <p class="ack-error" *ngIf="outcomeError()">{{ outcomeError() }}</p>
             <ol class="history-list">
               <li
                 *ngFor="let entry of alerts.history$ | async"
@@ -290,6 +292,26 @@ import {
                 <span class="h-readings">
                   {{ entry.weather.temperatureC | number: '1.0-0' }}°C ·
                   {{ entry.weather.soilMoisturePct | number: '1.0-0' }}%
+                </span>
+                <!-- What the crew found — the half of the validation loop a
+                     responder can close in two taps. -->
+                <span class="h-outcome" *ngIf="levelClass(entry.level) === 'critical'">
+                  <ng-container *ngIf="entry.outcome; else outcomeButtons">
+                    <span
+                      class="h-outcome-set"
+                      [class.was-confirmed]="entry.outcome === 'confirmed'"
+                    >
+                      {{ i18n.t(entry.outcome === 'confirmed' ? 'outcomeConfirmed' : 'outcomeNothingFound') }}
+                    </span>
+                  </ng-container>
+                  <ng-template #outcomeButtons>
+                    <button type="button" class="h-btn" (click)="recordOutcome(entry.id, 'confirmed')">
+                      ✓ {{ i18n.t('outcomeConfirm') }}
+                    </button>
+                    <button type="button" class="h-btn" (click)="recordOutcome(entry.id, 'nothing_found')">
+                      ∅ {{ i18n.t('outcomeNothing') }}
+                    </button>
+                  </ng-template>
                 </span>
               </li>
             </ol>
@@ -767,6 +789,38 @@ import {
       .h-acked {
         color: #7ee2a8;
       }
+
+      .h-outcome {
+        grid-column: 2;
+        display: flex;
+        gap: 0.3rem;
+        margin-top: 0.15rem;
+      }
+
+      .h-btn {
+        padding: 0.15rem 0.45rem;
+        border: 1px solid rgba(230, 232, 238, 0.3);
+        border-radius: 3px;
+        background: transparent;
+        color: #c6ccd6;
+        font-family: $font-mono;
+        font-size: 0.64rem;
+        cursor: pointer;
+
+        &:hover {
+          border-color: #7ee2a8;
+          color: #7ee2a8;
+        }
+      }
+
+      .h-outcome-set {
+        font-size: 0.66rem;
+        color: #ff9d8f;
+
+        &.was-confirmed {
+          color: #7ee2a8;
+        }
+      }
       .h-zone,
       .h-readings {
         grid-column: 2;
@@ -976,6 +1030,24 @@ export class AlertDashboardComponent implements OnDestroy {
    * identical error lines would say nothing the first one did not.
    */
   readonly ackError = signal<{ id: number; message: string } | null>(null);
+
+  /** Why the last outcome recording failed — shown above the history. */
+  readonly outcomeError = signal<string | null>(null);
+
+  async recordOutcome(
+    alertId: number,
+    outcome: 'confirmed' | 'nothing_found',
+  ): Promise<void> {
+    this.outcomeError.set(null);
+    try {
+      await this.alerts.setOutcome(alertId, outcome);
+    } catch (error) {
+      const message = (error as Error).message;
+      this.outcomeError.set(
+        message === LOCKED ? this.i18n.t('ackNeedsKey') : message,
+      );
+    }
+  }
 
   /**
    * Take an alert. The list is not touched here — the server records it and

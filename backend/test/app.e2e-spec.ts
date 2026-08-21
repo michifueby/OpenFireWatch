@@ -465,6 +465,201 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('incident register and validation', () => {
+    let phosphorusZoneId: number;
+
+    beforeAll(async () => {
+      const { rows } = await db.query<{ id: string }>(
+        `SELECT id FROM high_risk_zones WHERE hazard_type = 'white_phosphorus' AND is_active LIMIT 1;`,
+      );
+      phosphorusZoneId = Number(rows[0]!.id);
+
+      // Two hours of weather history at the incident dates: one with the
+      // window open, one hot-but-damp. The validation must read the hour the
+      // incident FELL IN, not the day.
+      for (const [at, temp, soil] of [
+        ['2019-08-01T12:00:00+02:00', 33, 9],
+        ['2019-08-02T12:00:00+02:00', 33, 45],
+      ] as const) {
+        await db.query(
+          `INSERT INTO zone_weather_history
+             (zone_id, observed_at, temperature_c, soil_moisture_pct, source)
+           VALUES ($1, $2, $3, $4, 'test')
+           ON CONFLICT (zone_id, observed_at) DO NOTHING;`,
+          [phosphorusZoneId, at, temp, soil],
+        );
+      }
+    });
+
+    afterAll(async () => {
+      await db.query(`DELETE FROM incidents;`);
+      await db.query(`DELETE FROM zone_weather_history WHERE source = 'test';`);
+    });
+
+    const record = (body: object) =>
+      request(app.getHttpServer())
+        .post('/api/incidents')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send(body);
+
+    it('keeps writes operator-only, reads public', async () => {
+      await request(app.getHttpServer())
+        .post('/api/incidents')
+        .send({ occurredAt: '2019-08-01T12:30:00+02:00', latitude: DRILL_LAT,
+                longitude: DRILL_LON, kind: 'fire', title: 'x' })
+        .expect(401);
+      await request(app.getHttpServer()).get('/api/incidents').expect(200);
+    });
+
+    it('validates a fire against the hour it fell in, not the day', async () => {
+      // Inside the zone, during the OPEN hour.
+      await record({
+        occurredAt: '2019-08-01T12:30:00+02:00',
+        latitude: DRILL_LAT, longitude: DRILL_LON,
+        kind: 'fire', title: 'Brand im offenen Fenster',
+      }).expect(201);
+      // Inside the zone, during the hot-but-damp hour.
+      await record({
+        occurredAt: '2019-08-02T12:30:00+02:00',
+        latitude: DRILL_LAT, longitude: DRILL_LON,
+        kind: 'fire', title: 'Brand außerhalb des Fensters',
+      }).expect(201);
+      // Far outside every zone: the window question does not apply.
+      await record({
+        occurredAt: '2019-08-01T12:30:00+02:00',
+        latitude: 47.0, longitude: 15.0,
+        kind: 'fire', title: 'Brand ohne Zone',
+      }).expect(201);
+
+      const res = await request(app.getHttpServer()).get('/api/incidents').expect(200);
+      const byTitle = (t: string) =>
+        res.body.incidents.find((i: { title: string }) => i.title === t);
+
+      expect(byTitle('Brand im offenen Fenster').inIgnitionWindow).toBe(true);
+      expect(byTitle('Brand außerhalb des Fensters').inIgnitionWindow).toBe(false);
+      // Null, not false: "we cannot say" must never read as "it was closed".
+      expect(byTitle('Brand ohne Zone').inIgnitionWindow).toBeNull();
+      expect(byTitle('Brand im offenen Fenster').zone.id).toBe(phosphorusZoneId);
+    });
+
+    it('links a fire to the alerts the system raised around it', async () => {
+      await request(app.getHttpServer())
+        .post('/api/simulate-fire')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+      await waitFor(
+        async () => {
+          const r = await request(app.getHttpServer())
+            .get('/api/alerts?criticalOnly=true&limit=1');
+          return r.body.length > 0 ? true : undefined;
+        },
+        20_000,
+        'critical alert for incident linking',
+      );
+
+      await record({
+        occurredAt: new Date().toISOString(),
+        latitude: DRILL_LAT, longitude: DRILL_LON,
+        kind: 'fire', title: 'Brand mit Voralarm',
+      }).expect(201);
+
+      const res = await request(app.getHttpServer()).get('/api/incidents').expect(200);
+      const linked = res.body.incidents.find(
+        (i: { title: string }) => i.title === 'Brand mit Voralarm',
+      );
+      const old = res.body.incidents.find(
+        (i: { title: string }) => i.title === 'Brand im offenen Fenster',
+      );
+      expect(linked.alertRaised).toBe(true);
+      // 2019 lies far outside every alert's ±window.
+      expect(old.alertRaised).toBe(false);
+    });
+
+    it('keeps drills out of the statistics', async () => {
+      await record({
+        occurredAt: '2019-08-01T12:30:00+02:00',
+        latitude: DRILL_LAT, longitude: DRILL_LON,
+        kind: 'drill', title: 'Übung',
+      }).expect(201);
+
+      const res = await request(app.getHttpServer()).get('/api/incidents').expect(200);
+      // Four fires recorded across the tests above; the drill must not
+      // become a fifth. Only the two 2019 fires have weather history for
+      // their hour, so only they count as window-applicable.
+      expect(res.body.summary.fires).toBe(4);
+      expect(res.body.summary.firesWindowApplicable).toBe(2);
+      expect(res.body.summary.firesInWindow).toBe(1);
+    });
+
+    it('records what the crew found, and counts it', async () => {
+      // The event tables are truncated per test, so this test raises its own
+      // alert rather than borrowing one from a neighbour.
+      await request(app.getHttpServer())
+        .post('/api/simulate-fire')
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(202);
+      const alerts = await waitFor(
+        async () => {
+          const r = await request(app.getHttpServer())
+            .get('/api/alerts?criticalOnly=true&limit=1');
+          return r.body.length > 0 ? r.body : undefined;
+        },
+        20_000,
+        'critical alert for outcome recording',
+      );
+      const anomalyId = alerts[0].id;
+
+      await request(app.getHttpServer())
+        .post(`/api/alerts/${anomalyId}/outcome`)
+        .send({ outcome: 'confirmed' })
+        .expect(401);
+      await request(app.getHttpServer())
+        .post(`/api/alerts/${anomalyId}/outcome`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({ outcome: 'somewhere-in-between' })
+        .expect(400);
+
+      await request(app.getHttpServer())
+        .post(`/api/alerts/${anomalyId}/outcome`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({ outcome: 'nothing_found' })
+        .expect(200);
+      // A correction overwrites — outcomes state what turned out true.
+      await request(app.getHttpServer())
+        .post(`/api/alerts/${anomalyId}/outcome`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({ outcome: 'confirmed' })
+        .expect(200);
+
+      const history = await request(app.getHttpServer())
+        .get('/api/alerts?criticalOnly=true&limit=5')
+        .expect(200);
+      expect(
+        history.body.find((e: { id: number }) => e.id === anomalyId).outcome,
+      ).toBe('confirmed');
+
+      const incidents = await request(app.getHttpServer()).get('/api/incidents').expect(200);
+      expect(incidents.body.summary.alertsConfirmed).toBeGreaterThanOrEqual(1);
+    });
+
+    it('deletes an entry outright — corrected beats kept-wrong', async () => {
+      const created = await record({
+        occurredAt: '2020-01-01T12:00:00+01:00',
+        latitude: DRILL_LAT, longitude: DRILL_LON,
+        kind: 'observation', title: 'Irrtum',
+      }).expect(201);
+
+      await request(app.getHttpServer())
+        .delete(`/api/incidents/${created.body.id}`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(204);
+      await request(app.getHttpServer())
+        .delete(`/api/incidents/${created.body.id}`)
+        .set('X-API-Key', OPERATOR_KEY)
+        .expect(404);
+    });
+  });
+
   describe('seasonal ignition history', () => {
     /** The seeded phosphorus zone — the only weather-gated one. */
     let phosphorusZoneId: number;

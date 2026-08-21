@@ -25,6 +25,14 @@ still a question, not a commitment.
 
 ### Added
 
+- **Incident register and validation.** Real events — fires, drills,
+  observations, including ones from years past — recorded in the operator
+  panel with a tap on the map. Every fire is automatically held against the
+  ignition-window history (was the window open in that hour?) and the alert
+  record (did the system warn?), and crews can record on each alert whether
+  anything was actually found. Together that produces the numbers no warning
+  system likes to publish: hit rate and false-alarm rate. It is the first
+  mechanism that makes the literature thresholds testable against this site.
 - **Seasonal ignition history.** How often each zone has actually met its
   ignition criteria, by year and month, over a decade of reanalysis weather
   backfilled per zone. The project's own records could never answer this —

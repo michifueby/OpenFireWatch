@@ -72,6 +72,8 @@ export interface AnomalyAlert {
    * Present on history entries; live alerts are by definition unacknowledged.
    */
   acknowledgedAt?: string | null;
+  /** What the crew found — 'confirmed' | 'nothing_found' — on history entries. */
+  outcome?: string | null;
   /** Present only on CRITICAL_SMOULDERING — the persistence evidence. */
   smouldering?: {
     passes: number;

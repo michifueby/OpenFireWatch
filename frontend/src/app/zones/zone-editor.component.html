@@ -59,7 +59,7 @@
   </div>
 
   <!-- Unlocked, list view -->
-  <div class="body" *ngIf="api.unlocked() && !draft() && !sensorDraft()">
+  <div class="body" *ngIf="api.unlocked() && !draft() && !sensorDraft() && !incidentDraft()">
     <button type="button" class="primary" (click)="startNew()">
       {{ i18n.t('zonesNew') }}
     </button>
@@ -119,6 +119,66 @@
           />
         </ng-container>
       </div>
+    </div>
+
+    <!-- The register of what actually happened, with each fire held against
+         the ignition-window history and the alert record. This is the part
+         of the panel that makes the thresholds testable. -->
+    <div class="incidents-block">
+      <h3>{{ i18n.t('incidentsTitle') }}</h3>
+
+      <ng-container *ngIf="incidentSummary() as sum">
+        <p class="i-summary" *ngIf="sum.fires > 0">{{ summaryLine(sum) }}</p>
+        <p class="i-summary" *ngIf="sum.alertsConfirmed + sum.alertsNothingFound > 0">
+          {{ outcomesLine(sum) }}
+        </p>
+      </ng-container>
+
+      <p class="hint" *ngIf="incidents().length === 0">
+        {{ i18n.t('incidentEmpty') }}
+      </p>
+
+      <ul class="zone-list">
+        <li class="zone incident" *ngFor="let inc of incidents()">
+          <div class="zone-name">{{ inc.title }}</div>
+          <div class="zone-meta">
+            {{ kindLabel(inc.kind) }} · {{ inc.occurredAt | date: 'dd.MM.yyyy HH:mm' }}
+            <ng-container *ngIf="inc.zone"> · {{ i18n.pick(inc.zone.name) }}</ng-container>
+          </div>
+          <div class="i-verdicts" *ngIf="inc.kind === 'fire'">
+            <span
+              class="i-verdict"
+              [class.hit]="inc.inIgnitionWindow === true"
+              [class.miss]="inc.inIgnitionWindow === false"
+              >{{ windowLabel(inc) }}</span
+            >
+            <span class="i-verdict" [class.hit]="inc.alertRaised" [class.miss]="!inc.alertRaised">
+              {{ i18n.t(inc.alertRaised ? 'incidentAlerted' : 'incidentNotAlerted') }}
+            </span>
+          </div>
+
+          <div class="zone-actions" *ngIf="confirmingIncidentDelete() !== inc.id">
+            <button type="button" class="danger" (click)="askDeleteIncident(inc)" [disabled]="busy()">
+              {{ i18n.t('incidentDelete') }}
+            </button>
+          </div>
+          <div class="retire-confirm" *ngIf="confirmingIncidentDelete() === inc.id">
+            <p>{{ i18n.t('incidentDeleteConfirm') }}</p>
+            <div class="zone-actions">
+              <button type="button" class="ghost" (click)="abortDeleteIncident()">
+                {{ i18n.t('zonesCancel') }}
+              </button>
+              <button type="button" class="danger" (click)="deleteIncident(inc)" [disabled]="busy()">
+                {{ i18n.t('incidentDelete') }}
+              </button>
+            </div>
+          </div>
+        </li>
+      </ul>
+
+      <button type="button" class="link add-sensor" (click)="startNewIncident()">
+        {{ i18n.t('incidentAdd') }}
+      </button>
     </div>
 
     <!-- One row per sensor: status, name, latest values, actions. -->
@@ -373,6 +433,85 @@
         </button>
         <button type="button" class="primary" (click)="saveSensor()" [disabled]="busy()">
           {{ busy() ? i18n.t('zonesSaving') : i18n.t('sensorSave') }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unlocked, incident draft view -->
+  <div class="body" *ngIf="api.unlocked() && incidentDraft() as inc">
+    <div class="drawing" *ngIf="draw.drawing()">
+      <p class="hint">{{ i18n.t('incidentPlaceHint') }}</p>
+      <button type="button" class="ghost wide" (click)="cancelIncidentDraft()">
+        {{ i18n.t('zonesCancel') }}
+      </button>
+    </div>
+
+    <div class="form" *ngIf="!draw.drawing()">
+      <p class="outline-ok" *ngIf="inc.latitude !== null; else noIncidentPos">
+        ✓ {{ i18n.t('sensorPosition') }}
+        {{ inc.latitude | number: '1.4-4' }}, {{ inc.longitude | number: '1.4-4' }}
+        <button type="button" class="link" (click)="repositionIncident()">
+          {{ i18n.t('sensorReposition') }}
+        </button>
+      </p>
+      <ng-template #noIncidentPos>
+        <button type="button" class="ghost wide" (click)="repositionIncident()">
+          {{ i18n.t('sensorPlace') }}
+        </button>
+      </ng-template>
+
+      <label class="field">
+        <span>{{ i18n.t('incidentTitleField') }}</span>
+        <input
+          type="text"
+          [ngModel]="inc.title"
+          (ngModelChange)="setIncidentTitle($event)"
+          name="incidentTitle"
+        />
+      </label>
+
+      <label class="field">
+        <span>{{ i18n.t('incidentKind') }}</span>
+        <select
+          [ngModel]="inc.kind"
+          (ngModelChange)="setIncidentKind($event)"
+          name="incidentKind"
+        >
+          <option value="fire">{{ i18n.t('kindFire') }}</option>
+          <option value="observation">{{ i18n.t('kindObservation') }}</option>
+          <option value="drill">{{ i18n.t('kindDrill') }}</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>{{ i18n.t('incidentWhen') }}</span>
+        <input
+          type="datetime-local"
+          [ngModel]="inc.occurredAt"
+          (ngModelChange)="setIncidentWhen($event)"
+          name="incidentWhen"
+        />
+      </label>
+
+      <label class="field">
+        <span>{{ i18n.t('incidentNotes') }}</span>
+        <input
+          type="text"
+          [ngModel]="inc.notes"
+          (ngModelChange)="setIncidentNotes($event)"
+          name="incidentNotes"
+        />
+      </label>
+
+      <p class="error" *ngIf="error()">{{ error() }}</p>
+
+      <div class="row">
+        <button type="button" class="ghost" (click)="cancelIncidentDraft()">
+          {{ i18n.t('zonesCancel') }}
+        </button>
+        <button type="button" class="primary" (click)="saveIncident()" [disabled]="busy()">
+          {{ busy() ? i18n.t('zonesSaving') : i18n.t('incidentSave') }}
         </button>
       </div>
     </div>
