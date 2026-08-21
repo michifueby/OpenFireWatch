@@ -25,6 +25,14 @@ still a question, not a commitment.
 
 ### Changed
 
+- **Plain language throughout.** "Eskaliert bei jeder glaubwürdigen
+  Detektion" now reads "Alarm bei jeder erkannten Hitzequelle — unabhängig
+  vom Wetter", "keine Wetterfrage" became "Wetter spielt hier keine Rolle",
+  the THERMAL ANOMALY level is now UNUSUAL HEAT / UNGEWÖHNLICHE HITZE, and
+  the page title names dangerous heat sources instead of thermal anomalies —
+  consistently across the panel, the forecast, the PDF report, notifications
+  and the manual.
+
 <!-- Written from commit subjects: no Unreleased notes existed at release
      time. Worth rewriting for a reader who does not read diffs. -->
 - feat: the probe can raise the alarm itself — and speak English

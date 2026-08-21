@@ -24,7 +24,7 @@ const LEVEL_NAMES: Record<NotifyLang, Record<string, string>> = {
     CRITICAL_WILDFIRE: 'Waldbrand',
     CRITICAL_ORDNANCE_HEAT: 'Hitze an Munitionsstandort',
     CRITICAL_SMOULDERING: 'Glutnest',
-    CRITICAL_THERMAL_ANOMALY: 'Thermische Anomalie',
+    CRITICAL_THERMAL_ANOMALY: 'Ungewöhnliche Hitze',
     CRITICAL_SENSOR_HEAT: 'Hitze an Bodensonde',
   },
   en: {
@@ -32,7 +32,7 @@ const LEVEL_NAMES: Record<NotifyLang, Record<string, string>> = {
     CRITICAL_WILDFIRE: 'Wildfire',
     CRITICAL_ORDNANCE_HEAT: 'Heat at ordnance site',
     CRITICAL_SMOULDERING: 'Smouldering nest',
-    CRITICAL_THERMAL_ANOMALY: 'Thermal anomaly',
+    CRITICAL_THERMAL_ANOMALY: 'Unusual heat',
     CRITICAL_SENSOR_HEAT: 'Ground-sensor heat',
   },
 };

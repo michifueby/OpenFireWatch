@@ -204,7 +204,7 @@ export interface TranslationDict {
 
 export const TRANSLATIONS: Record<Locale, TranslationDict> = {
   en: {
-    appTitle: 'OpenFireWatch — Live Thermal Anomaly Map',
+    appTitle: 'OpenFireWatch — Live Map of Dangerous Heat Sources',
 
     dashboardAria: 'Critical phosphorus fire alerts',
     dashboardTitle: 'CRITICAL ALERTS',
@@ -216,7 +216,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     levelPhosphorusFire: 'PHOSPHORUS FIRE',
     levelWildfire: 'WILDFIRE',
     levelOrdnanceHeat: 'HEAT AT ORDNANCE SITE',
-    levelThermalAnomaly: 'THERMAL ANOMALY',
+    levelThermalAnomaly: 'UNUSUAL HEAT',
     levelSmouldering: 'SMOULDERING NEST',
     levelSensorHeat: 'GROUND SENSOR HEAT',
     levelElevated: 'ELEVATED',
@@ -230,7 +230,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsUnavailable: 'No recent ingestion cycle — conditions unknown.',
     conditionsStation: 'station',
     conditionsArmed: 'ignition window OPEN',
-    conditionsOnDetection: 'escalates on any credible detection',
+    conditionsOnDetection: 'alarms on any detected heat source — regardless of weather',
     conditionsGap: '{temp} °C and {soil} % from the ignition window',
     conditionsGapTempOnly: 'soil already dry enough — {temp} °C short of ignition',
     conditionsGapSoilOnly: 'temperature reached — soil still {soil} % too moist',
@@ -243,7 +243,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     forecastTitle: 'IGNITION OUTLOOK · 7 DAYS',
     forecastNone: 'no ignition window in the next 7 days',
     forecastUnavailable: 'No recent forecast — outlook unknown.',
-    forecastNotWeatherGated: 'escalates on detection — not a weather question',
+    forecastNotWeatherGated: 'weather plays no role here — alarms on detected heat',
     forecastWindow: '{day}, {from}–{to}',
     forecastLeadTime: 'in {hours} h',
     forecastPeak: 'up to {temp} °C · soil down to {soil} %',
@@ -400,7 +400,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
   },
 
   de: {
-    appTitle: 'OpenFireWatch — Live-Karte thermischer Anomalien',
+    appTitle: 'OpenFireWatch — Live-Karte gefährlicher Hitzequellen',
 
     dashboardAria: 'Kritische Phosphorbrand-Alarme',
     dashboardTitle: 'KRITISCHE ALARME',
@@ -412,7 +412,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     levelPhosphorusFire: 'PHOSPHORBRAND',
     levelWildfire: 'WALDBRAND',
     levelOrdnanceHeat: 'HITZE AN MUNITIONSSTANDORT',
-    levelThermalAnomaly: 'THERMISCHE ANOMALIE',
+    levelThermalAnomaly: 'UNGEWÖHNLICHE HITZE',
     levelSmouldering: 'GLUTNEST',
     levelSensorHeat: 'HITZE AN BODENSONDE',
     levelElevated: 'ERHÖHT',
@@ -426,7 +426,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsUnavailable: 'Kein aktueller Abrufzyklus — Bedingungen unbekannt.',
     conditionsStation: 'Station',
     conditionsArmed: 'Zündfenster OFFEN',
-    conditionsOnDetection: 'eskaliert bei jeder glaubwürdigen Detektion',
+    conditionsOnDetection: 'Alarm bei jeder erkannten Hitzequelle — unabhängig vom Wetter',
     conditionsGap: '{temp} °C und {soil} % vom Zündfenster entfernt',
     conditionsGapTempOnly: 'Boden bereits trocken genug — nur noch {temp} °C bis zur Zündung',
     conditionsGapSoilOnly: 'Temperatur erreicht — Boden noch {soil} % zu feucht',
@@ -439,7 +439,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     forecastTitle: 'ZÜNDFENSTER-VORHERSAGE · 7 TAGE',
     forecastNone: 'kein Zündfenster in den nächsten 7 Tagen',
     forecastUnavailable: 'Keine aktuelle Vorhersage — Ausblick unbekannt.',
-    forecastNotWeatherGated: 'eskaliert bei Detektion — keine Wetterfrage',
+    forecastNotWeatherGated: 'Wetter spielt hier keine Rolle — Alarm bei erkannter Hitze',
     forecastWindow: '{day}, {from}–{to} Uhr',
     forecastLeadTime: 'in {hours} h',
     forecastPeak: 'bis {temp} °C · Boden bis {soil} %',

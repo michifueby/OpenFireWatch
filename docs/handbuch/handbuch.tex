@@ -72,7 +72,7 @@
 \vspace{0.8cm}
 {\Huge\bfseries OpenFireWatch\par}
 \vspace{0.3cm}
-{\Large Geografisches Frühwarnsystem für thermische Anomalien\par}
+{\Large Geografisches Frühwarnsystem für gefährliche Hitzequellen\par}
 
 \vspace{0.5cm}
 {\large\color{ofwGrau} Handbuch für Einsatzkräfte, Betreiber und Entwickler\par}
@@ -191,7 +191,7 @@ Rechner unten links, am Telefon oben rechts.
 \textbf{Darstellung} & \textbf{Bedeutung} \\
 \midrule
 Rot umrandete Fläche & Eine \textbf{Gefahrenzone}. Nur innerhalb dieser
-Flächen löst eine Detektion einen Alarm aus. \\[4pt]
+Flächen kann eine erkannte Hitzequelle einen Alarm auslösen. \\[4pt]
 Kleiner gelber Punkt & Eine erfasste Hitzequelle, die \emph{keinen} Alarm
 ausgelöst hat --- zur Einordnung der Lage. \\[4pt]
 Pulsierender roter Punkt & Ein \textbf{kritischer Alarm}. Ein Klick oder Tipp
@@ -275,7 +275,7 @@ Steht in einer Zone ein Bodensensor und meldet er aktuelle Werte, fließen
 dessen Messwerte hier ein --- nicht mehr die Schätzung für die ganze Region
 (siehe Abschnitt \ref{sec:sensoren}).
 
-Bei einer Zone, bei der \enquote{eskaliert bei jeder glaubwürdigen Detektion}
+Bei einer Zone, bei der \enquote{Alarm bei jeder erkannten Hitzequelle}
 steht, gibt es keinen Abstand zu berechnen: Sie ist dauerhaft scharf. Solche
 Zeilen bleiben deshalb bewusst grau. Rot ist einem tatsächlichen Zustand
 vorbehalten --- eine Zeile, die immer rot leuchtet, gewöhnt das Auge an Rot,
@@ -299,10 +299,10 @@ eingerichteten Kanäle gemeldet --- als \emph{Warnung}, nicht als Alarm.
 \begin{hinweis}[Eine Vorhersage ist keine Vorhersage eines Brandes]
 Sie besagt, dass die Bedingungen für eine Selbstentzündung erwartet werden.
 Die meisten solcher Fenster vergehen ohne Ereignis --- genau deshalb ist eine
-Streife währenddessen billige Vorsorge. Bei Zonen, die bei jeder Detektion
-eskalieren (etwa Waldbrandflächen), steht bewusst \enquote{keine Wetterfrage}
-statt \enquote{kein Fenster}: Eine Entwarnung, für die es keine Grundlage
-gibt, wäre schlimmer als keine Angabe.
+Streife währenddessen billige Vorsorge. Bei Zonen, die bei jeder erkannten
+Hitzequelle alarmieren (etwa Waldbrandflächen), steht bewusst \enquote{Wetter
+spielt hier keine Rolle} statt \enquote{kein Fenster}: Eine Entwarnung, für
+die es keine Grundlage gibt, wäre schlimmer als keine Angabe.
 \end{hinweis}
 
 \paragraph{Aktuelle Alarme.} Jeder Eintrag nennt die Alarmstufe, die betroffene
@@ -375,7 +375,7 @@ im Sinne von \enquote{jemand kümmert sich}, nicht gelöscht.
 In einer Phosphor-Zone ist es über 30\,\textdegree C \emph{und} der Boden ist
 sehr trocken. Selbstentzündung ist möglich. \\[4pt]
 \textsc{Waldbrand} & rot &
-In einer Waldbrand-Zone wurde eine glaubwürdige Hitzequelle erfasst. \\[4pt]
+In einer Waldbrand-Zone wurde eine Hitzequelle erkannt. \\[4pt]
 \textsc{Hitze an Munitions\-standort} & rot &
 Hitze an einem Ort mit Munition --- unabhängig vom Wetter. \\[4pt]
 \textsc{Glutnest} & rot &
@@ -385,7 +385,7 @@ Fleck. Typisches Muster für schwelende Glut. \\[4pt]
 Eine Bodensonde hat die Hitze \emph{selbst gemessen} --- über 50\,\textdegree C,
 oder ein ungewöhnlicher Anstieg gegenüber den Stunden davor. Der Fall, den
 kein Satellit sieht. \\[4pt]
-\textsc{Thermische Anomalie} & rot &
+\textsc{Ungewöhnliche Hitze} & rot &
 Auffällige Hitze in einer Zone ohne spezielles Gefahrenmodell. \\[4pt]
 \textsc{Erhöht} & orange &
 Etwas wurde in einer Zone erfasst, die Kriterien für einen Alarm waren aber
@@ -421,7 +421,8 @@ weniger als 20\,\% Bodenfeuchte. Der Mechanismus hängt vom Wetter ab: Bei
 feuchtem Boden bleibt die Munition abgeschirmt, bei kühlem Wetter fehlt die
 Zündtemperatur. \\[4pt]
 Waldbrand &
-Bei jeder glaubwürdigen Detektion, \textbf{unabhängig vom Wetter}. Ein
+Bei jeder erkannten Hitzequelle, \textbf{unabhängig vom Wetter} --- sofern
+der Satellit die Meldung nicht selbst als unsicher einstuft. Ein
 Hitzepunkt im Wald \emph{ist} bereits ein Feuer. Auf 30\,\textdegree C
 Lufttemperatur zu warten würde einen echten Brand an einem kühlen Tag
 verschweigen. \\[4pt]
@@ -430,16 +431,16 @@ Immer, ohne jede Zusatzbedingung. Hitze an einem Munitionsstandort ist
 unabhängig vom Wetter ein Notfall. Ein Fehlalarm ist dort deutlich billiger
 als ein übersehener Vorfall. \\[4pt]
 Allgemein &
-Bei jeder glaubwürdigen Detektion. Auffangfall für Zonen ohne spezielles
+Bei jeder erkannten Hitzequelle. Auffangfall für Zonen ohne spezielles
 Gefahrenmodell. \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-\subsection{Glaubwürdigkeit einer Detektion}
+\subsection{Wie sicher ist eine Meldung?}
 
-Die Satelliten liefern zu jeder Detektion eine eigene Bewertung, wie sicher sie
-sich sind. Nur eine ausdrücklich \emph{niedrige} Einstufung unterdrückt einen
+Die Satelliten liefern zu jeder gemeldeten Hitzequelle eine eigene Einschätzung,
+wie sicher sie sich sind. Nur eine ausdrücklich \emph{niedrige} Einstufung unterdrückt einen
 Alarm --- so fallen bekannte Störquellen wie Sonnenreflexionen heraus, ohne
 dass eine fehlende Angabe stillschweigend zu einer Abwertung führt.
 
@@ -552,7 +553,7 @@ es am ehesten darauf ankommt. Auf Wunsch meldet OpenFireWatch deshalb
 selbstständig:
 
 \begin{itemize}[leftmargin=*]
-  \item \textbf{Kritische Alarme}, einmal je Ereignis. Dieselbe Detektion
+  \item \textbf{Kritische Alarme}, einmal je Ereignis. Dieselbe Hitzequelle
         erneut bewertet löst keine zweite Meldung aus.
   \item \textbf{Ausfall der Datenaufnahme.} Kommen über mehrere Abfragezyklen
         keine Daten mehr herein, wird das gemeldet --- und ebenso, wenn es
