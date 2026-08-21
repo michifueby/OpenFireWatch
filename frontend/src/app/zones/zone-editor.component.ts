@@ -19,6 +19,7 @@ import { Component, OnDestroy, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { TranslationService } from '../core/i18n/translation.service';
+import { IconComponent } from '../shared/icon.component';
 import { TranslationDict } from '../core/i18n/translations';
 import {
   SensorApiService,
@@ -57,7 +58,7 @@ const HAZARD_OPTIONS: ReadonlyArray<{
 @Component({
   selector: 'ofw-zone-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './zone-editor.component.html',
   styleUrls: ['./zone-editor.component.scss'],
 })

@@ -161,6 +161,14 @@ body {
       letter-spacing: 0.03em;
     }
   }
+
+  // Icon and words on one baseline. The icon draws itself in currentColor,
+  // so it takes the heading's colour without being told.
+  .ofw-popup-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
 }
 
 .maplibregl-popup-anchor-bottom .maplibregl-popup-tip {

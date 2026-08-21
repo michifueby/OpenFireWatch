@@ -54,6 +54,15 @@ still a question, not a commitment.
   any more — the smallest labels sat at 9 px, which read as decoration on a
   phone at arm's length.
 
+### Changed
+
+- **Icons instead of emoji.** The four emoji in the interface carried their
+  own colours into a palette where red means "alarm" and nothing else may
+  claim it, rendered as a different picture on every platform, and were read
+  aloud by name in the middle of a heading. They are now inline SVG in
+  `currentColor`, so an alert marker is red because the alert is critical.
+  Seven hand-drawn icons, no icon library and nothing fetched at runtime.
+
 ### Fixed
 
 - Aerial and terrain base maps rendered as a checkerboard of black gaps: four

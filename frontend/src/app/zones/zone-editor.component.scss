@@ -15,6 +15,9 @@ $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospac
 }
 
 .launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   padding: 0.45rem 0.8rem;
   border: 1px solid $border;
   border-radius: 999px;
@@ -54,6 +57,9 @@ $font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospac
   border-bottom: 1px solid $border;
 
   h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
     margin: 0;
     font-size: 0.78rem;
     font-weight: 700;

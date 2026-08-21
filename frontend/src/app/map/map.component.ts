@@ -46,6 +46,7 @@ import { ZoneApiService } from '../zones/zone-api.service';
 import { ZoneDrawService } from '../zones/zone-draw.service';
 import { AnomalyAlert } from '../core/models/alert.model';
 import { RealTimeAlertService } from '../core/services/real-time-alert.service';
+import { IconName, createIconElement } from '../shared/icons';
 
 /** Neunkirchen, Lower Austria — operational center of the demo deployment. */
 const NEUNKIRCHEN_LNG_LAT: [number, number] = [16.081, 47.723];
@@ -67,6 +68,22 @@ const RISK_ZONE_SOURCE = 'high-risk-zones';
 const ANOMALIES_SOURCE = 'anomalies';
 const SENSORS_SOURCE = 'ground-sensors';
 const SENSORS_LAYER = 'ground-sensors-dots';
+
+/**
+ * Popup heading: an icon in the heading's own colour, then the words.
+ *
+ * The icon inherits `currentColor` from the heading, so it is red in a
+ * critical alert and neutral in a sensor popup without either place saying so.
+ */
+function popupHeading(icon: IconName, text: string): HTMLElement {
+  const heading = document.createElement('strong');
+  heading.className = 'ofw-popup-heading';
+  heading.appendChild(createIconElement(icon, 15));
+  const label = document.createElement('span');
+  label.textContent = text;
+  heading.appendChild(label);
+  return heading;
+}
 
 /** Feature properties carried by the sensor layer (MapLibre re-parses JSON). */
 interface SensorPopupProps {
@@ -527,9 +544,7 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     const container = document.createElement('div');
     container.className = 'ofw-popup';
 
-    const title = document.createElement('strong');
-    title.textContent = `🌡 ${props.label}`;
-    container.appendChild(title);
+    container.appendChild(popupHeading('sensor', props.label));
 
     const lines = [
       props.deviceId,
@@ -719,9 +734,9 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     const container = document.createElement('div');
     container.className = 'ofw-popup';
 
-    const title = document.createElement('strong');
-    title.textContent = `🚨 ${this.i18n.levelLabel(alert.level)}`;
-    container.appendChild(title);
+    container.appendChild(
+      popupHeading('alert', this.i18n.levelLabel(alert.level)),
+    );
 
     const t = (key: Parameters<TranslationService['t']>[0]): string =>
       this.i18n.t(key);

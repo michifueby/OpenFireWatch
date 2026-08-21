@@ -7,12 +7,16 @@
   [attr.aria-label]="i18n.t('zonesOpen')"
   [attr.title]="i18n.t('zonesOpen')"
 >
-  ✎ {{ i18n.t('zonesTitle') }}
+  <ofw-icon name="pencil" />
+  {{ i18n.t('zonesTitle') }}
 </button>
 
 <section class="panel" *ngIf="open()" [attr.aria-label]="i18n.t('zonesTitle')">
   <header class="panel-header">
-    <h2>✎ {{ i18n.t('zonesTitle') }}</h2>
+    <h2>
+      <ofw-icon name="pencil" />
+      {{ i18n.t('zonesTitle') }}
+    </h2>
     <div class="header-actions">
       <button
         *ngIf="api.unlocked()"
@@ -21,7 +25,8 @@
         (click)="lock()"
         [attr.title]="i18n.t('zonesLock')"
       >
-        🔒 {{ i18n.t('zonesLock') }}
+        <ofw-icon name="lock" />
+        {{ i18n.t('zonesLock') }}
       </button>
       <button
         type="button"
@@ -137,8 +142,8 @@
           <span *ngIf="sensor.soilMoisturePct !== null">
             · {{ sensor.soilMoisturePct | number: '1.0-1' }}&nbsp;%
           </span>
-          <span *ngIf="sensor.batteryPct !== null">
-            · 🔋{{ sensor.batteryPct | number: '1.0-0' }}&nbsp;%
+          <span class="s-battery" *ngIf="sensor.batteryPct !== null">
+            · <ofw-icon name="battery" />{{ sensor.batteryPct | number: '1.0-0' }}&nbsp;%
           </span>
           <span *ngIf="sensor.lastSeenAt === null">
             · {{ i18n.t('sensorNoData') }}

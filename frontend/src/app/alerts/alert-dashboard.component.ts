@@ -14,6 +14,7 @@
  */
 
 import { CommonModule } from '@angular/common';
+import { IconComponent } from '../shared/icon.component';
 import { Component, OnDestroy, effect, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -30,7 +31,7 @@ import {
 @Component({
   selector: 'ofw-alert-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <section
       class="panel ofw-sheet"
@@ -57,7 +58,10 @@ import {
       <div class="sheet-body" id="ofw-sheet-body">
         <div class="sheet-scroll">
           <header class="panel-header">
-            <h2>⬤ {{ i18n.t('dashboardTitle') }}</h2>
+            <h2>
+              <ofw-icon name="dot" />
+              {{ i18n.t('dashboardTitle') }}
+            </h2>
             <span
               class="status"
               [class.online]="alerts.connected$ | async"
@@ -150,7 +154,8 @@ import {
               <!-- Why the system called it a smouldering nest, in the operator's
                    own terms — the evidence, not just the verdict. -->
               <div class="evidence" *ngIf="warning.smouldering as sm">
-                ◈ {{ smoulderingEvidence(sm) }}
+                <ofw-icon name="flame" />
+                {{ smoulderingEvidence(sm) }}
               </div>
 
               <dl class="readings">
@@ -256,6 +261,9 @@ import {
         border-bottom: 1px solid rgba($alert-red, 0.25);
 
         h2 {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
           margin: 0;
           font-size: 0.8rem;
           font-weight: 700;
@@ -341,6 +349,9 @@ import {
       }
 
       .evidence {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
         margin-top: 0.3rem;
         font-family: $font-mono;
         font-size: 0.72rem;
