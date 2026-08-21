@@ -41,6 +41,12 @@ still a question, not a commitment.
 
 ### Fixed
 
+- Aerial and terrain base maps rendered as a checkerboard of black gaps: four
+  of the five basemap.at hostnames the service is commonly documented with do
+  not resolve, so most tile requests failed. Only hosts verified to answer are
+  used now, and each source carries its actual maximum zoom (imagery 19,
+  terrain 17), so zooming past it stretches the last level instead of leaving
+  holes.
 - Adopting a drawn outline into the zone form silently failed in production
   (NG0600: signal writes inside effects are disallowed by default) — drawing
   a zone or placing a sensor now actually reaches the form.

@@ -37,6 +37,12 @@ export interface Basemap {
   tiles: string[];
   /** Licence text. A requirement of every source here, not decoration. */
   attribution: string;
+  /**
+   * The deepest zoom the source actually serves — VERIFIED against the
+   * service, not guessed. Set too high, MapLibre requests tiles that 404 and
+   * paints the gaps black instead of stretching the last level it has, which
+   * looks like a broken map rather than a limit.
+   */
   maxzoom: number;
   /**
    * True when the source only covers Austria. Surfaced in the UI so an
@@ -55,9 +61,17 @@ export interface Basemap {
 const BASEMAP_AT_ATTRIBUTION =
   '<a href="https://basemap.at/" target="_blank" rel="noopener">basemap.at</a> (CC BY 4.0)';
 
-/** basemap.at serves the same tiling scheme from four load-balanced hosts. */
+/**
+ * basemap.at tile URLs. Note the {z}/{y}/{x} order — y before x, unlike most
+ * schemes, and silently wrong-looking rather than broken if swapped.
+ *
+ * Only hosts that actually resolve are listed. The `maps1`–`maps4` shard
+ * names that this service is often documented with do NOT exist: every
+ * request to them fails, which paints roughly four tiles in five black and
+ * looks exactly like a half-loaded map rather than a bad hostname.
+ */
 const basemapAtTiles = (layer: string, variant: string, ext: string): string[] =>
-  ['maps', 'maps1', 'maps2', 'maps3', 'maps4'].map(
+  ['maps', 'mapsneu'].map(
     (host) =>
       `https://${host}.wien.gv.at/basemap/${layer}/${variant}/google3857/{z}/{y}/{x}.${ext}`,
   );
@@ -94,7 +108,9 @@ export const BASEMAPS: readonly Basemap[] = [
     // exactly the contrast the alert styling depends on.
     tiles: basemapAtTiles('bmapgelaende', 'grau', 'jpeg'),
     attribution: BASEMAP_AT_ATTRIBUTION,
-    maxzoom: 19,
+    // Shallower than the orthophoto: relief is generalised cartography, and
+    // the service stops at 17 where the imagery goes to 19.
+    maxzoom: 17,
     austriaOnly: true,
   },
 ];
