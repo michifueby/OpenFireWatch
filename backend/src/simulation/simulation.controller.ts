@@ -20,17 +20,25 @@
  * push fabricated CRITICAL alerts to every connected responder.
  */
 
-import { Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  HttpCode,
+  Inject,
+  OnModuleDestroy,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiHeader,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Queue } from 'bullmq';
 
 import { API_KEY_HEADER, ApiKeyGuard } from '../auth/api-key.guard';
-import { Queue } from 'bullmq';
-import { OnModuleDestroy } from '@nestjs/common';
+import { APP_CONFIG, AppConfig } from '../config/environment';
+import { redisOptions } from '../redis/redis.factory';
 
 /** Must match the workers' BUS.DETECTION_REPORTS_QUEUE (no ":" in BullMQ names). */
 const DETECTION_REPORTS_QUEUE = 'events.detection-reports';
@@ -49,14 +57,13 @@ const FOEHRENWALD_CENTER = { longitude: 16.2155, latitude: 47.7593 };
 @Controller('simulate-fire')
 export class SimulationController implements OnModuleDestroy {
   /** Producer handle onto the same queue the enrichment worker feeds. */
-  private readonly reportsQueue = new Queue(DETECTION_REPORTS_QUEUE, {
-    connection: {
-      host: process.env.REDIS_HOST ?? 'redis',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      db: Number(process.env.REDIS_DB ?? 0),
-      maxRetriesPerRequest: null,
-    },
-  });
+  private readonly reportsQueue: Queue;
+
+  constructor(@Inject(APP_CONFIG) config: AppConfig) {
+    this.reportsQueue = new Queue(DETECTION_REPORTS_QUEUE, {
+      connection: redisOptions(config, 'stream'),
+    });
+  }
 
   @Post()
   @UseGuards(ApiKeyGuard) // injecting fake CRITICAL alerts must not be public

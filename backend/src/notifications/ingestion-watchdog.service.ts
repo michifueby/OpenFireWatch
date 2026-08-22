@@ -16,8 +16,17 @@
  * go and look, which is the habit this is meant to replace.
  */
 
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import IORedis from 'ioredis';
+
+import { APP_CONFIG, AppConfig } from '../config/environment';
+import { createRedis, quitAll } from '../redis/redis.factory';
 
 import { recoveredText, stalledText } from './notification-texts';
 import { NotificationService } from './notification.service';
@@ -48,15 +57,15 @@ export class IngestionWatchdog implements OnModuleInit, OnModuleDestroy {
    */
   private everSeenHealthy = false;
 
-  constructor(private readonly notifications: NotificationService) {}
+  constructor(
+    private readonly notifications: NotificationService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+  ) {}
 
   onModuleInit(): void {
-    this.redis = new IORedis({
-      host: process.env.REDIS_HOST ?? 'redis',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      db: Number(process.env.REDIS_DB ?? 0),
-      retryStrategy: (attempt) => Math.min(2 ** attempt * 100, 30_000),
-    });
+    // 'stream': the dead-man's switch must ride out a broker restart —
+    // giving up on the key it watches would report a false outage.
+    this.redis = createRedis(this.config, 'stream');
     this.timer = setInterval(() => void this.check(), CHECK_INTERVAL_MS);
     // Do not unref: this timer is the point of the service.
     void this.check();
@@ -78,7 +87,7 @@ export class IngestionWatchdog implements OnModuleInit, OnModuleDestroy {
             dedupeKey: `ingestion:recovered:${Date.now()}`,
             ...recoveredText(),
             data: {},
-            url: publicUrl(),
+            url: this.config.api.publicUrl,
             occurredAt: new Date().toISOString(),
           });
         }
@@ -96,7 +105,7 @@ export class IngestionWatchdog implements OnModuleInit, OnModuleDestroy {
         dedupeKey: `ingestion:stalled:${Date.now()}`,
         ...stalledText(),
         data: { conditionsKey: CONDITIONS_KEY },
-        url: publicUrl(),
+        url: this.config.api.publicUrl,
         occurredAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -106,12 +115,8 @@ export class IngestionWatchdog implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  onModuleDestroy(): void {
+  async onModuleDestroy(): Promise<void> {
     if (this.timer) clearInterval(this.timer);
-    void this.redis?.quit();
+    await quitAll(this.redis);
   }
-}
-
-function publicUrl(): string {
-  return process.env.PUBLIC_URL?.trim() || 'https://openfirewatch.org';
 }

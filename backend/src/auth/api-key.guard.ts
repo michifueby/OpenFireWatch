@@ -27,6 +27,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { configSnapshot } from '../config/environment';
 import type { Request } from 'express';
 
 export const API_KEY_HEADER = 'x-api-key';
@@ -36,7 +37,7 @@ export class ApiKeyGuard implements CanActivate {
   private readonly logger = new Logger(ApiKeyGuard.name);
 
   canActivate(context: ExecutionContext): boolean {
-    const configured = process.env.OPERATOR_API_KEY?.trim();
+    const configured = configSnapshot().auth.operatorApiKey;
     if (!configured) {
       this.logger.error(
         'OPERATOR_API_KEY is not configured — refusing all write requests.',

@@ -26,8 +26,11 @@
  * principle by which smouldering persistence outranks prediction.
  */
 
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import IORedis from 'ioredis';
+
+import { APP_CONFIG, AppConfig } from '../config/environment';
+import { createRedis, quitAll } from '../redis/redis.factory';
 
 import { DatabaseService } from '../database/database.service';
 import { AlertLevel } from '../evaluation/alert-level.enum';
@@ -38,35 +41,35 @@ const ALERTS_CHANNEL = 'alerts:anomalies';
 /** Prefix marking anomalies that originate from a probe, not a satellite. */
 const SENSOR_SOURCE_PREFIX = 'GROUND_SENSOR:';
 
-/** One alert per probe per episode; a smoulder does not need hourly repeats. */
-const COOLDOWN_HOURS = Number(process.env.SENSOR_ALERT_COOLDOWN_HOURS ?? 6);
-
 @Injectable()
 export class SensorAlertService implements OnModuleDestroy {
   private readonly logger = new Logger(SensorAlertService.name);
   private publisher?: IORedis;
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+  ) {}
 
   /** Lazy: most deployments see readings long before the first alert. */
   private getPublisher(): IORedis {
-    this.publisher ??= new IORedis({
-      host: process.env.REDIS_HOST ?? 'redis',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      db: Number(process.env.REDIS_DB ?? 0),
-      retryStrategy: (attempt) => Math.min(2 ** attempt * 100, 30_000),
-    });
+    // 'stream': publishing an alert must not be abandoned because the
+    // broker happened to be restarting.
+    this.publisher ??= createRedis(this.config, 'stream');
     return this.publisher;
   }
 
   private absoluteThreshold(): number {
-    const parsed = Number(process.env.SENSOR_ALERT_TEMPERATURE_C ?? 50);
-    return Number.isFinite(parsed) ? parsed : 50;
+    return this.config.sensors.alertTemperatureC;
   }
 
   private riseThreshold(): number {
-    const parsed = Number(process.env.SENSOR_ALERT_RISE_C ?? 15);
-    return Number.isFinite(parsed) ? parsed : 15;
+    return this.config.sensors.alertRiseC;
+  }
+
+  /** One alert per probe per episode; a smoulder needs no hourly repeats. */
+  private cooldownHours(): number {
+    return this.config.sensors.alertCooldownHours;
   }
 
   /**
@@ -208,7 +211,7 @@ export class SensorAlertService implements OnModuleDestroy {
       [
         SENSOR_SOURCE_PREFIX + deviceId,
         AlertLevel.CRITICAL_SENSOR_HEAT,
-        COOLDOWN_HOURS,
+        this.cooldownHours(),
       ],
     );
     return rows.length > 0;
@@ -282,6 +285,6 @@ export class SensorAlertService implements OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.publisher?.quit();
+    await quitAll(this.publisher);
   }
 }

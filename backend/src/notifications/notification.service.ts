@@ -24,6 +24,9 @@ import {
 } from '@nestjs/common';
 import IORedis from 'ioredis';
 
+import { APP_CONFIG, AppConfig } from '../config/environment';
+import { createRedis, quitAll } from '../redis/redis.factory';
+
 import { DatabaseService } from '../database/database.service';
 import {
   NOTIFICATION_CHANNELS,
@@ -61,19 +64,16 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
     private readonly db: DatabaseService,
     @Inject(NOTIFICATION_CHANNELS)
     private readonly channels: NotificationChannel[],
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   async onModuleInit(): Promise<void> {
     await this.ensureSchema();
 
-    const options = {
-      host: process.env.REDIS_HOST ?? 'redis',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      db: Number(process.env.REDIS_DB ?? 0),
-      retryStrategy: (attempt: number) => Math.min(2 ** attempt * 100, 30_000),
-    };
-    this.redis = new IORedis(options);
-    this.subscriber = new IORedis(options);
+    // 'stream' for both: a notification relay that gave up on the broker
+    // would go silent exactly when something is on fire.
+    this.redis = createRedis(this.config, 'stream');
+    this.subscriber = createRedis(this.config, 'stream');
 
     await this.subscriber.subscribe(ALERTS_CHANNEL);
     this.subscriber.on('message', (_channel, payload) => {
@@ -182,9 +182,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
   }
 
   private meetsSeverityFloor(severity: NotificationSeverity): boolean {
-    const floor = (process.env.NOTIFY_MIN_SEVERITY ?? 'warning').trim() as
-      | NotificationSeverity
-      | string;
+    const floor = this.config.notifications.minSeverity;
     const minimum = SEVERITY_ORDER[floor as NotificationSeverity];
     // An unrecognised value must not silently mute everything.
     if (minimum === undefined) return true;
@@ -225,7 +223,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
         title,
         body,
         data: { ...alert },
-        url: process.env.PUBLIC_URL?.trim() || 'https://openfirewatch.org',
+        url: this.config.api.publicUrl,
         occurredAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -273,7 +271,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    await Promise.allSettled([this.subscriber?.quit(), this.redis?.quit()]);
+    await quitAll(this.subscriber, this.redis);
   }
 }
 

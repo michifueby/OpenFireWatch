@@ -39,6 +39,19 @@ cd backend && set -a && . ../.env && set +a && npm run test:e2e
 The suite creates its own isolated database and Redis logical DB, so it never
 touches your development data.
 
+Both packages also have checks that need nothing running:
+
+```bash
+cd backend
+npm run lint   # unawaited promises, swallowed rejections, empty catches
+npm test       # the alert rule at every threshold, the config parser
+```
+
+The unit suite exists because the alert rule decides whether anybody is woken
+up, and until it was extracted from the evaluation service it could only be
+reached through PostGIS, Redis and BullMQ together — so the boundaries (one
+tenth of a degree either side of ignition) were never checked at all.
+
 The frontend has its own checks, which need nothing running:
 
 ```bash

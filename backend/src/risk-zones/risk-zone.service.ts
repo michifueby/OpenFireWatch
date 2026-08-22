@@ -253,7 +253,10 @@ export class RiskZoneService implements OnModuleInit {
       FROM high_risk_zones z
       WHERE z.is_active;
     `);
-    return rows[0].geojson;
+    // An aggregate always returns one row, but nothing in the type system
+    // says so — and a crash here would 500 the read the map is built on.
+    // An empty collection is the honest answer to "no rows".
+    return rows[0]?.geojson ?? { type: 'FeatureCollection', features: [] };
   }
 
   /**

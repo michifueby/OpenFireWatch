@@ -26,6 +26,7 @@
  */
 
 import {
+  Inject,
   ConflictException,
   Injectable,
   Logger,
@@ -33,6 +34,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 
+import { APP_CONFIG, AppConfig } from '../config/environment';
 import { DatabaseService } from '../database/database.service';
 import { RegisterSensorDto } from './register-sensor.dto';
 import { SensorAlertService } from './sensor-alert.service';
@@ -46,7 +48,7 @@ import { SensorReadingDto } from './sensor-reading.dto';
  * Past it the reading is not used at all — a dead sensor must never be able
  * to report calm conditions on behalf of a wood that is drying out.
  */
-const MAX_AGE_MINUTES = Number(process.env.SENSOR_MAX_AGE_MINUTES ?? 90);
+// Configured via SENSOR_MAX_AGE_MINUTES — see config/environment.ts.
 
 /** A registered sensor and its most recent state. */
 export interface SensorStatus {
@@ -98,7 +100,18 @@ export class SensorService implements OnModuleInit {
   constructor(
     private readonly db: DatabaseService,
     private readonly sensorAlerts: SensorAlertService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
+
+  /**
+   * How long a reading counts as ground truth.
+   *
+   * Past this it is context, never a decision input: a dead sensor must not
+   * report calm on behalf of a wood that is drying out.
+   */
+  private get maxAgeMinutes(): number {
+    return this.config.sensors.maxAgeMinutes;
+  }
 
   async onModuleInit(): Promise<void> {
     await this.ensureSchema();
@@ -193,7 +206,7 @@ export class SensorService implements OnModuleInit {
       ORDER BY s.label;
     `);
 
-    const cutoff = Date.now() - MAX_AGE_MINUTES * 60_000;
+    const cutoff = Date.now() - this.maxAgeMinutes * 60_000;
     return rows.map((row) => ({
       id: Number(row.id),
       deviceId: row.device_id,
@@ -243,7 +256,7 @@ export class SensorService implements OnModuleInit {
       ) r ON TRUE
       WHERE s.is_active;
       `,
-      [MAX_AGE_MINUTES],
+      [this.maxAgeMinutes],
     );
 
     const byZone = new Map<number, LocalConditions>();
@@ -404,7 +417,7 @@ export class SensorService implements OnModuleInit {
         ON sensor_readings (sensor_id, observed_at DESC);
     `);
     this.logger.log(
-      `Ground sensor intake ready (readings usable for ${MAX_AGE_MINUTES} min)`,
+      `Ground sensor intake ready (readings usable for ${this.maxAgeMinutes} min)`,
     );
   }
 }

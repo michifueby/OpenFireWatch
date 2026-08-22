@@ -31,6 +31,7 @@ import request from 'supertest';
 
 import { AlertsGateway } from '../src/alerts/alerts.gateway';
 import { AppModule } from '../src/app.module';
+import { APP_CONFIG, AppConfig } from '../src/config/environment';
 
 const TEST_DB = 'openfirewatch_e2e';
 const OPERATOR_KEY = process.env.OPERATOR_API_KEY!;
@@ -238,8 +239,10 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     );
     // The seeded demo polygon must contain the coordinates the drill injects.
     const ring: number[][] = zone.geometry.coordinates[0];
-    const lons = ring.map((p) => p[0]);
-    const lats = ring.map((p) => p[1]);
+    // A GeoJSON position is [lon, lat] by definition — assert it rather than
+    // branch on it, so a malformed ring fails here instead of downstream.
+    const lons = ring.map((p) => p[0]!);
+    const lats = ring.map((p) => p[1]!);
     expect(Math.min(...lons)).toBeLessThan(DRILL_LON);
     expect(Math.max(...lons)).toBeGreaterThan(DRILL_LON);
     expect(Math.min(...lats)).toBeLessThan(DRILL_LAT);
@@ -1033,10 +1036,28 @@ describe('OpenFireWatch pipeline (e2e)', () => {
 
     beforeEach(() => {
       received = [];
-      delete process.env.NOTIFY_WEBHOOK_URL;
-      delete process.env.NOTIFY_WEBHOOK_SECRET;
+      configureNotifications({
+        webhookUrl: undefined,
+        webhookSecret: undefined,
+        language: 'de',
+      });
     });
 
+
+    /**
+     * Point the notification channels somewhere, the way a deployment would.
+     *
+     * These used to assign `process.env` mid-test, which worked only because
+     * every channel re-read the environment on every call. Configuration is
+     * now parsed once at boot — correct, because an environment variable
+     * cannot change inside a running process — so a test that wants a
+     * different setting has to change the object the application holds.
+     */
+    const configureNotifications = (
+      overrides: Partial<AppConfig['notifications']>,
+    ): void => {
+      Object.assign(app.get<AppConfig>(APP_CONFIG).notifications, overrides);
+    };
     /** Give the dispatcher a moment: delivery is deliberately off the
      *  request path, so the response returns before the POST lands. */
     const settle = () => new Promise((r) => setTimeout(r, 400));
@@ -1062,8 +1083,7 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
 
     it('delivers to a configured webhook, signed', async () => {
-      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
-      process.env.NOTIFY_WEBHOOK_SECRET = 'e2e-secret';
+      configureNotifications({ webhookUrl: hookUrl, webhookSecret: 'e2e-secret' });
 
       const res = await request(app.getHttpServer())
         .post('/api/notifications/test')
@@ -1073,7 +1093,7 @@ describe('OpenFireWatch pipeline (e2e)', () => {
 
       await settle();
       expect(received).toHaveLength(1);
-      expect(received[0].body).toEqual(
+      expect(received[0]!.body).toEqual(
         expect.objectContaining({ source: 'openfirewatch', kind: 'test' }),
       );
 
@@ -1083,13 +1103,13 @@ describe('OpenFireWatch pipeline (e2e)', () => {
       const expected =
         'sha256=' +
         createHmac('sha256', 'e2e-secret')
-          .update(JSON.stringify(received[0].body))
+          .update(JSON.stringify(received[0]!.body))
           .digest('hex');
-      expect(received[0].headers['x-openfirewatch-signature']).toBe(expected);
+      expect(received[0]!.headers['x-openfirewatch-signature']).toBe(expected);
     });
 
     it('omits the signature when no secret is set, rather than sending a fake one', async () => {
-      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      configureNotifications({ webhookUrl: hookUrl });
 
       await request(app.getHttpServer())
         .post('/api/notifications/test')
@@ -1098,11 +1118,11 @@ describe('OpenFireWatch pipeline (e2e)', () => {
 
       await settle();
       expect(received).toHaveLength(1);
-      expect(received[0].headers['x-openfirewatch-signature']).toBeUndefined();
+      expect(received[0]!.headers['x-openfirewatch-signature']).toBeUndefined();
     });
 
     it('relays a real critical alert, and only once', async () => {
-      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      configureNotifications({ webhookUrl: hookUrl });
 
       await request(app.getHttpServer())
         .post('/api/simulate-fire')
@@ -1137,7 +1157,7 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
 
     it('records every delivery, so "was anyone told?" has an answer', async () => {
-      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      configureNotifications({ webhookUrl: hookUrl });
       await request(app.getHttpServer())
         .post('/api/notifications/test')
         .set('X-API-Key', OPERATOR_KEY)
@@ -1152,32 +1172,31 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
 
     it('speaks the configured language', async () => {
-      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
-      process.env.NOTIFY_LANGUAGE = 'en';
+      configureNotifications({ webhookUrl: hookUrl, language: 'en' });
       try {
         await request(app.getHttpServer())
           .post('/api/notifications/test')
           .set('X-API-Key', OPERATOR_KEY)
           .expect(202);
         await settle();
-        expect(received[0].body.title).toBe('OpenFireWatch — test message');
+        expect(received[0]!.body.title).toBe('OpenFireWatch — test message');
 
         // And the default stays German — the deployment this was built for.
-        delete process.env.NOTIFY_LANGUAGE;
+        configureNotifications({ language: 'de' });
         received.length = 0;
         await request(app.getHttpServer())
           .post('/api/notifications/test')
           .set('X-API-Key', OPERATOR_KEY)
           .expect(202);
         await settle();
-        expect(received[0].body.title).toBe('OpenFireWatch — Testmeldung');
+        expect(received[0]!.body.title).toBe('OpenFireWatch — Testmeldung');
       } finally {
-        delete process.env.NOTIFY_LANGUAGE;
+        configureNotifications({ language: 'de' });
       }
     });
 
     it('reminds about an alert nobody has taken — once', async () => {
-      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      configureNotifications({ webhookUrl: hookUrl });
       const { EscalationService } = await import('../src/notifications/escalation.service');
       const escalation = app.get(EscalationService);
 
@@ -1212,8 +1231,8 @@ describe('OpenFireWatch pipeline (e2e)', () => {
       await escalation.sweep();
       await settle();
       expect(received).toHaveLength(1);
-      expect(received[0].body.kind).toBe('alert.unacknowledged');
-      expect(received[0].body.body).toContain(String(anomalyId));
+      expect(received[0]!.body.kind).toBe('alert.unacknowledged');
+      expect(received[0]!.body.body).toContain(String(anomalyId));
 
       // A second sweep must NOT repeat it — that is how channels get muted.
       await escalation.sweep();
@@ -1222,7 +1241,7 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
 
     it('never reminds about an alert somebody has taken', async () => {
-      process.env.NOTIFY_WEBHOOK_URL = hookUrl;
+      configureNotifications({ webhookUrl: hookUrl });
       const { EscalationService } = await import('../src/notifications/escalation.service');
       const escalation = app.get(EscalationService);
 
@@ -1261,7 +1280,7 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     it('records a failure instead of losing it', async () => {
       // A port nothing listens on: the channel throws, the dispatcher retries,
       // and the outcome still has to end up on the record.
-      process.env.NOTIFY_WEBHOOK_URL = 'http://127.0.0.1:1/nowhere';
+      configureNotifications({ webhookUrl: 'http://127.0.0.1:1/nowhere' });
 
       await request(app.getHttpServer())
         .post('/api/notifications/test')
@@ -2142,7 +2161,7 @@ describe('OpenFireWatch pipeline (e2e)', () => {
       const unclosed = await request(app.getHttpServer())
         .post('/api/risk-zones')
         .set('X-API-Key', OPERATOR_KEY)
-        .send({ ...body, geometry: { type: 'Polygon', coordinates: [polygon.coordinates[0].slice(0, 3)] } })
+        .send({ ...body, geometry: { type: 'Polygon', coordinates: [polygon.coordinates[0]!.slice(0, 3)] } })
         .expect(400);
       expect(JSON.stringify(unclosed.body.message)).toContain('at least 4 positions');
 

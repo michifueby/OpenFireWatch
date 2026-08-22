@@ -8,13 +8,34 @@
 
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
+import { APP_CONFIG, AppConfig } from './config/environment';
 import { APP_VERSION, GIT_REVISION } from './version';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const config = app.get<AppConfig>(APP_CONFIG);
+
+  // Without this, NestJS never calls onModuleDestroy on SIGTERM — and this
+  // application has eight Redis connections, a pg pool, three timers and a
+  // BullMQ worker whose shutdown handlers were, until now, dead code. A
+  // rolling deploy killed the process with all of them open.
+  app.enableShutdownHooks();
+
+  // The API always runs behind at least one proxy (nginx, and Caddy in
+  // production), so the client address has to come from X-Forwarded-For or
+  // the rate limiter counts every visitor as the same caller.
+  //
+  // Expressed as trusted NETWORKS rather than a hop count: Express then walks
+  // the header from the right and stops at the first address that is not
+  // private, which lands on the real client whether there is one proxy in
+  // front of it or two. A hop count would have to be changed when the
+  // deployment topology changes, and would be wrong silently until someone
+  // noticed the limit applying to the wrong address.
+  app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 
   // Everything lives under /api — keeps proxying from nginx trivial.
   app.setGlobalPrefix('api');
@@ -32,9 +53,7 @@ async function bootstrap(): Promise<void> {
   );
 
   // CORS for the Angular dev server; in production nginx serves both origins.
-  app.enableCors({
-    origin: (process.env.CORS_ORIGINS ?? 'http://localhost:4200').split(','),
-  });
+  app.enableCors({ origin: [...config.api.corsOrigins] });
 
   // OpenAPI/Swagger — generated straight from decorators and DTOs.
   const openApiConfig = new DocumentBuilder()
@@ -46,14 +65,7 @@ async function bootstrap(): Promise<void> {
     .build();
   SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, openApiConfig));
 
-  // API_PORT may legitimately carry a host-interface prefix in .env
-  // ("127.0.0.1:8000") because docker-compose uses the same variable for the
-  // host binding. Take the last colon-separated segment, and fall back rather
-  // than crashing on anything unparseable — a listening service on the default
-  // port is always better than none.
-  const rawPort = process.env.API_PORT?.split(':').pop() ?? '';
-  const port = Number.parseInt(rawPort, 10);
-  await app.listen(Number.isInteger(port) && port > 0 && port < 65536 ? port : 8000, '0.0.0.0');
+  await app.listen(config.api.port, '0.0.0.0');
 
   // Logged on the first line of every container start, so `docker compose
   // logs backend | head` answers "what is deployed right now" without

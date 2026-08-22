@@ -97,7 +97,7 @@ export function normaliseIntakeBody(body: unknown): SensorReadingDto[] | null {
   if (!body || typeof body !== 'object') return null;
 
   const batch = body as Partial<SensorReadingBatchDto>;
-  if (Array.isArray(batch.readings)) return batch.readings as SensorReadingDto[];
+  if (Array.isArray(batch.readings)) return batch.readings;
 
   // A single canonical reading, unwrapped.
   const single = body as Partial<SensorReadingDto>;

@@ -1,5 +1,6 @@
 import { Controller, Get, Header, Query, Res, StreamableFile } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiProduces, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 
 import { renderReport } from './report-pdf';
@@ -16,6 +17,11 @@ export class ReportController {
   constructor(private readonly report: ReportService) {}
 
   @Get('lagebericht.pdf')
+  // Tighter than the default ceiling: one request here queries six subsystems
+  // and renders a document, so it is the cheapest thing in the API to ask for
+  // and the most expensive to answer. Ten a minute is far more than anyone
+  // reading a report needs and far less than it takes to hurt.
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Header('Content-Type', 'application/pdf')
   @ApiProduces('application/pdf')
   @ApiQuery({ name: 'lang', required: false, enum: ['de', 'en'] })

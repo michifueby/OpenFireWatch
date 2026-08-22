@@ -13,6 +13,7 @@
  */
 
 import {
+  Inject,
   Logger,
   OnModuleDestroy,
   OnModuleInit,
@@ -24,6 +25,9 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import IORedis from 'ioredis';
+
+import { APP_CONFIG, AppConfig, configSnapshot } from '../config/environment';
+import { createRedis, quitAll } from '../redis/redis.factory';
 import { Server, Socket } from 'socket.io';
 
 /** Pub/sub channel name — must match the workers' `BUS.ALERTS_CHANNEL`. */
@@ -65,7 +69,10 @@ export interface AcknowledgementEvent {
 
 @WebSocketGateway({
   cors: {
-    origin: (process.env.CORS_ORIGINS ?? 'http://localhost:4200').split(','),
+    // Read through configSnapshot rather than injected: a decorator is
+    // evaluated when the class is defined, long before the DI container
+    // exists. Same parsed object the container hands everyone else.
+    origin: [...configSnapshot().api.corsOrigins],
   },
 })
 export class AlertsGateway
@@ -81,21 +88,17 @@ export class AlertsGateway
    * subscriber mode once SUBSCRIBE is issued, so this connection must never
    * be shared with regular commands.
    */
-  private subscriber: IORedis;
+  private subscriber!: IORedis;
 
   /** Separate connection: a subscriber connection cannot issue PUBLISH. */
-  private publisher: IORedis;
+  private publisher!: IORedis;
+
+  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
 
   async onModuleInit(): Promise<void> {
-    this.subscriber = new IORedis({
-      host: process.env.REDIS_HOST ?? 'redis',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      db: Number(process.env.REDIS_DB ?? 0),
-      // Reconnect forever with capped exponential backoff — a broker restart
-      // must pause the alert relay, never kill the API.
-      retryStrategy: (attempt) => Math.min(2 ** attempt * 100, 30_000),
-    });
-
+    // 'stream': the relay must survive a broker restart and resume, never
+    // give up on a command — see redis.factory.
+    this.subscriber = createRedis(this.config, 'stream');
     this.publisher = this.subscriber.duplicate();
 
     await this.subscriber.subscribe(ALERTS_CHANNEL, ACKNOWLEDGEMENTS_CHANNEL);
@@ -143,7 +146,7 @@ export class AlertsGateway
   }
 
   async onModuleDestroy(): Promise<void> {
-    await Promise.allSettled([this.subscriber.quit(), this.publisher.quit()]);
+    await quitAll(this.subscriber, this.publisher);
   }
 
   handleConnection(client: Socket): void {

@@ -13,9 +13,10 @@
  * so an old capture cannot be replayed as current news.
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { createHmac } from 'node:crypto';
 
+import { APP_CONFIG, AppConfig } from '../../config/environment';
 import { NotificationChannel } from '../notification-channel';
 import { Notification } from '../notification.model';
 
@@ -23,13 +24,16 @@ import { Notification } from '../notification.model';
 export class WebhookChannel implements NotificationChannel {
   readonly name = 'webhook';
 
+  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
+
   isConfigured(): boolean {
-    return !!process.env.NOTIFY_WEBHOOK_URL?.trim();
+    return !!this.config.notifications.webhookUrl;
   }
 
   async send(notification: Notification): Promise<void> {
-    const url = process.env.NOTIFY_WEBHOOK_URL!.trim();
-    const secret = process.env.NOTIFY_WEBHOOK_SECRET?.trim();
+    // Non-null: only a configured channel is asked to send — see above.
+    const url = this.config.notifications.webhookUrl!;
+    const secret = this.config.notifications.webhookSecret;
 
     // Serialised once and sent verbatim: signing a different string than the
     // one on the wire is the classic way to build a signature nobody can

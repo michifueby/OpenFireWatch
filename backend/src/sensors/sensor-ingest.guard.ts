@@ -26,6 +26,7 @@ import {
 import type { Request } from 'express';
 
 import { matches } from '../auth/api-key.guard';
+import { configSnapshot } from '../config/environment';
 
 export const SENSOR_TOKEN_HEADER = 'x-sensor-token';
 
@@ -34,7 +35,7 @@ export class SensorIngestGuard implements CanActivate {
   private readonly logger = new Logger(SensorIngestGuard.name);
 
   canActivate(context: ExecutionContext): boolean {
-    const configured = process.env.SENSOR_INGEST_TOKEN?.trim();
+    const configured = configSnapshot().auth.sensorIngestToken;
     if (!configured) {
       this.logger.error(
         'SENSOR_INGEST_TOKEN is not configured — refusing all sensor readings.',

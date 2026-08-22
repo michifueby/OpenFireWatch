@@ -1,7 +1,7 @@
 # =============================================================================
 # OpenFireWatch — Continuous Integration
 #
-# Runs on every push and pull request targeting `main`. Four parallel jobs:
+# Runs on every push and pull request targeting `main`. Five parallel jobs:
 #
 #   e2e-tests   Boots REAL infrastructure as GitHub Actions service
 #               containers (PostGIS + Redis) and runs the NestJS end-to-end
@@ -11,6 +11,11 @@
 #
 #   build       Typechecks the workers and production-builds the Angular
 #               frontend, so compile errors in any package block the PR.
+#
+#   backend-    Lints the API and runs the unit suite: the alert rule at every
+#   checks      threshold boundary and the configuration parser on every way a
+#               variable can be malformed. Needs no infrastructure, so it
+#               fails in seconds where the e2e job takes half a minute.
 #
 #   frontend-   Lints and unit-tests the Angular application. The unit suite
 #   tests       covers the logic a browser check cannot reach cheaply: how a
@@ -149,6 +154,40 @@ jobs:
         run: |
           npm ci
           npm run build
+
+  backend-checks:
+    name: Backend lint & unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      # `npm run lint` had been in package.json since the first commit with no
+      # linter installed behind it. What it enforces now is what this codebase
+      # can be hurt by: an unawaited promise, a swallowed rejection, an empty
+      # catch that says nothing.
+      - name: Lint
+        working-directory: backend
+        run: npm run lint
+
+      # Needs no infrastructure and finishes in a second: the alert rule at
+      # every threshold boundary, and the configuration parser on every way an
+      # environment variable can be wrong.
+      - name: Unit tests
+        working-directory: backend
+        run: npm test
 
   frontend-tests:
     name: Frontend lint & unit tests

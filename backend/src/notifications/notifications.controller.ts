@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Inject, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import {
   ApiHeader,
   ApiOkResponse,
@@ -7,6 +7,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
+import { APP_CONFIG, AppConfig } from '../config/environment';
 import { API_KEY_HEADER, ApiKeyGuard } from '../auth/api-key.guard';
 import { testText } from './notification-texts';
 import { NotificationService } from './notification.service';
@@ -22,7 +23,10 @@ import { NotificationService } from './notification.service';
 @ApiTags('notifications')
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notifications: NotificationService) {}
+  constructor(
+    private readonly notifications: NotificationService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+  ) {}
 
   @Get('channels')
   @ApiOperation({ summary: 'Which delivery channels exist and are configured' })
@@ -50,7 +54,7 @@ export class NotificationsController {
       dedupeKey: `test:${Date.now()}`,
       ...testText(),
       data: { test: true },
-      url: process.env.PUBLIC_URL?.trim() || 'https://openfirewatch.org',
+      url: this.config.api.publicUrl,
       occurredAt: new Date().toISOString(),
     });
     return { dispatchedTo: channels };

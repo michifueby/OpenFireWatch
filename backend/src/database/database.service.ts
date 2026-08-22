@@ -6,19 +6,25 @@
  * database and one place to add instrumentation (timing, tracing) later.
  */
 
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Pool, QueryResult, QueryResultRow } from 'pg';
+
+import { APP_CONFIG, AppConfig } from '../config/environment';
 
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
-  private readonly pool = new Pool({
-    host: process.env.POSTGRES_HOST ?? 'db',
-    port: Number(process.env.POSTGRES_PORT ?? 5432),
-    database: process.env.POSTGRES_DB ?? 'openfirewatch',
-    user: process.env.POSTGRES_USER ?? 'openfirewatch',
-    password: process.env.POSTGRES_PASSWORD,
-    max: 10,
-  });
+  private readonly pool: Pool;
+
+  constructor(@Inject(APP_CONFIG) config: AppConfig) {
+    this.pool = new Pool({
+      host: config.database.host,
+      port: config.database.port,
+      database: config.database.name,
+      user: config.database.user,
+      password: config.database.password,
+      max: config.database.poolSize,
+    });
+  }
 
   query<T extends QueryResultRow = QueryResultRow>(
     text: string,

@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 
 import { APP_VERSION, GIT_REVISION } from '../version';
 
@@ -14,6 +15,10 @@ import { APP_VERSION, GIT_REVISION } from '../version';
  */
 @ApiTags('health')
 @Controller('health')
+// Never rate-limited. An orchestrator polling this on a 10-second interval
+// would eventually be told 429 and restart a container that was perfectly
+// healthy — the probe must be the one thing that always answers.
+@SkipThrottle()
 export class HealthController {
   @Get()
   @ApiOperation({ summary: 'Liveness probe and build identity' })

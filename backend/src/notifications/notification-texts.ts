@@ -11,10 +11,12 @@
  * instead of a "{temp}" leaking into somebody's 03:00 phone alert.
  */
 
+import { configSnapshot } from '../config/environment';
+
 export type NotifyLang = 'de' | 'en';
 
 export function notifyLang(): NotifyLang {
-  return process.env.NOTIFY_LANGUAGE?.trim().toLowerCase() === 'en' ? 'en' : 'de';
+  return configSnapshot().notifications.language;
 }
 
 /** Alert levels as a person should read them, per language. */

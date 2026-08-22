@@ -14,8 +14,17 @@
  * and that is what the per-zone part reports.
  */
 
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import IORedis from 'ioredis';
+
+import { APP_CONFIG, AppConfig } from '../config/environment';
+import { createRedis, quitAll } from '../redis/redis.factory';
 
 import { DatabaseService } from '../database/database.service';
 import { PHOSPHORUS_IGNITION, profileFor } from '../evaluation/alert-level.enum';
@@ -58,15 +67,15 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ConditionsService.name);
   private redis!: IORedis;
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+  ) {}
 
   onModuleInit(): void {
-    this.redis = new IORedis({
-      host: process.env.REDIS_HOST ?? 'redis',
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      db: Number(process.env.REDIS_DB ?? 0),
-      maxRetriesPerRequest: 3,
-    });
+    // 'request': this connection serves HTTP reads, so a hung broker must
+    // fail the command rather than stall the response.
+    this.redis = createRedis(this.config, 'request');
   }
 
   async current(): Promise<CurrentConditions> {
@@ -171,7 +180,7 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.redis?.quit();
+    await quitAll(this.redis);
   }
 }
 

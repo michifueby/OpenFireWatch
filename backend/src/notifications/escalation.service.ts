@@ -13,8 +13,9 @@
  * not to this code; the seam for it is this service.
  */
 
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
+import { APP_CONFIG, AppConfig } from '../config/environment';
 import { DatabaseService } from '../database/database.service';
 import { escalationText } from './notification-texts';
 import { NotificationService } from './notification.service';
@@ -36,6 +37,7 @@ export class EscalationService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly db: DatabaseService,
     private readonly notifications: NotificationService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   onModuleInit(): void {
@@ -46,10 +48,8 @@ export class EscalationService implements OnModuleInit, OnModuleDestroy {
     this.timer = setInterval(() => void this.sweep(), SWEEP_INTERVAL_MS);
   }
 
-  /** Read per sweep, so a redeploy with a new value needs no restart logic. */
   private delayMinutes(): number {
-    const parsed = Number(process.env.NOTIFY_ESCALATE_MINUTES ?? 15);
-    return Number.isFinite(parsed) ? parsed : 15;
+    return this.config.notifications.escalateMinutes;
   }
 
   /**
@@ -111,7 +111,7 @@ export class EscalationService implements OnModuleInit, OnModuleDestroy {
             evaluatedAt: row.evaluated_at.toISOString(),
             unacknowledgedForMinutes: minutes,
           },
-          url: process.env.PUBLIC_URL?.trim() || 'https://openfirewatch.org',
+          url: this.config.api.publicUrl,
           occurredAt: new Date().toISOString(),
         });
       }

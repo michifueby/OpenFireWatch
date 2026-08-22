@@ -11,8 +11,9 @@
  * https://api.telegram.org/bot<TOKEN>/getUpdates after posting once.
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
+import { APP_CONFIG, AppConfig } from '../../config/environment';
 import { NotificationChannel, postJson } from '../notification-channel';
 import { Notification } from '../notification.model';
 
@@ -27,16 +28,18 @@ const MARKER: Record<Notification['severity'], string> = {
 export class TelegramChannel implements NotificationChannel {
   readonly name = 'telegram';
 
+  constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {}
+
   isConfigured(): boolean {
-    return (
-      !!process.env.NOTIFY_TELEGRAM_BOT_TOKEN?.trim() &&
-      !!process.env.NOTIFY_TELEGRAM_CHAT_ID?.trim()
-    );
+    const { telegramBotToken, telegramChatId } = this.config.notifications;
+    return !!telegramBotToken && !!telegramChatId;
   }
 
   async send(notification: Notification): Promise<void> {
-    const token = process.env.NOTIFY_TELEGRAM_BOT_TOKEN!.trim();
-    const chatId = process.env.NOTIFY_TELEGRAM_CHAT_ID!.trim();
+    // Non-null: NotificationService only calls send() on a configured
+    // channel, and isConfigured() above is what decides that.
+    const token = this.config.notifications.telegramBotToken!;
+    const chatId = this.config.notifications.telegramChatId!;
 
     const lines = [
       `${MARKER[notification.severity]} <b>${escapeHtml(notification.title)}</b>`,

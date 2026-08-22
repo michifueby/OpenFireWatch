@@ -13,14 +13,15 @@
  * than it buys attention.
  */
 
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
+import { APP_CONFIG, AppConfig } from '../config/environment';
 import { forecastWindowText } from '../notifications/notification-texts';
 import { NotificationService } from '../notifications/notification.service';
 import { ForecastService, IgnitionWindow, ZoneForecast } from './forecast.service';
 
 /** How far ahead a window is announced. Three days: plannable, still solid. */
-const WARN_HORIZON_HOURS = Number(process.env.FORECAST_WARN_HOURS ?? 72);
+// Horizon configured via FORECAST_WARN_HOURS — see config/environment.ts.
 
 /** Checked hourly, matching the rate at which the forecast itself changes. */
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
@@ -33,6 +34,7 @@ export class ForecastWatchdog implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly forecast: ForecastService,
     private readonly notifications: NotificationService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   onModuleInit(): void {
@@ -51,7 +53,8 @@ export class ForecastWatchdog implements OnModuleInit, OnModuleDestroy {
         if (!zone.weatherGated) continue;
         for (const window of zone.windows) {
           const hoursAway = (Date.parse(window.from) - Date.now()) / 3_600_000;
-          if (hoursAway < 0 || hoursAway > WARN_HORIZON_HOURS) continue;
+          if (hoursAway < 0 || hoursAway > this.config.forecast.warnHorizonHours)
+            continue;
           await this.announce(zone, window, hoursAway);
         }
       }
@@ -82,7 +85,7 @@ export class ForecastWatchdog implements OnModuleInit, OnModuleDestroy {
         hoursAway,
       }),
       data: { zoneId: zone.zoneId, hazardType: zone.hazardType, window },
-      url: process.env.PUBLIC_URL?.trim() || 'https://openfirewatch.org',
+      url: this.config.api.publicUrl,
       occurredAt: new Date().toISOString(),
     });
   }

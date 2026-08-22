@@ -18,8 +18,11 @@
  * cannot give.
  */
 
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import IORedis from 'ioredis';
+
+import { APP_CONFIG, AppConfig } from '../config/environment';
+import { createRedis, quitAll } from '../redis/redis.factory';
 
 import {
   HAZARD_PROFILES,
@@ -86,12 +89,13 @@ interface RawForecast {
 @Injectable()
 export class ForecastService implements OnModuleDestroy {
   private readonly logger = new Logger(ForecastService.name);
-  private readonly redis = new IORedis({
-    host: process.env.REDIS_HOST ?? 'redis',
-    port: Number(process.env.REDIS_PORT ?? 6379),
-    db: Number(process.env.REDIS_DB ?? 0),
-    retryStrategy: (attempt) => Math.min(2 ** attempt * 100, 30_000),
-  });
+  private readonly redis: IORedis;
+
+  constructor(@Inject(APP_CONFIG) config: AppConfig) {
+    // 'request': the outlook is served to a browser; a broker outage should
+    // surface as a missing forecast, not a hanging request.
+    this.redis = createRedis(config, 'request');
+  }
 
   /**
    * Release the connection on shutdown.
@@ -101,7 +105,7 @@ export class ForecastService implements OnModuleDestroy {
    * suite, where the run simply never ends.
    */
   async onModuleDestroy(): Promise<void> {
-    await this.redis?.quit();
+    await quitAll(this.redis);
   }
 
   async current(): Promise<ForecastSnapshot> {
