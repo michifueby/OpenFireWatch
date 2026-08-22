@@ -17,6 +17,7 @@ import { Readable } from 'node:stream';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 
 import { config } from '../config';
+import { FIRMS_MAX_DAY_RANGE, SourceAvailability } from '../ingestion/satellite-backfill.plan';
 
 /** One raw FIRMS detection row, normalized (not yet a validated DTO). */
 export interface RawDetection {
@@ -41,9 +42,31 @@ export async function fetchFirmsDetections(bbox: string): Promise<RawDetection[]
   // ".../{key}/{source}/{west,south,east,north}/1" — trailing 1 = last 24h.
   // The bbox is resolved per cycle (see monitoring-area.ts), so a newly added
   // hazard zone widens the polled area without any configuration change.
+  return fetchFirmsArea(config.FIRMS_SOURCE, bbox, 1);
+}
+
+
+/**
+ * One FIRMS area request: a source, a box, a span of days, optionally a
+ * start date for the archive (omitted = the most recent `dayRange` days).
+ *
+ * The live cycle and the archive backfill share this so they share the CSV
+ * header check below — the one safeguard that tells "no fires" apart from
+ * "FIRMS answered with an error in plain text".
+ */
+export async function fetchFirmsArea(
+  source: string,
+  bbox: string,
+  dayRange: number,
+  startDate?: string,
+): Promise<RawDetection[]> {
+  if (dayRange < 1 || dayRange > FIRMS_MAX_DAY_RANGE) {
+    throw new Error(`FIRMS day range must be 1–${FIRMS_MAX_DAY_RANGE}, got ${dayRange}`);
+  }
   const url =
     'https://firms.modaps.eosdis.nasa.gov/api/area/csv/' +
-    `${config.FIRMS_MAP_KEY}/${config.FIRMS_SOURCE}/${bbox}/1`;
+    `${config.FIRMS_MAP_KEY}/${source}/${bbox}/${dayRange}` +
+    (startDate ? `/${startDate}` : '');
 
   const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
   if (!response.ok) {
@@ -95,7 +118,7 @@ export async function fetchFirmsDetections(bbox: string): Promise<RawDetection[]
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
 
     detections.push({
-      source: config.FIRMS_SOURCE,
+      source,
       satellite: row['satellite'] || null,
       latitude,
       longitude,
@@ -119,4 +142,33 @@ function toIsoTimestamp(date: string | undefined, hhmm: string | undefined): str
 function toNumberOrNull(value: string | undefined): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+
+/**
+ * Which dates each FIRMS source covers, from FIRMS itself.
+ *
+ * The archive is split by processing stream: near-real-time (`*_NRT`) for the
+ * last few months, standard processing (`*_SP`) for everything older, and the
+ * boundary between them moves. Asking rather than assuming is what keeps a
+ * backfill from requesting a date a source does not hold and reading the
+ * empty answer as "no fires that week".
+ */
+export async function fetchFirmsAvailability(): Promise<SourceAvailability[]> {
+  const url =
+    'https://firms.modaps.eosdis.nasa.gov/api/data_availability/csv/' +
+    `${config.FIRMS_MAP_KEY}/ALL`;
+  const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+  if (!response.ok) {
+    throw new Error(`NASA FIRMS data_availability responded with HTTP ${response.status}`);
+  }
+  const text = await response.text();
+  const lines = text.trim().split('\n');
+  if (!lines[0]?.startsWith('data_id,min_date,max_date')) {
+    throw new Error(`NASA FIRMS data_availability returned: "${text.slice(0, 120)}"`);
+  }
+  return lines.slice(1).map((line) => {
+    const [source, minDate, maxDate] = line.split(',');
+    return { source: source!, minDate: minDate!, maxDate: maxDate! };
+  });
 }

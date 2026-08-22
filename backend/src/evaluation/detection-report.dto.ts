@@ -12,6 +12,7 @@
 
 import { Type } from 'class-transformer';
 import {
+  IsIn,
   IsISO8601,
   IsLatitude,
   IsLongitude,
@@ -95,4 +96,15 @@ export class DetectionReportDto {
   @ValidateNested()
   @Type(() => WeatherObservationDto)
   weather!: WeatherObservationDto;
+
+  /**
+   * How this report entered the system. `backfill` marks a detection replayed
+   * from the satellite archive: evaluated by the same rule and stored like
+   * any other, but it is HISTORY — nothing may alarm, page or pulse on it,
+   * and today's ground sensors say nothing about the day it happened. Absent
+   * means live.
+   */
+  @IsOptional()
+  @IsIn(['live', 'backfill'])
+  ingestion?: 'live' | 'backfill';
 }

@@ -47,11 +47,17 @@ export class AnomalyOverlay {
     });
   }
 
-  /** Recent detections from the REST read model. */
+  /**
+   * Recent detections from the REST read model — the last week, like the
+   * history panel. Bounded by date on purpose: the archive backfill can put
+   * a decade of detections into the same table, and the live map is not the
+   * place to draw them. They are reachable through the API with `since`.
+   */
   async loadHistory(): Promise<void> {
     try {
+      const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
       const collection = await this.api.get<GeoJSON.FeatureCollection>(
-        '/api/anomalies?limit=1000',
+        `/api/anomalies?limit=1000&since=${encodeURIComponent(since)}`,
       );
       for (const feature of collection.features) {
         this.remember(Number(feature.properties?.['id']), feature);

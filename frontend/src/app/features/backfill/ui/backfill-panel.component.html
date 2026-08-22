@@ -1,0 +1,70 @@
+<div class="backfill-block">
+  <h3>{{ i18n.t('backfillTitle') }}</h3>
+  <p class="hint">{{ i18n.t('backfillHint') }}</p>
+
+  <div class="range">
+    <label class="field">
+      <span>{{ i18n.t('backfillFrom') }}</span>
+      <input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)" name="backfillFrom" />
+    </label>
+    <label class="field">
+      <span>{{ i18n.t('backfillTo') }}</span>
+      <input type="date" [ngModel]="to()" (ngModelChange)="to.set($event)" name="backfillTo" />
+    </label>
+  </div>
+
+  <button
+    type="button"
+    class="primary"
+    (click)="start()"
+    [disabled]="busy() || starting() || !!active()"
+  >
+    {{ active() ? i18n.t('backfillInProgress') : i18n.t('backfillStart') }}
+  </button>
+
+  @if (error()) {
+  <p class="error">{{ error() }}</p>
+  }
+
+  @if (runs().length > 0) {
+  <ul class="runs">
+    @for (run of runs(); track run.id) {
+    <li [class]="'run status-' + run.status">
+      <div class="run-head">
+        <span class="run-range">{{ run.from }} – {{ run.to }}</span>
+        <span class="run-status">{{ statusLabel(run) }}</span>
+      </div>
+
+      @if (run.status === 'running' || run.status === 'queued') {
+      <div class="bar" role="progressbar" [attr.aria-valuenow]="progressPct(run)" aria-valuemin="0" aria-valuemax="100">
+        <span class="fill" [style.width.%]="progressPct(run)"></span>
+      </div>
+      }
+
+      <div class="run-meta">
+        @if (run.requestsTotal !== null) {
+        {{ run.requestsDone }}/{{ run.requestsTotal }} {{ i18n.t('backfillWindows') }} ·
+        }
+        {{ run.detectionsFound }} {{ i18n.t('backfillDetections') }}
+        @if (run.finishedAt) { · {{ run.finishedAt | date: 'dd.MM.yyyy HH:mm' }} }
+      </div>
+
+      @if (run.coverageGaps.length > 0) {
+      <!-- A day no product covers is a gap in the record, not a quiet day;
+           hiding it would let "no rows" pass as "no fires". -->
+      <div class="run-gaps">
+        {{ i18n.t('backfillGaps') }}:
+        @for (gap of run.coverageGaps; track gap.from) {
+        <span>{{ gap.from }} – {{ gap.to }}</span>
+        }
+      </div>
+      }
+
+      @if (run.error) {
+      <p class="error">{{ run.error }}</p>
+      }
+    </li>
+    }
+  </ul>
+  }
+</div>

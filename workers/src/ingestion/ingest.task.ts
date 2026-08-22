@@ -107,6 +107,7 @@ export async function ingestDetections(job: Job): Promise<number> {
         windSpeedKmh: station.windSpeedKmh,
         observedAt: station.observedAt,
       },
+      ingestion: 'live',
     } satisfies Record<keyof DetectionReportDto, unknown>);
 
     const errors = await validate(report, {

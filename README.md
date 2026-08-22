@@ -55,6 +55,14 @@ OpenFireWatch is **fault-tolerant and event-driven by design**. Every layer is d
 > enlarge or move the observed area, add further hazard zones, and verify the
 > change before trusting it.
 >
+> 🛰️ **[Satellite archive backfill →](docs/satellite-backfill.md)** — replay
+> years of FIRMS detections through the live rule, so the incident register
+> can say for a fire before this system existed whether it would have alarmed.
+>
+> 🔥 **[Fire danger (FWI) →](docs/fire-danger.md)** — the Canadian Fire
+> Weather Index on the panel, computed by the method behind the EFFIS and
+> national fire-danger maps, and why it says "computed" rather than "official".
+>
 > 🌡️ **[Ground sensors →](docs/ground-sensors.md)** — mounting LoRaWAN
 > temperature/soil-moisture sensors in the risk areas, so the ignition rule
 > runs on measured ground truth instead of a regional estimate.

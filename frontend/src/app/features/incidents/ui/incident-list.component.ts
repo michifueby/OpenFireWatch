@@ -72,6 +72,7 @@ export class IncidentListComponent {
       fires: summary.fires,
       inWindow: summary.firesInWindow,
       applicable: summary.firesWindowApplicable,
+      seen: summary.firesSeen,
       alerted: summary.firesAlerted,
     });
   }

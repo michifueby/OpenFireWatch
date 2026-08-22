@@ -40,6 +40,7 @@ import {
 } from '@features/incidents/data-access/incident-api.service';
 import { IncidentFormComponent } from '@features/incidents/ui/incident-form.component';
 import { IncidentListComponent } from '@features/incidents/ui/incident-list.component';
+import { BackfillPanelComponent } from '@features/backfill/ui/backfill-panel.component';
 import {
   SensorApiService,
   SensorInfo,
@@ -69,6 +70,7 @@ type View =
     SensorFormComponent,
     IncidentListComponent,
     IncidentFormComponent,
+    BackfillPanelComponent,
   ],
   templateUrl: './operator-console.component.html',
   styleUrl: './operator-console.component.scss',

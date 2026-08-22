@@ -50,6 +50,28 @@ export interface TranslationDict {
   /** "aus SO" / "from SE" — direction the wind comes from. */
   windFrom: string;
   conditionsAsOf: string;
+  fireDangerTitle: string;
+  backfillTitle: string;
+  backfillHint: string;
+  backfillFrom: string;
+  backfillTo: string;
+  backfillStart: string;
+  backfillInProgress: string;
+  backfillQueued: string;
+  backfillRunning: string;
+  backfillDone: string;
+  backfillFailed: string;
+  backfillWindows: string;
+  backfillDetections: string;
+  backfillGaps: string;
+  fireDangerTomorrow: string;
+  fireDangerMethod: string;
+  dangerVeryLow: string;
+  dangerLow: string;
+  dangerModerate: string;
+  dangerHigh: string;
+  dangerVeryHigh: string;
+  dangerExtreme: string;
   // --- Ignition-window outlook --------------------------------------------------
   forecastTitle: string;
   forecastNone: string;
@@ -87,6 +109,8 @@ export interface TranslationDict {
   incidentInWindow: string;
   incidentNotInWindow: string;
   incidentWindowUnknown: string;
+  incidentSeen: string;
+  incidentNotSeen: string;
   incidentAlerted: string;
   incidentNotAlerted: string;
   incidentSummary: string;
@@ -241,6 +265,33 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsWind: 'WIND',
     windFrom: 'from {dir}',
     conditionsAsOf: 'as of',
+    fireDangerTitle: 'FIRE DANGER (FWI)',
+    backfillTitle: 'Satellite archive',
+    backfillHint:
+      'Replay past satellite detections through the same rule, so the register above ' +
+      'can say for a fire before this system existed whether it would have alarmed. ' +
+      'Nothing replayed ever alarms — it is history.',
+    backfillFrom: 'from',
+    backfillTo: 'to',
+    backfillStart: 'Replay archive',
+    backfillInProgress: 'Replay in progress…',
+    backfillQueued: 'queued',
+    backfillRunning: 'running',
+    backfillDone: 'done',
+    backfillFailed: 'failed',
+    backfillWindows: 'windows',
+    backfillDetections: 'detections',
+    backfillGaps: 'not covered by any product',
+    fireDangerTomorrow: 'tomorrow',
+    fireDangerMethod:
+      'Canadian Fire Weather Index — the method behind the EFFIS and national ' +
+      'fire-danger maps — computed from the weather at each zone. Not an official figure.',
+    dangerVeryLow: 'very low',
+    dangerLow: 'low',
+    dangerModerate: 'moderate',
+    dangerHigh: 'high',
+    dangerVeryHigh: 'very high',
+    dangerExtreme: 'extreme',
     forecastTitle: 'IGNITION OUTLOOK · 7 DAYS',
     forecastNone: 'no ignition window in the next 7 days',
     forecastUnavailable: 'No recent forecast — outlook unknown.',
@@ -276,9 +327,11 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     incidentInWindow: 'ignition window was OPEN',
     incidentNotInWindow: 'window was closed',
     incidentWindowUnknown: 'window unknown for that hour',
+    incidentSeen: 'seen by satellite',
+    incidentNotSeen: 'not seen by satellite',
     incidentAlerted: 'alert was raised',
     incidentNotAlerted: 'no alert raised',
-    incidentSummary: '{fires} fires · {inWindow} of {applicable} in an open window · {alerted} with an alert',
+    incidentSummary: '{fires} fires · {inWindow} of {applicable} in an open window · {seen} seen by satellite · {alerted} with an alert',
     incidentOutcomes: 'Crew feedback on alerts: {confirmed} confirmed · {nothing} nothing found',
     outcomeConfirm: 'Confirmed',
     outcomeNothing: 'Nothing found',
@@ -438,6 +491,33 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsWind: 'WIND',
     windFrom: 'aus {dir}',
     conditionsAsOf: 'Stand',
+    fireDangerTitle: 'WALDBRANDGEFAHR (FWI)',
+    backfillTitle: 'Satellitenarchiv',
+    backfillHint:
+      'Vergangene Satellitendetektionen durch dieselbe Regel laufen lassen, damit das ' +
+      'Register oben für einen Brand vor der Zeit dieses Systems sagen kann, ob es ' +
+      'alarmiert hätte. Nachgeladenes alarmiert nie — es ist Geschichte.',
+    backfillFrom: 'von',
+    backfillTo: 'bis',
+    backfillStart: 'Archiv nachladen',
+    backfillInProgress: 'Nachladen läuft…',
+    backfillQueued: 'wartet',
+    backfillRunning: 'läuft',
+    backfillDone: 'fertig',
+    backfillFailed: 'fehlgeschlagen',
+    backfillWindows: 'Fenster',
+    backfillDetections: 'Detektionen',
+    backfillGaps: 'von keinem Produkt abgedeckt',
+    fireDangerTomorrow: 'morgen',
+    fireDangerMethod:
+      'Canadian Fire Weather Index — die Methode hinter den Waldbrandkarten von ' +
+      'EFFIS und der Länder — berechnet aus dem Wetter an der Zone. Kein amtlicher Wert.',
+    dangerVeryLow: 'sehr gering',
+    dangerLow: 'gering',
+    dangerModerate: 'mäßig',
+    dangerHigh: 'hoch',
+    dangerVeryHigh: 'sehr hoch',
+    dangerExtreme: 'extrem',
     forecastTitle: 'ZÜNDFENSTER-VORHERSAGE · 7 TAGE',
     forecastNone: 'kein Zündfenster in den nächsten 7 Tagen',
     forecastUnavailable: 'Keine aktuelle Vorhersage — Ausblick unbekannt.',
@@ -473,9 +553,11 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     incidentInWindow: 'Zündfenster war OFFEN',
     incidentNotInWindow: 'Fenster war geschlossen',
     incidentWindowUnknown: 'Fenster für diese Stunde unbekannt',
+    incidentSeen: 'vom Satelliten gesehen',
+    incidentNotSeen: 'nicht vom Satelliten gesehen',
     incidentAlerted: 'Alarm wurde ausgelöst',
     incidentNotAlerted: 'kein Alarm ausgelöst',
-    incidentSummary: '{fires} Brände · {inWindow} von {applicable} im offenen Fenster · {alerted} mit Alarm',
+    incidentSummary: '{fires} Brände · {inWindow} von {applicable} im offenen Fenster · {seen} vom Satelliten gesehen · {alerted} mit Alarm',
     incidentOutcomes: 'Einsatz-Rückmeldungen: {confirmed} bestätigt · {nothing} ohne Befund',
     outcomeConfirm: 'Bestätigt',
     outcomeNothing: 'Ohne Befund',

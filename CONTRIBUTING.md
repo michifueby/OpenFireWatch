@@ -47,6 +47,11 @@ npm run lint   # unawaited promises, swallowed rejections, empty catches
 npm test       # the alert rule at every threshold, the config parser
 ```
 
+```bash
+cd workers
+npm test       # the FWI equations against the published example; the backfill planner
+```
+
 The unit suite exists because the alert rule decides whether anybody is woken
 up, and until it was extracted from the evaluation service it could only be
 reached through PostGIS, Redis and BullMQ together — so the boundaries (one

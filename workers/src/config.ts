@@ -35,6 +35,19 @@ const EnvSchema = z.object({
 
   /** Padding added around the zone extent, in degrees (~0.05° ≈ 5.5 km). */
   FIRMS_AREA_PADDING_DEG: z.coerce.number().min(0).max(5).default(0.05),
+  /**
+   * Satellite products the archive backfill asks for, by family. Each family
+   * has a near-real-time stream and a standard-processing archive; the
+   * backfill picks whichever holds the date. VIIRS (375 m pixels) is what the
+   * live cycle uses; MODIS is coarser and only useful before 2012.
+   */
+  FIRMS_BACKFILL_SOURCES: z.string().default('VIIRS_SNPP,VIIRS_NOAA20'),
+  /**
+   * Pause between archive requests, in milliseconds. FIRMS allows 5000
+   * transactions per 10 minutes per key, shared with the live cycle; 500 ms
+   * keeps a backfill well under a quarter of that.
+   */
+  FIRMS_BACKFILL_PACE_MS: z.coerce.number().int().min(100).default(500),
 
   // --- PostgreSQL / PostGIS (read-only: zone extent lookup) ------------------
   POSTGRES_HOST: z.string().default('db'),
@@ -56,6 +69,12 @@ const EnvSchema = z.object({
    * a handful of queries that find nothing to do.
    */
   HISTORY_BACKFILL_INTERVAL: z.coerce.number().int().min(3600).default(86400),
+  /**
+   * How often the fire danger (FWI) is recomputed. Hourly, with the forecast:
+   * the index is a daily quantity, but the forecast it is built from updates
+   * through the day and a refresh is one request per zone.
+   */
+  FIRE_DANGER_POLL_INTERVAL: z.coerce.number().int().min(600).default(3600),
 
   // --- GeoSphere Austria (TAWES station network, 10-minute cadence) -----------
   /**
@@ -85,6 +104,12 @@ export const BUS = {
   DETECTION_REPORTS_QUEUE: 'events.detection-reports',
   /** Durable BullMQ queue that schedules the recurring ingestion cycles. */
   INGESTION_QUEUE: 'jobs.ingestion',
+  /**
+   * Long-running operator-triggered jobs — the satellite archive backfill.
+   * Its own queue with its own single worker, so a backfill that takes an
+   * hour never holds up a live ingestion cycle.
+   */
+  BACKFILL_QUEUE: 'jobs.backfill',
   /** Dead letter queue: jobs that exhausted all retries land here. */
   DEAD_LETTER_QUEUE: 'dlq.ingestion',
   /** Redis pub/sub channel the NestJS API relays to WebSocket clients. */
@@ -102,4 +127,9 @@ export const BUS = {
    * forecast looking current.
    */
   FORECAST_KEY: 'forecast:current',
+  /**
+   * Fire danger (Canadian FWI) per zone — yesterday, today and the week
+   * ahead. Expires like the forecast.
+   */
+  FIRE_DANGER_KEY: 'fire-danger:current',
 } as const;

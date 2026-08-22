@@ -263,14 +263,16 @@ Richtung --- und darunter für jede Zone, \emph{wie weit sie von einem Alarm
 entfernt ist}. Das ist der vorausschauende Teil: Sie sehen
 morgens, ob heute ein kritischer Tag wird.
 
-Im abgebildeten Beispiel steht beim Föhrenwald \enquote{11{,}2\,\textdegree C
-und 7\,\% vom Zündfenster entfernt}. Beide Bedingungen sind also noch nicht
-erfüllt --- es müsste deutlich wärmer \emph{und} trockener werden.
+Im abgebildeten Beispiel steht beim Föhrenwald \enquote{Boden bereits trocken
+genug --- nur noch 11{,}8\,\textdegree C bis zur Zündung}: Die Bodenfeuchte
+liegt schon unter ihrer Schwelle, es fehlt allein die Temperatur. Solche Zonen
+werden orange hervorgehoben --- dann entscheidet nur noch ein heißer
+Nachmittag, und bei 11{,}8\,\textdegree C Abstand ist der an diesem Tag nicht
+in Sicht.
 
-Ist eine der beiden bereits erfüllt, sagt die Zeile das ausdrücklich, etwa
-\enquote{Boden bereits trocken genug --- nur noch 3{,}6\,\textdegree C bis zur
-Zündung}. Solche Zonen werden orange hervorgehoben: Dann entscheidet allein
-noch die Temperatur, und ein einziger heißer Nachmittag genügt.
+Ist keine der beiden Bedingungen erfüllt, nennt die Zeile beide Abstände, etwa
+\enquote{11{,}2\,\textdegree C und 7\,\% vom Zündfenster entfernt}: Es
+müsste deutlich wärmer \emph{und} trockener werden.
 
 Steht in einer Zone ein Bodensensor und meldet er aktuelle Werte, fließen
 dessen Messwerte hier ein --- nicht mehr die Schätzung für die ganze Region
@@ -281,6 +283,24 @@ steht, gibt es keinen Abstand zu berechnen: Sie ist dauerhaft scharf. Solche
 Zeilen bleiben deshalb bewusst grau. Rot ist einem tatsächlichen Zustand
 vorbehalten --- eine Zeile, die immer rot leuchtet, gewöhnt das Auge an Rot,
 und genau das wäre im Ernstfall gefährlich.
+
+\paragraph{Waldbrandgefahr (FWI).} Unter den Messwerten steht eine Zeile, die
+Sie von den Waldbrandkarten der Länder und von EFFIS kennen: die
+Gefahrenstufe nach dem \emph{Canadian Fire Weather Index}, von \enquote{sehr
+gering} bis \enquote{extrem}, mit der Zahl dahinter und der Tendenz für morgen.
+Sie beantwortet eine andere Frage als die Zündfenster-Zeilen: nicht
+\enquote{ist vergrabene Munition dabei, Luft zu bekommen}, sondern
+\enquote{wie würde sich ein Feuer heute verhalten}. Beides gehört ins Panel,
+und beides bleibt getrennt.
+
+Ein Wort zur Ehrlichkeit: Die Zahl ist \textbf{berechnet}, nicht amtlich. Es
+gibt keine öffentliche Schnittstelle, die den amtlichen Wert für einen Punkt
+herausgibt --- EFFIS veröffentlicht die Karte, nicht die Zahl. Was alle diese
+Karten gemeinsam haben, ist die veröffentlichte Rechenmethode; OpenFireWatch
+wendet genau sie auf die Wetterdaten der Zone an. Die Werte liegen nahe am
+amtlichen Wert und können an einer Klassengrenze um eine Stufe abweichen. Der
+Bildschirm sagt deshalb \enquote{berechnet nach EFFIS-Methode}, nie
+\enquote{amtlich}.
 
 \paragraph{Zündfenster-Vorhersage.} Darunter steht, wann jede wettergesteuerte
 Zone das nächste Mal beide Zündbedingungen zugleich erfüllt --- bis zu sieben
@@ -546,6 +566,37 @@ Offset) wird beim Sensor hinterlegt und wirkt auch rückwirkend auf alle
 gespeicherten Messwerte, weil diese roh aufbewahrt werden.
 \end{hinweis}
 
+\subsection{Satellitenarchiv nachladen}\label{sec:archiv}
+
+Das Vorfallregister hält jeden eingetragenen Brand gegen zwei Fragen: Stand
+das Zündfenster offen, und hat das System alarmiert? Die erste lässt sich aus
+zehn Jahren Wetterarchiv beantworten. Die zweite konnte bisher nur ab dem Tag
+beantwortet werden, an dem OpenFireWatch in Betrieb ging --- für jeden
+früheren Brand stand \enquote{kein Alarm}, was stimmte und nichts sagte.
+
+Die NASA hebt die Satellitendetektionen auf, für VIIRS seit Januar 2012. Unter
+dem Register können Sie einen Zeitraum wählen und \enquote{Archiv nachladen}
+drücken: Die Detektionen dieser Jahre laufen dann durch \emph{dieselbe Regel}
+wie eine heutige, gegen das Wetter \emph{ihres eigenen Tages}. Danach steht
+für einen Brand von 2021 nicht mehr \enquote{kein Alarm}, sondern ein
+belegbares Ja oder Nein --- und getrennt davon, ob der Satellit ihn überhaupt
+gesehen hat. Ein Brand, der gesehen, aber nicht alarmiert wurde, ist das
+Zeugnis der Schwellenwerte; einer, den der Satellit nie sah, ist eine Grenze
+des Instruments, an der kein Schwellenwert etwas geändert hätte.
+
+\begin{hinweis}
+Nachgeladenes alarmiert nie. Die Detektionen werden gespeichert und gezählt,
+aber kein Telefon klingelt, kein Marker pulsiert, keine Erinnerung wird
+verschickt --- es ist Geschichte. Auch die heutigen Bodensensoren werden nicht
+herangezogen: Eine Sonde von heute Nachmittag sagt nichts über einen Juli vor
+Jahren.
+\end{hinweis}
+
+Ein Lauf zeigt seinen Fortschritt im Panel und nennt Tage, die kein
+Satellitenprodukt abdeckt --- denn \enquote{keine Zeile} bedeutet dort nicht
+\enquote{kein Brand}. Es läuft immer nur ein Lauf, und einer umfasst höchstens
+fünf Jahre; ein längerer Zeitraum wird in mehrere geteilt.
+
 \subsection{Benachrichtigungen}\label{sec:benachrichtigungen}
 
 Ein Alarm, der nur auf einer Karte erscheint, erreicht um drei Uhr früh
@@ -658,7 +709,11 @@ NASA FIRMS (VIIRS) & Hitzepunkte & kostenfreier Zugangsschlüssel nötig;
 erlaubt sind 5000 Abfragen je 10 Minuten, genutzt werden zwei \\
 GeoSphere Austria & Temperatur, Luftfeuchte & Station des TAWES-Netzes,
 ohne Schlüssel \\
-Open-Meteo & Bodenfeuchte & oberste Bodenschicht (1--3\,cm), ohne Schlüssel \\
+Open-Meteo & Bodenfeuchte, Wetter & oberste Bodenschicht (1--3\,cm);
+dazu Temperatur, Luftfeuchte, Wind und Regen für die Waldbrandgefahr, 92 Tage
+zurück und sieben Tage voraus; ohne Schlüssel \\
+NASA FIRMS (Archiv) & Detektionen seit 2012 & für das Nachladen vergangener
+Jahre, derselbe Schlüssel; höchstens fünf Tage je Abfrage \\
 Eigene Bodensensoren & Temperatur, Bodenfeuchte & örtliche Messung; hat
 Vorrang vor den regionalen Werten \\
 OpenStreetMap & Zonengeometrie & Grundlage der mitgelieferten Zonen \\

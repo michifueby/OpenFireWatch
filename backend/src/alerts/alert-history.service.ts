@@ -58,6 +58,7 @@ const HISTORY_SQL = `
   -- hide the "detected but outside every zone" case from the history.
   LEFT JOIN high_risk_zones z ON z.id = ve.zone_id
   WHERE ve.evaluated_at >= now() - ($1 || ' hours')::interval
+    AND NOT ve.backfilled
     AND ($2::boolean IS FALSE OR ve.alert_level LIKE 'CRITICAL%')
     AND ($3::boolean IS FALSE OR ve.acknowledged_at IS NULL)
   ORDER BY ve.evaluated_at DESC

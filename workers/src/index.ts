@@ -34,7 +34,13 @@ import {
   ingestDetections,
 } from './ingestion/ingest.task';
 import { closeForecastRedis, refreshForecast } from './ingestion/forecast.task';
+import { closeFireDanger, refreshFireDanger } from './ingestion/fire-danger.task';
 import { backfillHistory, closeHistoryPool } from './ingestion/history-backfill.task';
+import {
+  SatelliteBackfillJob,
+  backfillSatellite,
+  closeBackfillPool,
+} from './ingestion/satellite-backfill.task';
 import { createRedisConnection } from './redis';
 import { APP_VERSION, GIT_REVISION } from './version';
 
@@ -106,10 +112,18 @@ async function main(): Promise<void> {
     { name: 'backfill-history' },
   );
 
+  // Fire danger shares the forecast's rhythm and its data source.
+  await ingestionQueue.upsertJobScheduler(
+    'refresh-fire-danger',
+    { every: config.FIRE_DANGER_POLL_INTERVAL * 1_000 },
+    { name: 'refresh-fire-danger' },
+  );
+
   const ingestionWorker = new Worker(
     BUS.INGESTION_QUEUE,
     async (job) => {
       if (job.name === 'refresh-forecast') return refreshForecast(job);
+      if (job.name === 'refresh-fire-danger') return refreshFireDanger(job);
       if (job.name === 'backfill-history') return backfillHistory(job);
       return ingestDetections(job);
     },
@@ -122,6 +136,21 @@ async function main(): Promise<void> {
   // Log-and-continue: a worker-level error (e.g. Redis blip) must not exit.
   ingestionWorker.on('error', (error) =>
     console.error(`Ingestion worker error: ${error.message}`),
+  );
+
+  // --- Operator-triggered backfills ----------------------------------------------
+  // Their own queue and worker: a replay of ten summers must never sit in
+  // front of the next live ingestion cycle. One at a time, and a run that
+  // dies keeps its failed job inspectable rather than retrying a long
+  // operation blind.
+  const backfillWorker = new Worker<SatelliteBackfillJob>(
+    BUS.BACKFILL_QUEUE,
+    (job) => backfillSatellite(job),
+    { connection: createRedisConnection(), concurrency: 1 },
+  );
+  backfillWorker.on('failed', moveToDeadLetter(BUS.BACKFILL_QUEUE));
+  backfillWorker.on('error', (error) =>
+    console.error(`Backfill worker error: ${error.message}`),
   );
 
   // Resolve once at startup purely to report the effective configuration.
@@ -146,13 +175,16 @@ async function main(): Promise<void> {
     console.log('Shutting down workers gracefully...');
     await Promise.allSettled([
       ingestionWorker.close(),
+      backfillWorker.close(),
       ingestionQueue.close(),
       detectionReportsQueue.close(),
       deadLetterQueue.close(),
       closeMonitoringAreaPool(),
       closeConditionsRedis(),
       closeForecastRedis(),
+      closeFireDanger(),
       closeHistoryPool(),
+      closeBackfillPool(),
     ]);
     process.exit(0);
   };

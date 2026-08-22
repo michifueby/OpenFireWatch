@@ -39,7 +39,31 @@
     {{ i18n.t('conditionsStation') }} {{ c.stationId }} ·
     {{ i18n.t('conditionsAsOf') }} {{ c.observedAt | date: 'HH:mm' }}
   </p>
+  }
 
+  <!-- The fire danger stands apart from the station readings: a separate feed
+       (so it can be present when the readings are not), a separate question —
+       not "how close is the phosphorus rule" but "how would a fire behave
+       today" — and a figure a reader already knows from the national map. -->
+  @if (c.fireDanger; as danger) {
+    @if (danger.available && danger.dangerClass) {
+    <div
+      [class]="'fire-danger tone-' + dangerTone(danger.dangerClass)"
+      [attr.title]="i18n.t('fireDangerMethod')"
+    >
+      <span class="fd-title">{{ i18n.t('fireDangerTitle') }}</span>
+      <span class="fd-class">{{ dangerLabel(danger.dangerClass) }}</span>
+      <span class="fd-value">FWI {{ danger.fwi | number: '1.0-1' }}</span>
+      @if (danger.tomorrow; as tomorrow) {
+      <span class="fd-tomorrow">
+        · {{ i18n.t('fireDangerTomorrow') }} {{ dangerLabel(tomorrow.dangerClass) }}
+      </span>
+      }
+    </div>
+    }
+  }
+
+  @if (c.available) {
   <ul class="readiness">
     @for (z of c.zones; track z.id) {
     <li

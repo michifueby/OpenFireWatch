@@ -13,6 +13,36 @@ still a question, not a commitment.
 
 ## [Unreleased]
 
+### Added
+
+- **Satellite archive backfill.** An operator can replay any range of NASA
+  FIRMS detections since 2012 through the live rule, against the weather of
+  their own day. Replayed detections are stored and de-duplicated like any
+  other but marked as history: they never alarm, page, pulse on the map or
+  borrow today's sensor readings — and the incident register counts them,
+  so a fire from before this system existed gets a checkable "would have
+  alarmed: yes/no". Started from the panel under the register or
+  `POST /api/backfill/satellite`; progress and coverage gaps are shown per
+  run. Docs: `docs/satellite-backfill.md`.
+- **Fire danger (Canadian FWI) on the panel and in the report.** The Canadian
+  Fire Weather Index per zone — the method behind the EFFIS and national
+  fire-danger maps — computed hourly by the workers from 92 days of weather
+  plus the seven-day forecast, classed "very low" to "extreme" with
+  tomorrow's trend, and recorded daily in `fire_danger_history`. Labelled
+  "computed by the EFFIS method", never "official": no public endpoint
+  returns the figure for a point. `GET /api/fire-danger`; folded into
+  `GET /api/conditions` as `fireDanger`. Pinned to the published reference
+  example by unit test. Docs: `docs/fire-danger.md`.
+
+### Changed
+
+- The incident register now asks two questions apart — **seen by the
+  satellite** (any detection within 2 km) and **alert raised** — and judges
+  both by the satellite's acquisition time rather than the evaluation time,
+  so a verdict reached today about a pass in 2019 counts for the 2019 fire.
+- The live map draws the last seven days of detections, like the history
+  panel; the full table stays reachable through `/api/anomalies?since=`.
+
 ## [0.10.1] — 2026-08-21
 
 ### Changed

@@ -28,6 +28,11 @@ import { createRedis, quitAll } from '../redis/redis.factory';
 
 import { DatabaseService } from '../database/database.service';
 import { PHOSPHORUS_IGNITION, profileFor } from '../evaluation/alert-level.enum';
+import {
+  DangerClass,
+  FireDangerService,
+  FireDangerToday,
+} from '../fire-danger/fire-danger.service';
 
 /** Must match the workers' BUS.CONDITIONS_KEY. */
 const CONDITIONS_KEY = 'conditions:current';
@@ -46,6 +51,28 @@ export interface ZoneReadiness {
    */
   temperatureGapC?: number;
   soilMoistureGapPct?: number;
+  /** Today's Canadian FWI at this zone, when the workers have computed one. */
+  fireDanger?: FireDangerToday;
+}
+
+/**
+ * The fire danger line on the panel: the worst zone today.
+ *
+ * Shown as ONE line, not one per zone — the zones in a deployment sit a few
+ * kilometres apart and read the same weather, and a reader wants the number
+ * the way the national map gives it: one figure for the area.
+ */
+export interface FireDangerSummary {
+  available: boolean;
+  /** Always 'canadian_fwi' when available: computed, not the EFFIS figure. */
+  method: 'canadian_fwi' | null;
+  fwi?: number;
+  dangerClass?: DangerClass;
+  /** Which zone carries the worst figure. */
+  zoneId?: number;
+  /** Tomorrow at the same zone — the trend a reader wants next. */
+  tomorrow?: { fwi: number; dangerClass: DangerClass };
+  generatedAt?: string;
 }
 
 export interface CurrentConditions {
@@ -60,6 +87,7 @@ export interface CurrentConditions {
   stationId?: string;
   area?: string;
   zones: ZoneReadiness[];
+  fireDanger: FireDangerSummary;
 }
 
 @Injectable()
@@ -69,6 +97,7 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly db: DatabaseService,
+    private readonly fireDanger: FireDangerService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -79,10 +108,22 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async current(): Promise<CurrentConditions> {
-    const [snapshot, zones] = await Promise.all([
+    const [snapshot, zones, danger] = await Promise.all([
       this.readSnapshot(),
       this.readZones(),
+      this.fireDanger.current(),
     ]);
+
+    const todayByZone = new Map<number, FireDangerToday>();
+    const tomorrowByZone = new Map<number, FireDangerToday>();
+    for (const zone of danger.zones) {
+      const index = zone.days.findIndex((d) => d.date === zone.today);
+      const today = index >= 0 ? zone.days[index] : undefined;
+      const tomorrow = index >= 0 ? zone.days[index + 1] : undefined;
+      if (today) todayByZone.set(zone.zoneId, { fwi: today.fwi, dangerClass: today.dangerClass });
+      if (tomorrow) tomorrowByZone.set(zone.zoneId, { fwi: tomorrow.fwi, dangerClass: tomorrow.dangerClass });
+    }
+    const fireDanger = summariseDanger(danger.available, danger.generatedAt, todayByZone, tomorrowByZone);
 
     // No snapshot yet (fresh deployment, or ingestion stopped long enough for
     // the key to expire). Still report the zones, but with no readiness — a
@@ -90,7 +131,8 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
     if (!snapshot) {
       return {
         available: false,
-        zones: zones.map((z) => this.assess(z, undefined)),
+        zones: zones.map((z) => this.assess(z, undefined, todayByZone.get(z.id))),
+        fireDanger,
       };
     }
 
@@ -105,7 +147,8 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
       soilMoisturePct: snapshot.soilMoisturePct,
       stationId: snapshot.stationId,
       area: snapshot.area,
-      zones: zones.map((z) => this.assess(z, snapshot)),
+      zones: zones.map((z) => this.assess(z, snapshot, todayByZone.get(z.id))),
+      fireDanger,
     };
   }
 
@@ -113,12 +156,14 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
   private assess(
     zone: { id: number; nameEn: string; nameDe: string; hazardType: string },
     snapshot: Snapshot | undefined,
+    fireDanger: FireDangerToday | undefined,
   ): ZoneReadiness {
     const profile = profileFor(zone.hazardType);
     const base = {
       id: zone.id,
       name: { en: zone.nameEn, de: zone.nameDe },
       hazardType: zone.hazardType,
+      ...(fireDanger ? { fireDanger } : {}),
     };
 
     if (!profile.requiresIgnitionWeather) {
@@ -198,3 +243,33 @@ interface Snapshot {
 }
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
+
+/** The worst zone today is the area's figure; its tomorrow is the trend. */
+function summariseDanger(
+  available: boolean,
+  generatedAt: string | null,
+  today: Map<number, FireDangerToday>,
+  tomorrow: Map<number, FireDangerToday>,
+): FireDangerSummary {
+  if (!available || today.size === 0) return { available: false, method: null };
+
+  let worstId: number | undefined;
+  let worst: FireDangerToday | undefined;
+  for (const [zoneId, figure] of today) {
+    if (!worst || figure.fwi > worst.fwi) {
+      worst = figure;
+      worstId = zoneId;
+    }
+  }
+  const next = worstId !== undefined ? tomorrow.get(worstId) : undefined;
+
+  return {
+    available: true,
+    method: 'canadian_fwi',
+    fwi: worst!.fwi,
+    dangerClass: worst!.dangerClass,
+    zoneId: worstId,
+    ...(next ? { tomorrow: next } : {}),
+    ...(generatedAt ? { generatedAt } : {}),
+  };
+}

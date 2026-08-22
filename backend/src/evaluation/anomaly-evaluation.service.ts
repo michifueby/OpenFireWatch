@@ -184,6 +184,9 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
       );
     }
     const { detection, weather } = report;
+    // A replay from the archive. Same rule, same tables — but history: no
+    // alarm, no page, no marker, and no borrowing today's sensor readings.
+    const backfilled = report.ingestion === 'backfill';
 
     // -- 2) Persist the raw anomaly (idempotent) ------------------------------
     // ON CONFLICT DO NOTHING + RETURNING: a duplicate satellite pass returns
@@ -246,8 +249,11 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
 
     // A live sensor inside this zone, if one is standing there and reporting.
     // SensorService.currentByZone already drops stale readings: a dead sensor
-    // must never report calm on behalf of a wood that is drying out.
-    const local = zone ? (await this.sensors.currentByZone()).get(zone.id) : undefined;
+    // must never report calm on behalf of a wood that is drying out. Never
+    // for a backfilled detection: a probe reading from this afternoon says
+    // nothing about a July in 2019.
+    const local =
+      zone && !backfilled ? (await this.sensors.currentByZone()).get(zone.id) : undefined;
 
     const decision = decide({
       hazardType: zone?.hazardType ?? null,
@@ -274,14 +280,18 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
     await this.db.query(
       `
       INSERT INTO validated_events
-        (anomaly_id, zone_id, alert_level, temperature_c, soil_moisture_pct)
-      VALUES ($1, $2, $3, $4, $5);
+        (anomaly_id, zone_id, alert_level, temperature_c, soil_moisture_pct, backfilled)
+      VALUES ($1, $2, $3, $4, $5, $6);
       `,
-      [anomalyId, zone?.id ?? null, level, decisionTemperatureC, decisionSoilMoisturePct],
+      [anomalyId, zone?.id ?? null, level, decisionTemperatureC, decisionSoilMoisturePct, backfilled],
     );
 
     // -- 6) Log & escalate ------------------------------------------------------
-    if (isCritical(level)) {
+    if (backfilled) {
+      // History is logged quietly: a decade of replayed summers must not
+      // fill the operator log with alarms nobody can act on.
+      this.logger.debug(`backfill: anomaly #${anomalyId} (${detection.acquiredAt}) → ${level}`);
+    } else if (isCritical(level)) {
       // High-priority operator log: everything a responder needs on one line.
       this.logger.error(
         `🚨 ${level} — anomaly #${anomalyId} inside "${zone!.name.en}" ` +
@@ -303,7 +313,9 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
     // -- 7) Broadcast in-zone alerts via WebSockets -----------------------------
     // Published on the Redis channel that AlertsGateway subscribes to; every
     // stateless API replica relays it to its Socket.IO clients as "anomaly:new".
-    if (level !== AlertLevel.INFO) {
+    // Never for a backfilled detection: that channel is also what pages the
+    // crew, and the map would pulse red over a fire that went out years ago.
+    if (level !== AlertLevel.INFO && !backfilled) {
       const payload: AnomalyAlertPayload = {
         type: 'thermal_anomaly',
         id: anomalyId,
@@ -383,6 +395,15 @@ export class AnomalyEvaluationService implements OnModuleInit, OnModuleDestroy {
     // that looks like an audit trail without being one. ApiKeyGuard is what
     // limits who may acknowledge, and it is the seam where real accounts slot
     // in (see its own note).
+    // Replayed from the satellite archive. Every query that describes the
+    // LIVE picture — what is outstanding, what to escalate, what the panel
+    // lists — excludes these; the incident register, which asks what the
+    // system would have done on a given day, includes them. That is the whole
+    // point of having them.
+    await this.db.query(`
+      ALTER TABLE validated_events
+        ADD COLUMN IF NOT EXISTS backfilled BOOLEAN NOT NULL DEFAULT FALSE;
+    `);
     await this.db.query(`
       ALTER TABLE validated_events
         ADD COLUMN IF NOT EXISTS acknowledged_at TIMESTAMPTZ;

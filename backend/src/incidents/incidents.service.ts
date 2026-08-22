@@ -49,6 +49,11 @@ export interface IncidentEntry {
    * for that hour.
    */
   inIgnitionWindow: boolean | null;
+  /**
+   * Whether any satellite detection lies within 2 km, 48 h before to 12 h
+   * after — did the instrument see it at all, whatever the rule made of it.
+   */
+  satelliteSeen: boolean;
   /** Whether a critical alert was raised 48 h before to 12 h after. */
   alertRaised: boolean;
 }
@@ -58,6 +63,8 @@ export interface IncidentSummary {
   /** Of the fires where the window question applies: how many fell inside. */
   firesInWindow: number;
   firesWindowApplicable: number;
+  /** Fires the satellite saw at all, alarmed or not. */
+  firesSeen: number;
   firesAlerted: number;
   /** Outcomes recorded on critical alerts, the other half of the loop. */
   alertsConfirmed: number;
@@ -81,13 +88,29 @@ const LIST_SQL = `
          z.name, z.name_de, z.name_en,
          z.hazard_type,
          window_check.in_window,
+         -- Two questions, asked apart on purpose. "Did the satellite see it?"
+         -- is about the instrument; "did the system alarm?" is about the
+         -- rule. A fire that was seen but not alarmed is the thresholds'
+         -- report card; one that was never seen is a limit of the sensor,
+         -- and no threshold would have changed it.
+         --
+         -- Both use the ACQUISITION time, never the evaluation time: a
+         -- detection replayed from the archive is evaluated years after the
+         -- pass, and the question is about the pass.
+         EXISTS (
+           SELECT 1
+             FROM thermal_anomalies a
+            WHERE a.acquired_at BETWEEN i.occurred_at - interval '48 hours'
+                                    AND i.occurred_at + interval '12 hours'
+              AND ST_DWithin(a.geom::geography, i.geom::geography, 2000)
+         ) AS satellite_seen,
          EXISTS (
            SELECT 1
              FROM validated_events ve
              JOIN thermal_anomalies a ON a.id = ve.anomaly_id
             WHERE ve.alert_level LIKE 'CRITICAL%'
-              AND ve.evaluated_at BETWEEN i.occurred_at - interval '48 hours'
-                                      AND i.occurred_at + interval '12 hours'
+              AND a.acquired_at BETWEEN i.occurred_at - interval '48 hours'
+                                    AND i.occurred_at + interval '12 hours'
               AND (
                     (z.id IS NOT NULL AND ve.zone_id = z.id)
                  OR ST_DWithin(a.geom::geography, i.geom::geography, 2000)
@@ -132,6 +155,7 @@ export class IncidentsService implements OnModuleInit {
       name_de: string | null;
       name_en: string | null;
       in_window: boolean | null;
+      satellite_seen: boolean;
       alert_raised: boolean;
     }>(LIST_SQL, [
       PHOSPHORUS_IGNITION.IGNITION_TEMPERATURE_C,
@@ -156,6 +180,7 @@ export class IncidentsService implements OnModuleInit {
           }
         : null,
       inIgnitionWindow: row.in_window,
+      satelliteSeen: row.satellite_seen,
       alertRaised: row.alert_raised,
     }));
 
@@ -177,6 +202,7 @@ export class IncidentsService implements OnModuleInit {
       fires: fires.length,
       firesWindowApplicable: applicable.length,
       firesInWindow: applicable.filter((i) => i.inIgnitionWindow).length,
+      firesSeen: fires.filter((i) => i.satelliteSeen).length,
       firesAlerted: fires.filter((i) => i.alertRaised).length,
       alertsConfirmed: outcomeCount('confirmed'),
       alertsNothingFound: outcomeCount('nothing_found'),

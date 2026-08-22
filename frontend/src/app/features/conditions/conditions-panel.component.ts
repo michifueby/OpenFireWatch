@@ -10,9 +10,24 @@ import { DecimalPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 
 import { TranslationService } from '@core/i18n/translation.service';
+import { TranslationDict } from '@core/i18n/translations';
 
-import { ConditionsService, ZoneReadiness } from './data-access/conditions.service';
+import {
+  ConditionsService,
+  DangerClass,
+  ZoneReadiness,
+} from './data-access/conditions.service';
 import { isPartiallyMet, readinessText, windFrom } from './readiness';
+
+/** Danger class → the translation key that names it for a reader. */
+const DANGER_LABELS: Readonly<Record<DangerClass, keyof TranslationDict>> = {
+  very_low: 'dangerVeryLow',
+  low: 'dangerLow',
+  moderate: 'dangerModerate',
+  high: 'dangerHigh',
+  very_high: 'dangerVeryHigh',
+  extreme: 'dangerExtreme',
+};
 
 @Component({
   selector: 'ofw-conditions-panel',
@@ -38,5 +53,19 @@ export class ConditionsPanelComponent {
 
   windFrom(degrees: number): string {
     return windFrom(degrees, this.t, this.i18n.locale() === 'de');
+  }
+
+  dangerLabel(dangerClass: DangerClass): string {
+    return this.i18n.t(DANGER_LABELS[dangerClass]);
+  }
+
+  /**
+   * Tone for the colour: the three upper classes are the ones a reader has to
+   * notice. Below "high" the line is information, not a warning.
+   */
+  dangerTone(dangerClass: DangerClass): 'calm' | 'warn' | 'critical' {
+    if (dangerClass === 'very_high' || dangerClass === 'extreme') return 'critical';
+    if (dangerClass === 'high') return 'warn';
+    return 'calm';
   }
 }

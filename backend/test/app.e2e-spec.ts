@@ -270,6 +270,239 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     }
   });
 
+  describe('satellite archive backfill', () => {
+    /** A pass in July 2019, well before this system existed. */
+    const HISTORIC_AT = '2019-07-25T12:30:00Z';
+
+    afterAll(async () => {
+      await db.query(`DELETE FROM incidents WHERE title LIKE 'E2E backfill%';`);
+      await db.query(`DELETE FROM backfill_runs;`);
+    });
+
+    it('is operator-only and refuses ranges it cannot honour', async () => {
+      await request(app.getHttpServer())
+        .post('/api/backfill/satellite')
+        .send({ from: '2019-01-01', to: '2019-12-31' })
+        .expect(401);
+
+      const refuse = (body: Record<string, string>) =>
+        request(app.getHttpServer())
+          .post('/api/backfill/satellite')
+          .set('X-API-Key', OPERATOR_KEY)
+          .send(body)
+          .expect(400);
+      await refuse({ from: '2019-12-31', to: '2019-01-01' }); // inverted
+      await refuse({ from: '2099-01-01', to: '2099-01-02' }); // future
+      await refuse({ from: '2005-01-01', to: '2005-12-31' }); // before the archive
+      await refuse({ from: '2013-01-01', to: '2025-12-31' }); // longer than one run
+      await refuse({ from: '2019-07-01T00:00:00Z', to: '2019-07-02' }); // not a plain date
+    });
+
+    it('records a run, hands it to the workers, and allows only one at a time', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/backfill/satellite')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({ from: '2019-07-01', to: '2019-07-31' })
+        .expect(202);
+      expect(res.body).toMatchObject({ status: 'queued', from: '2019-07-01', to: '2019-07-31', requestsDone: 0 });
+
+      // The job is on the backfill queue for the workers to pick up.
+      const backfillQueue = new Queue('jobs.backfill', {
+        connection: {
+          host: process.env.REDIS_HOST,
+          port: Number(process.env.REDIS_PORT),
+          db: Number(process.env.REDIS_DB),
+        },
+      });
+      try {
+        const job = await backfillQueue.getJob(`satellite-backfill-${res.body.id}`);
+        expect(job?.data).toEqual({ runId: res.body.id, from: '2019-07-01', to: '2019-07-31' });
+        await job?.remove();
+      } finally {
+        await backfillQueue.close();
+      }
+
+      // A second run while one is queued is refused, not stacked.
+      await request(app.getHttpServer())
+        .post('/api/backfill/satellite')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({ from: '2020-07-01', to: '2020-07-31' })
+        .expect(409);
+
+      const list = await request(app.getHttpServer()).get('/api/backfill/satellite').expect(200);
+      expect(list.body[0].id).toBe(res.body.id);
+    });
+
+    it('evaluates a replayed detection by the same rule but never alarms on it', async () => {
+      emitSpy.mockClear();
+      // Hot, dry, inside the phosphorus zone: live, this is a critical alert.
+      await reportsQueue.add('detection-report', {
+        detection: {
+          source: 'E2E_ARCHIVE',
+          satellite: 'TEST',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+          acquiredAt: HISTORIC_AT,
+          brightnessK: 345,
+          frpMw: 9,
+          confidence: 'h',
+        },
+        weather: { temperatureC: 34, soilMoisturePct: 9, observedAt: HISTORIC_AT },
+        ingestion: 'backfill',
+      });
+
+      const row = await waitFor(
+        async () => {
+          const { rows } = await db.query<{ alert_level: string; backfilled: boolean }>(
+            `SELECT ve.alert_level, ve.backfilled
+               FROM validated_events ve JOIN thermal_anomalies a ON a.id = ve.anomaly_id
+              WHERE a.source = 'E2E_ARCHIVE' AND a.acquired_at = $1;`,
+            [HISTORIC_AT],
+          );
+          return rows[0];
+        },
+        20_000,
+        'the replayed detection to be evaluated',
+      );
+      // Same verdict the live rule would reach...
+      expect(row.alert_level).toBe('CRITICAL_PHOSPHORUS_FIRE');
+      // ...marked as history...
+      expect(row.backfilled).toBe(true);
+      // ...and nothing went to a browser or a phone.
+      expect(emitSpy).not.toHaveBeenCalledWith('alert:critical', expect.anything());
+      expect(emitSpy).not.toHaveBeenCalledWith('anomaly:new', expect.anything());
+
+      // The live picture does not list it, even though it is critical and
+      // unacknowledged — it is not outstanding, it is 2019.
+      const alerts = await request(app.getHttpServer())
+        .get('/api/alerts?limit=100&sinceHours=1&criticalOnly=true&unacknowledgedOnly=true')
+        .expect(200);
+      expect(alerts.body.some((a: { acquiredAt: string }) => a.acquiredAt === HISTORIC_AT)).toBe(false);
+    });
+
+    it('lets the incident register see it — the reason the replay exists', async () => {
+      // Its own replayed pass: the per-test TRUNCATE has already cleared the
+      // one from the test above, and a distinct source keeps the queue's
+      // idempotent job id from swallowing this as a duplicate.
+      await reportsQueue.add('detection-report', {
+        detection: {
+          source: 'E2E_ARCHIVE_REGISTER',
+          satellite: 'TEST',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+          acquiredAt: HISTORIC_AT,
+          brightnessK: 345,
+          frpMw: 9,
+          confidence: 'h',
+        },
+        weather: { temperatureC: 34, soilMoisturePct: 9, observedAt: HISTORIC_AT },
+        ingestion: 'backfill',
+      });
+      await waitFor(
+        async () => {
+          const { rows } = await db.query<{ n: string }>(
+            `SELECT count(*) AS n FROM validated_events ve
+               JOIN thermal_anomalies a ON a.id = ve.anomaly_id
+              WHERE a.source = 'E2E_ARCHIVE_REGISTER';`,
+          );
+          return Number(rows[0]!.n) > 0 ? true : undefined;
+        },
+        20_000,
+        'the replayed pass to be on record',
+      );
+
+      // A fire recorded at that spot, the afternoon of the pass.
+      const created = await request(app.getHttpServer())
+        .post('/api/incidents')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({
+          occurredAt: '2019-07-25T15:00:00Z',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+          kind: 'fire',
+          title: 'E2E backfill fire 2019',
+        })
+        .expect(201);
+
+      const res = await request(app.getHttpServer()).get('/api/incidents').expect(200);
+      const incident = res.body.incidents.find((i: { id: number }) => i.id === created.body.id);
+      // Judged by ACQUISITION time, so a verdict reached today about a pass
+      // in 2019 still counts for the 2019 fire.
+      expect(incident.satelliteSeen).toBe(true);
+      expect(incident.alertRaised).toBe(true);
+      expect(res.body.summary.firesSeen).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('fire danger (Canadian FWI)', () => {
+    const snapshot = {
+      generatedAt: new Date().toISOString(),
+      method: 'canadian_fwi',
+      zones: [
+        {
+          zoneId: 1,
+          name: { de: 'Zone', en: 'Zone' },
+          hazardType: 'white_phosphorus',
+          today: '2026-08-22',
+          days: [
+            { date: '2026-08-21', fwi: 18.2, dangerClass: 'moderate', ffmc: 88, dmc: 30, dc: 300, isi: 6, bui: 50 },
+            { date: '2026-08-22', fwi: 24.6, dangerClass: 'high', ffmc: 90, dmc: 33, dc: 306, isi: 8, bui: 53 },
+            { date: '2026-08-23', fwi: 39.1, dangerClass: 'very_high', ffmc: 91, dmc: 36, dc: 312, isi: 12, bui: 56 },
+          ],
+        },
+      ],
+    };
+
+    afterEach(async () => {
+      await redis.del('fire-danger:current');
+    });
+
+    it('is honestly unavailable until the workers have computed one', async () => {
+      await redis.del('fire-danger:current');
+      const res = await request(app.getHttpServer()).get('/api/fire-danger').expect(200);
+      expect(res.body.available).toBe(false);
+      expect(res.body.zones).toEqual([]);
+
+      const conditions = await request(app.getHttpServer()).get('/api/conditions').expect(200);
+      expect(conditions.body.fireDanger.available).toBe(false);
+    });
+
+    it('serves the snapshot and names the method on it', async () => {
+      await redis.set('fire-danger:current', JSON.stringify(snapshot));
+      const res = await request(app.getHttpServer()).get('/api/fire-danger').expect(200);
+      expect(res.body.available).toBe(true);
+      // Computed, not official — every consumer can see which.
+      expect(res.body.method).toBe('canadian_fwi');
+      expect(res.body.zones[0].days).toHaveLength(3);
+    });
+
+    it("folds today's figure and tomorrow's trend into the conditions", async () => {
+      await redis.set('fire-danger:current', JSON.stringify(snapshot));
+      const res = await request(app.getHttpServer()).get('/api/conditions').expect(200);
+      expect(res.body.fireDanger).toMatchObject({
+        available: true,
+        method: 'canadian_fwi',
+        fwi: 24.6,
+        dangerClass: 'high',
+        zoneId: 1,
+        tomorrow: { fwi: 39.1, dangerClass: 'very_high' },
+      });
+      // ...and per zone, for the readiness list.
+      const zone = res.body.zones.find((z: { id: number }) => z.id === 1);
+      expect(zone.fireDanger).toEqual({ fwi: 24.6, dangerClass: 'high' });
+    });
+
+    it('is present even while the station readings are not', async () => {
+      // Two feeds, two failure modes: a stopped ingestion cycle must not take
+      // the fire danger down with it, and the panel can say so.
+      await redis.del('conditions:current');
+      await redis.set('fire-danger:current', JSON.stringify(snapshot));
+      const res = await request(app.getHttpServer()).get('/api/conditions').expect(200);
+      expect(res.body.available).toBe(false);
+      expect(res.body.fireDanger.available).toBe(true);
+    });
+  });
+
   describe('current conditions', () => {
     it('reports honestly when no ingestion cycle has run', async () => {
       // A fresh deployment. Guessing values here would be worse than a gap:

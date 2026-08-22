@@ -331,6 +331,8 @@ erDiagram
 | One Redis connection factory, with the role named at the call site | Eight services had copied the same four lines and drifted: `maxRetriesPerRequest: null` (block through a broker restart, required by BullMQ) versus a finite value (fail the command so a hung broker cannot hang an HTTP response) is a real difference that had become accidental | Two named roles to choose between instead of a default that is right by luck |
 | The alert rule as a pure function | It is the most consequential logic in the system and it lived inside a 190-line method that also validated a queue job, wrote two tables, logged and published — reachable only through PostGIS, Redis and BullMQ together. Now every threshold is checked at its boundary in milliseconds | The evaluation service composes two pieces rather than reading top to bottom |
 | Rate limiting in the API, not only at the proxy | One GET on the report endpoint queries six subsystems and renders a PDF; nothing else in the stack bounded that. The limiter needs the client address, which is why nginx now forwards `X-Forwarded-For` | In-memory counters, so each replica counts its own callers — enough to stop one client hammering an expensive endpoint, not a fleet-wide quota |
+| Replayed detections are marked, not separated | A second table for history would have meant a second copy of every query; one `backfilled` flag lets the live picture exclude them and the incident register include them, judged by acquisition time | Every live-picture query must remember the filter — the e2e suite checks the ones that matter |
+| The FWI is computed, and says so | No public endpoint returns the figure for a point; EFFIS, GeoSphere and the national maps all publish the same published method. Running it on our weather is the method itself, pinned to the reference example by test — labelled "computed", never "official" | Inputs differ slightly from EFFIS's ECMWF run; a class boundary may fall a day apart |
 | Frontend folders by feature, not by file type | A feature owns both its data access and its screen, so changing one thing means opening one folder; the alternative had an incident register whose API client and user interface lived in different trees | Cross-feature imports need path aliases to stay readable |
 | One HTTP client with an interceptor, instead of `fetch` per service | The operator credential is attached in exactly one place and dropped in exactly one place; five hand-written copies had already drifted | A promise wrapper over an RxJS API — one small layer that exists to keep call sites in `async/await` |
 | Runtime i18n instead of Angular's build-time i18n | One bundle can follow the browser language and switch live | Translations ship in the bundle rather than being tree-shaken per locale |
@@ -349,6 +351,10 @@ erDiagram
 - [Frontend architecture](frontend-architecture.md) — how the Angular
   application is organised: feature folders, the single HTTP door, and where
   signals end and event streams begin
+- [Satellite archive backfill](satellite-backfill.md) — replaying FIRMS
+  history through the live rule, and what the `backfilled` mark changes
+- [Fire danger (FWI)](fire-danger.md) — the Canadian index on the panel and
+  why it is computed rather than fetched
 - [Monitoring areas & risk zones](monitoring-areas.md) — operator guide for
   changing `FIRMS_AREA` and maintaining `high_risk_zones`
 - [Deployment](deployment.md) — running it publicly with TLS, backups and

@@ -78,6 +78,7 @@ export class EscalationService implements OnModuleInit, OnModuleDestroy {
           JOIN thermal_anomalies a ON a.id = ve.anomaly_id
           LEFT JOIN high_risk_zones z ON z.id = ve.zone_id
          WHERE ve.alert_level LIKE 'CRITICAL%'
+           AND NOT ve.backfilled
            AND ve.acknowledged_at IS NULL
            AND ve.evaluated_at <  now() - ($1 || ' minutes')::interval
            AND ve.evaluated_at >= now() - interval '${MAX_AGE_HOURS} hours'

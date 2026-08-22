@@ -1,0 +1,107 @@
+@use 'operator-kit' as kit;
+@use 'tokens' as *;
+
+:host {
+  display: contents; // the console's .body grid owns the spacing
+}
+
+@include kit.form-controls;
+
+.backfill-block {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed rgba(230, 232, 238, 0.18);
+
+  h3 {
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: $op-amber;
+  }
+}
+
+.range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.runs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.run {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid $op-border;
+  border-left: 3px solid $op-muted;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 0.74rem;
+
+  &.status-running,
+  &.status-queued {
+    border-left-color: $op-amber;
+  }
+
+  &.status-done {
+    border-left-color: #2ea064;
+  }
+
+  &.status-failed {
+    border-left-color: $alert-red;
+  }
+}
+
+.run-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-family: $font-mono;
+}
+
+.run-status {
+  color: $op-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+}
+
+.bar {
+  margin-top: 0.35rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: rgba(230, 232, 238, 0.12);
+  overflow: hidden;
+
+  .fill {
+    display: block;
+    height: 100%;
+    background: $op-amber;
+    transition: width 0.4s ease;
+  }
+}
+
+.run-meta,
+.run-gaps {
+  margin-top: 0.3rem;
+  font-family: $font-mono;
+  font-size: 0.68rem;
+  color: $op-muted;
+}
+
+.run-gaps span {
+  display: inline-block;
+  margin-right: 0.5rem;
+  color: $warn-amber;
+}
+
+@media (max-width: $phone-max) {
+  @include kit.form-controls-touch;
+}

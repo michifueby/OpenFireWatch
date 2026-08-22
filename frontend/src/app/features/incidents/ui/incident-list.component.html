@@ -31,6 +31,12 @@
           [class.miss]="inc.inIgnitionWindow === false"
           >{{ windowLabel(inc) }}</span
         >
+        <!-- Seen and alarmed are two different questions: one about the
+             instrument, one about the rule. A fire seen but not alarmed is
+             what the thresholds have to answer for. -->
+        <span class="i-verdict" [class.hit]="inc.satelliteSeen" [class.miss]="!inc.satelliteSeen">
+          {{ i18n.t(inc.satelliteSeen ? 'incidentSeen' : 'incidentNotSeen') }}
+        </span>
         <span class="i-verdict" [class.hit]="inc.alertRaised" [class.miss]="!inc.alertRaised">
           {{ i18n.t(inc.alertRaised ? 'incidentAlerted' : 'incidentNotAlerted') }}
         </span>

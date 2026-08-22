@@ -58,7 +58,7 @@ export async function backfillHistory(job: Job): Promise<void> {
 
       try {
         const hours = await fetchArchive(zone.latitude, zone.longitude, from, to);
-        inserted += await store(zone.id, hours);
+        inserted += await storeWeatherHours(zone.id, hours);
         await job.log(`Zone ${zone.id}, ${year}: ${hours.length} hours`);
       } catch (error) {
         // One zone-year failing must not cost the rest of the backfill.
@@ -72,6 +72,16 @@ export async function backfillHistory(job: Job): Promise<void> {
   console.log(`[history] backfill complete, ${inserted} new hour(s) stored`);
 }
 
+/** Hours of weather a zone holds inside a date range (inclusive, UTC days). */
+export async function countWeatherHours(zoneId: number, from: string, to: string): Promise<number> {
+  const { rows } = await pool.query<{ n: string }>(
+    `SELECT count(*) AS n FROM zone_weather_history
+      WHERE zone_id = $1 AND observed_at >= $2::date AND observed_at < ($3::date + 1);`,
+    [zoneId, from, to],
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
 /** A year counts as complete once it holds nearly every hour it could. */
 async function yearIsComplete(zoneId: number, year: number): Promise<boolean> {
   const { rows } = await pool.query<{ n: string }>(
@@ -83,7 +93,12 @@ async function yearIsComplete(zoneId: number, year: number): Promise<boolean> {
   return Number(rows[0]?.n ?? 0) > 8_000;
 }
 
-async function store(zoneId: number, hours: { at: string; temperatureC: number; soilMoisturePct: number }[]): Promise<number> {
+/**
+ * Write archive hours for one zone. Exported: the satellite backfill uses it
+ * to make sure the weather of the period it replays is on hand before it
+ * starts — a detection from 2014 needs the conditions of 2014.
+ */
+export async function storeWeatherHours(zoneId: number, hours: { at: string; temperatureC: number; soilMoisturePct: number }[]): Promise<number> {
   if (hours.length === 0) return 0;
 
   // One statement per batch rather than per row: a decade is ~87 000 rows per

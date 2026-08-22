@@ -48,6 +48,17 @@ const T: Record<Lang, Record<string, string>> = {
     windFrom: 'aus',
     station: 'Station',
     noConditions: 'Keine aktuelle Datenaufnahme — Messwerte unbekannt.',
+    fireDanger: 'Waldbrandgefahr (FWI)',
+    fireDangerTomorrow: 'morgen',
+    fireDangerMethod:
+      'Canadian Fire Weather Index, berechnet nach der Methode von EFFIS und ' +
+      'den nationalen Waldbrandkarten aus den Wetterdaten der Zone — kein amtlicher Wert.',
+    danger_very_low: 'sehr gering',
+    danger_low: 'gering',
+    danger_moderate: 'mäßig',
+    danger_high: 'hoch',
+    danger_very_high: 'sehr hoch',
+    danger_extreme: 'extrem',
     readiness: 'Zonenbereitschaft',
     armed: 'Zündfenster OFFEN',
     onDetection: 'Alarm bei jeder erkannten Hitzequelle — unabhängig vom Wetter',
@@ -119,6 +130,17 @@ const T: Record<Lang, Record<string, string>> = {
     windFrom: 'from',
     station: 'Station',
     noConditions: 'No recent ingestion cycle — readings unknown.',
+    fireDanger: 'Fire danger (FWI)',
+    fireDangerTomorrow: 'tomorrow',
+    fireDangerMethod:
+      'Canadian Fire Weather Index, computed by the method behind EFFIS and ' +
+      'the national fire-danger maps from the weather at each zone — not an official figure.',
+    danger_very_low: 'very low',
+    danger_low: 'low',
+    danger_moderate: 'moderate',
+    danger_high: 'high',
+    danger_very_high: 'very high',
+    danger_extreme: 'extreme',
     readiness: 'Zone readiness',
     armed: 'ignition window OPEN',
     onDetection: 'alarms on any detected heat source — regardless of weather',
@@ -281,6 +303,19 @@ export function renderReport(data: ReportData, lang: Lang): Promise<Buffer> {
     mutedLine(`${t['station']} ${c.stationId} · ${new Date(c.observedAt!).toLocaleString(locale)}`);
   } else {
     line(t['noConditions']!, { colour: COLOURS.amber });
+  }
+
+  // The fire danger stands apart from the station readings: it comes from a
+  // different feed, so it can be present when the readings are not — and the
+  // method is named in the document itself, where the number will be quoted.
+  const danger = c.fireDanger;
+  if (danger?.available && danger.fwi !== undefined && danger.dangerClass) {
+    const className = (c: string): string => t[`danger_${c}`] ?? c;
+    const tomorrow = danger.tomorrow
+      ? `   ${t['fireDangerTomorrow']}: ${className(danger.tomorrow.dangerClass)} (${danger.tomorrow.fwi})`
+      : '';
+    line(`${t['fireDanger']}: ${className(danger.dangerClass)} · FWI ${danger.fwi}${tomorrow}`);
+    mutedLine(t['fireDangerMethod']!);
   }
 
   doc.moveDown(0.5);

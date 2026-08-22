@@ -22,6 +22,8 @@ export interface IncidentEntry {
   zone: { id: number; name: { de: string; en: string } } | null;
   /** Null = the question does not apply; never conflate with false. */
   inIgnitionWindow: boolean | null;
+  /** Any satellite detection within 2 km, 48 h before to 12 h after. */
+  satelliteSeen: boolean;
   alertRaised: boolean;
 }
 
@@ -29,6 +31,7 @@ export interface IncidentSummary {
   fires: number;
   firesInWindow: number;
   firesWindowApplicable: number;
+  firesSeen: number;
   firesAlerted: number;
   alertsConfirmed: number;
   alertsNothingFound: number;

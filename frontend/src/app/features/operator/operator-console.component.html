@@ -80,6 +80,11 @@
         (remove)="removeIncident($event)"
       />
 
+      <!-- How far back the register can see depends on how far back the
+           satellite archive has been replayed — so the control for that
+           lives right under it. -->
+      <ofw-backfill-panel [busy]="busy()" />
+
       @if (notice()) {
       <p class="notice">{{ notice() }}</p>
       }

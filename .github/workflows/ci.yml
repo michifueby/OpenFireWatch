@@ -143,11 +143,12 @@ jobs:
           npm ci
           npx tsc -p tsconfig.json --noEmit
 
-      - name: Typecheck workers
+      - name: Typecheck and unit-test workers
         working-directory: workers
         run: |
           npm ci
           npx tsc -p tsconfig.json --noEmit
+          npm test
 
       - name: Build frontend (production)
         working-directory: frontend

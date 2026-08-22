@@ -25,6 +25,30 @@ export interface ZoneReadiness {
   soilMoistureGapPct?: number;
 }
 
+/** The six EFFIS classes the Canadian FWI maps onto, lowest first. */
+export type DangerClass =
+  | 'very_low'
+  | 'low'
+  | 'moderate'
+  | 'high'
+  | 'very_high'
+  | 'extreme';
+
+/**
+ * Today's fire danger for the area — the worst zone's Canadian FWI.
+ * `method` is always 'canadian_fwi': computed by the workers with the EFFIS
+ * method on the zone's weather, never the published EFFIS figure itself.
+ */
+export interface FireDangerSummary {
+  available: boolean;
+  method: 'canadian_fwi' | null;
+  fwi?: number;
+  dangerClass?: DangerClass;
+  zoneId?: number;
+  tomorrow?: { fwi: number; dangerClass: DangerClass };
+  generatedAt?: string;
+}
+
 export interface CurrentConditions {
   available: boolean;
   observedAt?: string;
@@ -37,6 +61,7 @@ export interface CurrentConditions {
   stationId?: string;
   area?: string;
   zones: ZoneReadiness[];
+  fireDanger?: FireDangerSummary;
 }
 
 /** Ingestion runs every ~5 minutes; polling faster would only waste requests. */
