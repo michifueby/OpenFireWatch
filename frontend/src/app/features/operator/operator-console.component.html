@@ -1,0 +1,123 @@
+<!-- Collapsed: a single unobtrusive button, so the map stays the focus. -->
+@if (!open()) {
+<button
+  type="button"
+  class="launcher"
+  (click)="toggle()"
+  [attr.aria-label]="i18n.t('zonesOpen')"
+  [attr.title]="i18n.t('zonesOpen')"
+>
+  <ofw-icon name="pencil" />
+  {{ i18n.t('zonesTitle') }}
+</button>
+} @else {
+<section class="panel" [attr.aria-label]="i18n.t('zonesTitle')">
+  <header class="panel-header">
+    <h2>
+      <ofw-icon name="pencil" />
+      {{ i18n.t('zonesTitle') }}
+    </h2>
+    <div class="header-actions">
+      @if (api.unlocked()) {
+      <button type="button" class="ghost" (click)="lock()" [attr.title]="i18n.t('zonesLock')">
+        <ofw-icon name="lock" />
+        {{ i18n.t('zonesLock') }}
+      </button>
+      }
+      <button
+        type="button"
+        class="ghost"
+        (click)="toggle()"
+        [attr.aria-label]="i18n.t('zonesClose')"
+      >
+        ✕
+      </button>
+    </div>
+  </header>
+
+  <!-- Locked: explain what is needed instead of failing later. -->
+  @if (!api.unlocked()) {
+  <div class="body">
+    <p class="hint">{{ i18n.t('zonesUnlockHint') }}</p>
+    <label class="field">
+      <span>{{ i18n.t('zonesApiKey') }}</span>
+      <input
+        type="password"
+        autocomplete="off"
+        spellcheck="false"
+        (input)="onKeyInput($any($event.target).value)"
+        (keyup.enter)="unlock()"
+      />
+    </label>
+    <button type="button" class="primary" (click)="unlock()" [disabled]="busy()">
+      {{ i18n.t('zonesUnlock') }}
+    </button>
+    @if (error()) {
+    <p class="error">{{ error() }}</p>
+    }
+  </div>
+  } @else {
+  <div class="body">
+    @switch (view().kind) {
+      @case ('list') {
+      <ofw-zone-list
+        [zones]="zones()"
+        [sensors]="sensors()"
+        [busy]="busy()"
+        (newZone)="newZone()"
+        (edit)="editZone($event)"
+        (retire)="retireZone($event)"
+        (newSensor)="newSensor()"
+        (editSensor)="editSensor($event)"
+        (retireSensor)="retireSensor($event)"
+      />
+
+      <ofw-incident-list
+        [incidents]="incidents()"
+        [summary]="incidentSummary()"
+        [busy]="busy()"
+        (add)="newIncident()"
+        (remove)="removeIncident($event)"
+      />
+
+      @if (notice()) {
+      <p class="notice">{{ notice() }}</p>
+      }
+      @if (error()) {
+      <p class="error">{{ error() }}</p>
+      }
+      }
+
+      @case ('zone') {
+      <ofw-zone-form
+        [zone]="zoneUnderEdit()"
+        [busy]="busy()"
+        [error]="error()"
+        (save)="saveZone($event)"
+        (dismiss)="showList()"
+      />
+      }
+
+      @case ('sensor') {
+      <ofw-sensor-form
+        [sensor]="sensorUnderEdit()"
+        [busy]="busy()"
+        [error]="error()"
+        (save)="saveSensor($event)"
+        (dismiss)="showList()"
+      />
+      }
+
+      @case ('incident') {
+      <ofw-incident-form
+        [busy]="busy()"
+        [error]="error()"
+        (save)="saveIncident($event)"
+        (dismiss)="showList()"
+      />
+      }
+    }
+  </div>
+  }
+</section>
+}

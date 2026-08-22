@@ -1,0 +1,32 @@
+@use 'operator-kit' as kit;
+@use 'tokens' as *;
+
+:host {
+  display: contents; // the console's .body grid owns the spacing
+}
+
+@include kit.form-controls;
+@include kit.entity-list;
+
+.sensor-group {
+  margin-top: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed rgba(230, 232, 238, 0.14);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.add-sensor {
+  justify-self: start;
+  font-size: 0.72rem;
+}
+
+// Sensors outside every zone — visually a zone card gone grey.
+
+.entry.unassigned {
+  border-left-color: #5b6678;
+}
+
+@media (max-width: $phone-max) {
+  @include kit.form-controls-touch;
+}

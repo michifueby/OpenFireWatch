@@ -1,9 +1,9 @@
-import { Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 
-import { AboutPanelComponent } from './about/about-panel.component';
-import { AlertDashboardComponent } from './alerts/alert-dashboard.component';
-import { MapComponent } from './map/map.component';
-import { ZoneEditorComponent } from './zones/zone-editor.component';
+import { AboutPanelComponent } from '@features/about/about-panel.component';
+import { AlertDashboardComponent } from '@features/alerts/alert-dashboard.component';
+import { MapComponent } from '@features/map/map.component';
+import { OperatorConsoleComponent } from '@features/operator/operator-console.component';
 
 /** Application shell: full-screen map with the overlay panels on top. */
 @Component({
@@ -13,13 +13,14 @@ import { ZoneEditorComponent } from './zones/zone-editor.component';
     MapComponent,
     AlertDashboardComponent,
     AboutPanelComponent,
-    ZoneEditorComponent,
+    OperatorConsoleComponent,
   ],
   template: `
     <ofw-map />
     <ofw-alert-dashboard />
-    <ofw-zone-editor />
+    <ofw-operator-console />
     <ofw-about-panel />
   `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent {}

@@ -1,0 +1,61 @@
+<div class="sensor">
+  <div class="sensor-line">
+    <span
+      class="s-dot"
+      [class.on]="sensor().reporting"
+      [attr.title]="i18n.t(sensor().reporting ? 'sensorReporting' : 'sensorStale')"
+    ></span>
+    <span class="s-label">{{ sensor().label }}</span>
+  </div>
+
+  <div class="sensor-meta">
+    <span>{{ sensor().deviceId }}</span>
+    @if (sensor().temperatureC !== null) {
+    <span>· {{ sensor().temperatureC | number: '1.0-1' }}&nbsp;°C</span>
+    }
+    @if (sensor().soilMoisturePct !== null) {
+    <span>· {{ sensor().soilMoisturePct | number: '1.0-1' }}&nbsp;%</span>
+    }
+    @if (sensor().batteryPct !== null) {
+    <span class="s-battery">
+      · <ofw-icon name="battery" />{{ sensor().batteryPct | number: '1.0-0' }}&nbsp;%
+    </span>
+    }
+    @if (sensor().lastSeenAt === null) {
+    <span>· {{ i18n.t('sensorNoData') }}</span>
+    }
+  </div>
+
+  @if (confirming()) {
+  <div class="retire-confirm">
+    <p>{{ i18n.t('sensorRetireConfirm') }}</p>
+    <div class="entry-actions">
+      <button type="button" class="ghost" (click)="confirming.set(false)">
+        {{ i18n.t('zonesCancel') }}
+      </button>
+      <button
+        type="button"
+        class="danger"
+        (click)="confirming.set(false); retire.emit(sensor())"
+        [disabled]="busy()"
+      >
+        {{ i18n.t('zonesRetire') }}
+      </button>
+    </div>
+  </div>
+  } @else {
+  <div class="entry-actions">
+    <button type="button" class="ghost" (click)="edit.emit(sensor())">
+      {{ i18n.t('zonesEdit') }}
+    </button>
+    <button
+      type="button"
+      class="danger"
+      (click)="confirming.set(true)"
+      [disabled]="busy()"
+    >
+      {{ i18n.t('zonesRetire') }}
+    </button>
+  </div>
+  }
+</div>

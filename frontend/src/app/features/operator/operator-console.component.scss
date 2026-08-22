@@ -1,0 +1,128 @@
+@use 'operator-kit' as kit;
+@use 'tokens' as *;
+
+// The console shell: the launcher, the panel it opens, and the unlock form.
+// Everything inside the panel is its own component and brings its own styles;
+// what they share comes from the operator kit.
+
+:host {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 4; // see the layer table in styles.scss
+}
+
+.launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid $op-border;
+  border-radius: 999px;
+  background: $op-panel-bg;
+  backdrop-filter: blur(6px);
+  color: #e6e8ee;
+  font-family: $font-mono;
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+
+  &:hover {
+    border-color: $op-amber;
+    color: $op-amber;
+  }
+}
+
+.panel {
+  width: 21rem;
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  border: 1px solid $op-border;
+  border-radius: 8px;
+  background: $op-panel-bg;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  color: #e6e8ee;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid $op-border;
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: $op-amber;
+  }
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.body {
+  padding: 0.8rem 0.9rem;
+  display: grid;
+  gap: 0.7rem;
+  font-size: 0.8rem;
+}
+
+// The unlock form is the one form this shell renders itself.
+@include kit.form-controls;
+
+// -----------------------------------------------------------------------------
+// Phone layout.
+//
+// The launcher stays a small button in the top-left corner, but the panel it
+// opens becomes a bottom sheet: a 20rem panel anchored to the top-left of a
+// 375px screen covers the map and leaves its own buttons within a thumb's
+// reach only by accident.
+// -----------------------------------------------------------------------------
+@media (max-width: $phone-max) {
+  // Launcher and panel sit at opposite ends of the screen and position
+  // themselves against the viewport, so the host only has to stop being a box
+  // in the way. Pointer events are handed back to the children alone —
+  // otherwise this layer would swallow every pan and pinch aimed at the map.
+  :host {
+    inset: auto;
+    pointer-events: none;
+  }
+
+  .launcher,
+  .panel {
+    pointer-events: auto;
+  }
+
+  .launcher {
+    position: fixed;
+    top: calc(0.75rem + var(--ofw-safe-top));
+    left: calc(0.75rem + var(--ofw-safe-left));
+    min-height: 2.5rem;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.72rem;
+  }
+
+  .panel {
+    position: fixed;
+    inset: auto 0 0;
+    width: auto;
+    max-height: 85dvh;
+    border-width: 1px 0 0;
+    border-radius: 14px 14px 0 0;
+    padding-bottom: var(--ofw-safe-bottom);
+    overscroll-behavior: contain; // scrolling the form must not pan the map
+  }
+
+  @include kit.form-controls-touch;
+}

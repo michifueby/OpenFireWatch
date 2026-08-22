@@ -1,0 +1,14 @@
+<svg
+  viewBox="0 0 24 24"
+  [attr.fill]="definition().filled ? 'currentColor' : 'none'"
+  [attr.stroke-width]="definition().filled ? 0 : 2"
+  stroke="currentColor"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+>
+  @for (d of definition().paths; track $index) {
+  <path [attr.d]="d"></path>
+  }
+</svg>

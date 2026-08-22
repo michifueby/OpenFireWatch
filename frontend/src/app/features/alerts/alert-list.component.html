@@ -1,0 +1,75 @@
+@if (alerts.activeWarnings().length === 0) {
+<p class="empty">{{ i18n.t('noActiveAlerts') }}</p>
+}
+
+<ul class="feed">
+  @for (warning of alerts.activeWarnings(); track warning.id) {
+  <li class="alert">
+    <div class="alert-head">
+      <span class="alert-id">
+        #{{ warning.id }} {{ i18n.levelLabel(warning.level) }}
+      </span>
+      <button
+        type="button"
+        class="ack"
+        (click)="acknowledge(warning.id)"
+        [attr.aria-label]="i18n.t('ackAria')"
+        [attr.title]="i18n.t('ackAria')"
+      >
+        {{ i18n.t('ack') }}
+      </button>
+    </div>
+
+    @if (warning.zone) {
+    <div class="zone">▸ {{ i18n.pick(warning.zone.name) }}</div>
+    }
+
+    <!-- A probe raised this itself — say which one, because "go look" starts
+         with knowing where the instrument stands. -->
+    @if (warning.sensor; as sensor) {
+    <div class="evidence">
+      <ofw-icon name="sensor" />
+      {{ i18n.t('sensorMeasuredBy') }}: {{ sensor.label }}
+    </div>
+    }
+
+    <!-- Why the button did nothing, next to the button that did nothing — the
+         operator key is unlocked in the operator panel, which is not where
+         anyone would think to look on their own. -->
+    @if (ackError()?.id === warning.id) {
+    <p class="ack-error">{{ ackError()?.message }}</p>
+    }
+
+    <!-- Why the system called it a smouldering nest, in the operator's own
+         terms — the evidence, not just the verdict. -->
+    @if (warning.smouldering; as sm) {
+    <div class="evidence">
+      <ofw-icon name="flame" />
+      {{ smoulderingEvidence(sm) }}
+    </div>
+    }
+
+    <dl class="readings">
+      <div class="reading">
+        <dt>{{ i18n.t('labelTemp') }}</dt>
+        <dd class="hot">{{ warning.weather.temperatureC | number: '1.1-1' }}&nbsp;°C</dd>
+      </div>
+      <div class="reading">
+        <dt>{{ i18n.t('labelSoil') }}</dt>
+        <dd class="dry">{{ warning.weather.soilMoisturePct | number: '1.1-1' }}&nbsp;%</dd>
+      </div>
+      <div class="reading">
+        <dt>{{ i18n.t('labelCoords') }}</dt>
+        <dd>
+          {{ warning.latitude | number: '1.4-4' }},
+          {{ warning.longitude | number: '1.4-4' }}
+        </dd>
+      </div>
+      <div class="reading">
+        <dt>{{ i18n.t('labelAcquired') }}</dt>
+        <dd>{{ warning.acquiredAt | date: 'HH:mm:ss' : 'UTC' }}Z</dd>
+      </div>
+    </dl>
+  </li>
+  }
+</ul>

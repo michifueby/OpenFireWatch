@@ -1,0 +1,103 @@
+<!-- Waiting for the placement click -->
+@if (draw.drawing()) {
+<div class="drawing">
+  <p class="hint">{{ i18n.t('sensorPlaceHint') }}</p>
+  <button type="button" class="ghost wide" (click)="close()">
+    {{ i18n.t('zonesCancel') }}
+  </button>
+</div>
+}
+
+<!-- Position captured → the form -->
+@else {
+<div class="form">
+  @if (draft().latitude !== null) {
+  <p class="outline-ok">
+    ✓ {{ i18n.t('sensorPosition') }}
+    {{ draft().latitude | number: '1.4-4' }}, {{ draft().longitude | number: '1.4-4' }}
+    <button type="button" class="link" (click)="reposition()">
+      {{ i18n.t('sensorReposition') }}
+    </button>
+  </p>
+  } @else {
+  <!-- No position yet (placement was cancelled): offer the way back in, or
+       the form is a dead end that can only be abandoned. -->
+  <button type="button" class="ghost wide" (click)="reposition()">
+    {{ i18n.t('sensorPlace') }}
+  </button>
+  }
+
+  <label class="field">
+    <span>{{ i18n.t('sensorLabel') }}</span>
+    <input
+      type="text"
+      [ngModel]="draft().label"
+      (ngModelChange)="setLabel($event)"
+      name="sensorLabel"
+    />
+  </label>
+
+  <label class="field">
+    <span>{{ i18n.t('sensorDeviceId') }}</span>
+    <input
+      type="text"
+      autocomplete="off"
+      spellcheck="false"
+      [ngModel]="draft().deviceId"
+      (ngModelChange)="setDeviceId($event)"
+      name="sensorDeviceId"
+    />
+  </label>
+
+  <button type="button" class="link" (click)="showCalibration.set(!showCalibration())">
+    {{ showCalibration() ? '▾' : '▸' }} {{ i18n.t('sensorCalibration') }}
+  </button>
+
+  @if (showCalibration()) {
+  <label class="field">
+    <span>{{ i18n.t('sensorTempOffset') }}</span>
+    <input
+      type="number"
+      step="0.1"
+      [ngModel]="draft().temperatureOffsetC"
+      (ngModelChange)="setTempOffset($event)"
+      name="sensorTempOffset"
+    />
+  </label>
+  <label class="field">
+    <span>{{ i18n.t('sensorScale') }}</span>
+    <input
+      type="number"
+      step="0.01"
+      [ngModel]="draft().soilMoistureScale"
+      (ngModelChange)="setScale($event)"
+      name="sensorScale"
+    />
+  </label>
+  <label class="field">
+    <span>{{ i18n.t('sensorSoilOffset') }}</span>
+    <input
+      type="number"
+      step="0.1"
+      [ngModel]="draft().soilMoistureOffsetPct"
+      (ngModelChange)="setSoilOffset($event)"
+      name="sensorSoilOffset"
+    />
+  </label>
+  <p class="hint">{{ i18n.t('sensorCalibrationHint') }}</p>
+  }
+
+  @if (localError() ?? error(); as message) {
+  <p class="error">{{ message }}</p>
+  }
+
+  <div class="row">
+    <button type="button" class="ghost" (click)="close()">
+      {{ i18n.t('zonesCancel') }}
+    </button>
+    <button type="button" class="primary" (click)="submit()" [disabled]="busy()">
+      {{ busy() ? i18n.t('zonesSaving') : i18n.t('sensorSave') }}
+    </button>
+  </div>
+</div>
+}

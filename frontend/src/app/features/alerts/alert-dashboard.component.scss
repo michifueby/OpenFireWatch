@@ -1,0 +1,164 @@
+@use 'tokens' as *;
+
+.panel {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: 22rem;
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  border: 1px solid rgba($alert-red, 0.35);
+  border-radius: 8px;
+  background: rgba(7, 12, 20, 0.88);
+  backdrop-filter: blur(6px); // frosted glass over the map
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  color: #e6e8ee;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid rgba($alert-red, 0.25);
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: $alert-red;
+  }
+}
+
+.status {
+  font-family: $font-mono;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  color: #ff9d8f;
+  border: 1px solid rgba($alert-red, 0.4);
+
+  &.online {
+    color: #7ee2a8;
+    border-color: rgba(46, 160, 100, 0.5);
+  }
+}
+
+.sheet-handle {
+  display: none; /* desktop: the panel is always fully shown */
+}
+
+@media (max-width: $phone-max) {
+  .panel {
+    position: fixed;
+    // Only the sheet needs to outrank MapLibre's controls (see the
+    // layer table in styles.scss). The side panel deliberately does
+    // not: it never lies across the attribution, and raising it there
+    // would hide the licence text behind a panel for no reason.
+    z-index: 3;
+    inset: auto 0 0;
+    width: auto;
+    max-height: none;
+    overflow: visible;
+    border-width: 1px 0 0;
+    border-radius: 14px 14px 0 0;
+    padding-bottom: var(--ofw-safe-bottom);
+
+    /*
+     * Collapsed by sliding the whole panel down until only the handle
+     * shows, rather than by shrinking it. Two reasons: a transform
+     * animates on the compositor where a height would relayout the
+     * panel on every frame, and the panel keeps one stable height in
+     * both states — which is what lets the map work out where to put an
+     * incident without waiting for an animation to finish.
+     */
+    transform: translateY(
+      calc(100% - var(--ofw-sheet-peek) - var(--ofw-safe-bottom))
+    );
+    transition: transform 0.28s ease;
+  }
+
+  .panel.sheet-open {
+    transform: none;
+  }
+
+  .sheet-handle {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    width: 100%;
+    /* Must equal --ofw-sheet-peek: that variable is what lifts the map
+       attribution clear of this bar. */
+    height: 3.25rem;
+    padding: 0 1rem;
+    border: none;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    /* The grab affordance every mobile sheet has. */
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0.4rem;
+      left: 50%;
+      width: 2.25rem;
+      height: 0.25rem;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: rgba(230, 232, 238, 0.28);
+    }
+  }
+
+  .peek {
+    flex: 1;
+    min-width: 0; /* let the ellipsis win over the flex basis */
+    overflow: hidden;
+    font-family: $font-mono;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: $text-muted;
+  }
+
+  .tone-warn .peek {
+    color: $warn-amber;
+  }
+
+  .tone-critical .peek {
+    color: $alert-red;
+    font-weight: 700;
+  }
+
+  .chevron {
+    flex: none;
+    font-size: 0.9rem;
+    color: $text-dim;
+  }
+
+  .sheet-scroll {
+    /* Bounded so that even a 568 px-tall phone keeps a strip of map
+       above the sheet — MapComponent aims incidents into that strip
+       (INCIDENT_SCREEN_FRACTION), and the two numbers only make sense
+       together. */
+    max-height: 60dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Scrolling to the end of the history must not start panning the
+       map behind the sheet. */
+    overscroll-behavior: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transition: none;
+  }
+}

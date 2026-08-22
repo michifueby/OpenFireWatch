@@ -1,0 +1,39 @@
+// Design tokens shared by the component stylesheets.
+//
+// Sass variables rather than CSS custom properties, because these are
+// compile-time constants that never change at runtime — and because a Sass
+// variable that is misspelled fails the build, where a misspelled
+// `var(--ofw-red)` silently paints nothing.
+//
+// Available to every component stylesheet as `@use 'tokens' as *;`
+// (see stylePreprocessorOptions.includePaths in angular.json).
+
+/// The one red that means "act now". Used for critical alerts, the pulsing
+/// map marker's CSS twin, and nothing decorative.
+$alert-red: #ff2d1a;
+
+/// Amber: something worth watching that is not yet an alarm.
+$warn-amber: #ffa023;
+
+/// Every measured value is set in this stack. Tabular numerals keep columns
+/// of digits aligned, which is the whole reason a responder can scan them.
+$font-mono:
+  'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+/// Muted body text on the dark panels.
+$text-muted: #9aa4b2;
+$text-dim: #8f99ab;
+
+/// The one breakpoint in the application: below this the situation panel
+/// becomes a bottom sheet. Stated once so a component cannot drift from it.
+$phone-max: 640px;
+
+// --- Operator console -------------------------------------------------------
+// The console speaks the same dark command-center language as the alert
+// dashboard, but visually secondary: it is a tool, not the live situation.
+
+/// Its accent — used for captured geometry, counters and confirmations.
+$op-amber: #ffd166;
+$op-panel-bg: rgba(7, 12, 20, 0.9);
+$op-border: rgba(230, 232, 238, 0.26);
+$op-muted: #97a1b3;

@@ -1,0 +1,76 @@
+@if (draw.drawing()) {
+<div class="drawing">
+  <p class="hint">{{ i18n.t('incidentPlaceHint') }}</p>
+  <button type="button" class="ghost wide" (click)="close()">
+    {{ i18n.t('zonesCancel') }}
+  </button>
+</div>
+} @else {
+<div class="form">
+  @if (draft().latitude !== null) {
+  <p class="outline-ok">
+    ✓ {{ i18n.t('sensorPosition') }}
+    {{ draft().latitude | number: '1.4-4' }}, {{ draft().longitude | number: '1.4-4' }}
+    <button type="button" class="link" (click)="reposition()">
+      {{ i18n.t('sensorReposition') }}
+    </button>
+  </p>
+  } @else {
+  <button type="button" class="ghost wide" (click)="reposition()">
+    {{ i18n.t('sensorPlace') }}
+  </button>
+  }
+
+  <label class="field">
+    <span>{{ i18n.t('incidentTitleField') }}</span>
+    <input
+      type="text"
+      [ngModel]="draft().title"
+      (ngModelChange)="setTitle($event)"
+      name="incidentTitle"
+    />
+  </label>
+
+  <label class="field">
+    <span>{{ i18n.t('incidentKind') }}</span>
+    <select [ngModel]="draft().kind" (ngModelChange)="setKind($event)" name="incidentKind">
+      <option value="fire">{{ i18n.t('kindFire') }}</option>
+      <option value="observation">{{ i18n.t('kindObservation') }}</option>
+      <option value="drill">{{ i18n.t('kindDrill') }}</option>
+    </select>
+  </label>
+
+  <label class="field">
+    <span>{{ i18n.t('incidentWhen') }}</span>
+    <input
+      type="datetime-local"
+      [ngModel]="draft().occurredAt"
+      (ngModelChange)="setWhen($event)"
+      name="incidentWhen"
+    />
+  </label>
+
+  <label class="field">
+    <span>{{ i18n.t('incidentNotes') }}</span>
+    <input
+      type="text"
+      [ngModel]="draft().notes"
+      (ngModelChange)="setNotes($event)"
+      name="incidentNotes"
+    />
+  </label>
+
+  @if (localError() ?? error(); as message) {
+  <p class="error">{{ message }}</p>
+  }
+
+  <div class="row">
+    <button type="button" class="ghost" (click)="close()">
+      {{ i18n.t('zonesCancel') }}
+    </button>
+    <button type="button" class="primary" (click)="submit()" [disabled]="busy()">
+      {{ busy() ? i18n.t('zonesSaving') : i18n.t('incidentSave') }}
+    </button>
+  </div>
+</div>
+}

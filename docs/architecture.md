@@ -327,6 +327,8 @@ erDiagram
 | Raw SQL via `pg` instead of an ORM | The queries are spatial and set-based (CTE + `ON CONFLICT` + join in one round trip); ORMs obscure exactly the part that matters | No entity mapping or migrations out of the box |
 | Evaluation inside the NestJS backend, not the workers | Keeps one consumer per queue and puts the domain rule next to the API that serves it | The "stateless" API owns one long-lived queue consumer |
 | Redis pub/sub for alert fan-out | Any number of API replicas can relay to their own clients | Fire-and-forget; a missed live alert is recovered via REST |
+| Frontend folders by feature, not by file type | A feature owns both its data access and its screen, so changing one thing means opening one folder; the alternative had an incident register whose API client and user interface lived in different trees | Cross-feature imports need path aliases to stay readable |
+| One HTTP client with an interceptor, instead of `fetch` per service | The operator credential is attached in exactly one place and dropped in exactly one place; five hand-written copies had already drifted | A promise wrapper over an RxJS API — one small layer that exists to keep call sites in `async/await` |
 | Runtime i18n instead of Angular's build-time i18n | One bundle can follow the browser language and switch live | Translations ship in the bundle rather than being tree-shaken per locale |
 | Bounded retries + dead letter queue everywhere | Failures become visible and replayable instead of silent | Operators must actually watch the DLQ |
 | Public reads, API-key-guarded writes, failing closed | A situation map is meant to be watched, but zones decide whether an alert fires at all and the drill endpoint can fabricate one; an unset key locks writes rather than leaving them open | Single shared key — a multi-user deployment needs real accounts and a per-user audit trail |
@@ -340,6 +342,9 @@ erDiagram
 ## 7. Related documentation
 
 - [README](../README.md) — overview, quick start, contributing
+- [Frontend architecture](frontend-architecture.md) — how the Angular
+  application is organised: feature folders, the single HTTP door, and where
+  signals end and event streams begin
 - [Monitoring areas & risk zones](monitoring-areas.md) — operator guide for
   changing `FIRMS_AREA` and maintaining `high_risk_zones`
 - [Deployment](deployment.md) — running it publicly with TLS, backups and

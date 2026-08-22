@@ -1,0 +1,149 @@
+@use 'tokens' as *;
+
+.history-toggle {
+  padding: 0 0.6rem 0.6rem;
+
+  button {
+    width: 100%;
+    padding: 0.3rem;
+    border: 1px dashed rgba(230, 232, 238, 0.25);
+    border-radius: 4px;
+    background: transparent;
+    color: #8b95a7;
+    font-family: $font-mono;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+
+    &:hover {
+      border-color: $alert-red;
+      color: $alert-red;
+    }
+  }
+}
+
+.history {
+  padding: 0 0.6rem 0.7rem;
+
+  h3 {
+    margin: 0 0 0.4rem;
+    font-family: $font-mono;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    color: #8f99ab;
+  }
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+  font-family: $font-mono;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+
+  li {
+    display: grid;
+    grid-template-columns: 5.6rem 1fr;
+    gap: 0.1rem 0.5rem;
+    padding: 0.3rem 0.4rem;
+    border-left: 2px solid #3a4560;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.25);
+    color: #9aa4b2;
+
+    &.lvl-critical {
+      border-left-color: $alert-red;
+    }
+    &.lvl-elevated {
+      border-left-color: #ffa023;
+    }
+
+    /* Handled: still on the record, no longer competing for attention. */
+    &.acked {
+      opacity: 0.62;
+    }
+  }
+}
+
+.h-time {
+  color: #8f99ab;
+}
+
+.h-level {
+  color: #e6e8ee;
+}
+
+.h-acked {
+  color: #7ee2a8;
+}
+
+.h-outcome {
+  grid-column: 2;
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+}
+
+.h-btn {
+  padding: 0.15rem 0.45rem;
+  border: 1px solid rgba(230, 232, 238, 0.3);
+  border-radius: 3px;
+  background: transparent;
+  color: #c6ccd6;
+  font-family: $font-mono;
+  font-size: 0.64rem;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #7ee2a8;
+    color: #7ee2a8;
+  }
+}
+
+.h-outcome-set {
+  font-size: 0.66rem;
+  color: #ff9d8f;
+
+  &.was-confirmed {
+    color: #7ee2a8;
+  }
+}
+
+.h-zone,
+
+.h-readings {
+  color: #8f99ab;
+}
+
+// Monospace instrument readings, digits aligned via tabular numerals.
+
+.empty {
+  margin: 0;
+  padding: 1rem 0.9rem;
+  font-family: $font-mono;
+  font-size: 0.76rem;
+  color: #8f99ab;
+  text-align: center;
+}
+
+@media (max-width: $phone-max) {
+  .history-list {
+    font-size: 0.7rem;
+  }
+
+  // The timestamp column was measured for 0.62rem type; at the larger mobile
+  // size "20.08. 15:30" no longer fits and wraps mid-date.
+  .history-list li {
+    grid-template-columns: 5.6rem 1fr;
+  }
+}
+
+@media (max-width: $phone-max) {
+  .history-toggle button {
+    min-height: 2.75rem;
+    font-size: 0.72rem;
+  }
+}

@@ -1,0 +1,12 @@
+@use 'operator-kit' as kit;
+@use 'tokens' as *;
+
+:host {
+  display: contents; // the console's .body grid owns the spacing
+}
+
+@include kit.form-controls;
+
+@media (max-width: $phone-max) {
+  @include kit.form-controls-touch;
+}

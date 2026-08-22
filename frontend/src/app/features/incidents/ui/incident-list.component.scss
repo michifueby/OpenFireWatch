@@ -1,0 +1,75 @@
+@use 'operator-kit' as kit;
+@use 'tokens' as *;
+
+:host {
+  display: contents; // the console's .body grid owns the spacing
+}
+
+@include kit.form-controls;
+@include kit.entity-list;
+
+.incidents-block {
+  margin-top: 0.4rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid $op-border;
+
+  h3 {
+    margin: 0 0 0.35rem;
+    font-family: $font-mono;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    color: $op-muted;
+  }
+}
+
+.i-summary {
+  margin: 0 0 0.4rem;
+  font-family: $font-mono;
+  font-size: 0.7rem;
+  color: #c6ccd6;
+}
+
+.entry.incident {
+  border-left-color: #8f99ab;
+}
+
+// Verdict chips: green when the system was right, red when it missed. This
+// is the one place in the interface where red may mean "we failed" — an
+// honest report card needs the colour more than the aesthetic does.
+
+.i-verdicts {
+  margin-top: 0.3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.i-verdict {
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  border: 1px solid $op-border;
+  font-family: $font-mono;
+  font-size: 0.66rem;
+  color: $op-muted;
+
+  &.hit {
+    border-color: rgba(46, 160, 100, 0.55);
+    color: #7ee2a8;
+  }
+
+  &.miss {
+    border-color: rgba($alert-red, 0.45);
+    color: #ff9d8f;
+  }
+}
+
+.add-sensor {
+  justify-self: start;
+  font-size: 0.72rem;
+}
+
+// Sensors outside every zone — visually a zone card gone grey.
+
+@media (max-width: $phone-max) {
+  @include kit.form-controls-touch;
+}

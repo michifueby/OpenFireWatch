@@ -1,0 +1,18 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  // Follows the surrounding text size rather than fighting it.
+  width: 1.05em;
+  height: 1.05em;
+  // Optically centres the glyph on the text baseline; without this an
+  // icon sits noticeably high next to capitals.
+  vertical-align: -0.16em;
+  flex: none;
+}
+
+svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

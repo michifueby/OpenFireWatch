@@ -1,0 +1,129 @@
+@use 'tokens' as *;
+
+.feed {
+  list-style: none;
+  margin: 0;
+  padding: 0.6rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.alert {
+  padding: 0.6rem 0.7rem;
+  border-left: 3px solid $alert-red; // hazard stripe
+  border-radius: 4px;
+  background: rgba(59, 0, 0, 0.45);
+}
+
+.alert-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.alert-id {
+  font-family: $font-mono;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffd166;
+}
+
+.ack {
+  font-family: $font-mono;
+  font-size: 0.68rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(230, 232, 238, 0.35);
+  border-radius: 3px;
+  background: transparent;
+  color: #e6e8ee;
+  cursor: pointer;
+
+  &:hover {
+    border-color: $alert-red;
+    color: $alert-red;
+  }
+}
+
+.ack-error {
+  margin: 0.4rem 0 0;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: #ffd7d0;
+}
+
+.evidence {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  font-family: $font-mono;
+  font-size: 0.72rem;
+  color: #ffd166;
+}
+
+.zone {
+  margin-top: 0.3rem;
+  font-size: 0.76rem;
+  color: #ff9d8f;
+}
+
+.readings {
+  margin: 0.55rem 0 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 0.9rem;
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+
+  dt {
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    color: #8f99ab;
+  }
+
+  dd {
+    margin: 0.1rem 0 0;
+    font-size: 0.82rem;
+
+    &.hot {
+      color: #ff8b5e; // above the 30 °C ignition threshold
+    }
+    &.dry {
+      color: #ffd166; // below the 20 % soil-moisture threshold
+    }
+  }
+}
+
+/* ---------------------------------------------------------------------
+ * Phone layout: the floating panel becomes a bottom sheet.
+ *
+ * A 21rem panel is 90 % of a 375 px screen, so on a phone the desktop
+ * layout hands you a map you cannot see and a panel you cannot close.
+ * Collapsed, the sheet is one line of summary; expanded, it is the same
+ * panel — the map keeps the top of the screen either way.
+ * ------------------------------------------------------------------ */
+
+.empty {
+  margin: 0;
+  padding: 1rem 0.9rem;
+  font-family: $font-mono;
+  font-size: 0.76rem;
+  color: #8f99ab;
+  text-align: center;
+}
+
+@media (max-width: $phone-max) {
+  // A finger needs ~44 px; the readings need a few more pixels before they
+  // stop being decoration on a phone screen.
+  .ack {
+    min-height: 2.75rem;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.72rem;
+  }
+
+  .readings dt {
+    font-size: 0.68rem;
+  }
+}

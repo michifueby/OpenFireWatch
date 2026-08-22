@@ -1,0 +1,73 @@
+<footer class="history-toggle">
+  <button type="button" (click)="toggle()">
+    {{ open() ? i18n.t('historyHide') : i18n.t('historyShow') }}
+  </button>
+</footer>
+
+@if (open()) {
+<section class="history">
+  <h3>{{ i18n.t('historyTitle') }}</h3>
+
+  @if (error()) {
+  <p class="ack-error">{{ error() }}</p>
+  }
+
+  @if (alerts.history().length === 0) {
+  <p class="empty">{{ i18n.t('historyEmpty') }}</p>
+  }
+
+  <ol class="history-list">
+    @for (entry of alerts.history(); track entry.id) {
+    <li [class]="'lvl-' + levelClass(entry.level)" [class.acked]="entry.acknowledgedAt">
+      <span class="h-time">
+        {{ entry.evaluatedAt ?? entry.acquiredAt | date: 'dd.MM. HH:mm' }}
+      </span>
+      <span class="h-level">
+        @if (entry.acknowledgedAt; as at) {
+        <span
+          class="h-acked"
+          [attr.title]="i18n.t('ackedAt') + ' ' + (at | date: 'dd.MM. HH:mm')"
+          >✓</span
+        >
+        }
+        {{ i18n.levelLabel(entry.level) }}
+      </span>
+      <span class="h-zone">
+        {{ entry.zone ? i18n.pick(entry.zone.name) : i18n.t('historyOutsideZones') }}
+      </span>
+      <span class="h-readings">
+        {{ entry.weather.temperatureC | number: '1.0-0' }}°C ·
+        {{ entry.weather.soilMoisturePct | number: '1.0-0' }}%
+      </span>
+
+      <!-- What the crew found — the half of the validation loop a responder
+           can close in two taps. -->
+      @if (levelClass(entry.level) === 'critical') {
+      <span class="h-outcome">
+        @if (entry.outcome) {
+        <span class="h-outcome-set" [class.was-confirmed]="entry.outcome === 'confirmed'">
+          {{
+            i18n.t(
+              entry.outcome === 'confirmed' ? 'outcomeConfirmed' : 'outcomeNothingFound'
+            )
+          }}
+        </span>
+        } @else {
+        <button type="button" class="h-btn" (click)="recordOutcome(entry.id, 'confirmed')">
+          ✓ {{ i18n.t('outcomeConfirm') }}
+        </button>
+        <button
+          type="button"
+          class="h-btn"
+          (click)="recordOutcome(entry.id, 'nothing_found')"
+        >
+          ∅ {{ i18n.t('outcomeNothing') }}
+        </button>
+        }
+      </span>
+      }
+    </li>
+    }
+  </ol>
+</section>
+}

@@ -1,0 +1,80 @@
+<button type="button" class="primary" (click)="newZone.emit()">
+  {{ i18n.t('zonesNew') }}
+</button>
+
+@if (zones().length === 0) {
+<p class="hint">{{ i18n.t('zonesEmpty') }}</p>
+}
+
+<ul class="entry-list">
+  @for (zone of zones(); track zone.id) {
+  <li class="entry">
+    <div class="entry-name">{{ label(zone) }}</div>
+    <div class="entry-meta">{{ hazardLabel(zone.hazardType) }}</div>
+
+    @if (confirming() === zone.id) {
+    <!-- Inline confirmation: destructive actions never fire on one click. -->
+    <div class="retire-confirm">
+      <p>{{ i18n.t('zonesRetireConfirm') }}</p>
+      <div class="entry-actions">
+        <button type="button" class="ghost" (click)="confirming.set(null)">
+          {{ i18n.t('zonesCancel') }}
+        </button>
+        <button
+          type="button"
+          class="danger"
+          (click)="confirmRetire(zone)"
+          [disabled]="busy()"
+        >
+          {{ i18n.t('zonesRetire') }}
+        </button>
+      </div>
+    </div>
+    } @else {
+    <div class="entry-actions">
+      <button type="button" class="ghost" (click)="edit.emit(zone)">
+        {{ i18n.t('zonesEdit') }}
+      </button>
+      <button
+        type="button"
+        class="danger"
+        (click)="askRetire(zone)"
+        [disabled]="busy()"
+      >
+        {{ i18n.t('zonesRetire') }}
+      </button>
+    </div>
+    }
+
+    <div class="sensor-group">
+      @for (sensor of sensorsFor(zone.id); track sensor.id) {
+      <ofw-sensor-row
+        [sensor]="sensor"
+        [busy]="busy()"
+        (edit)="editSensor.emit($event)"
+        (retire)="retireSensor.emit($event)"
+      />
+      }
+      <button type="button" class="link add-sensor" (click)="newSensor.emit()">
+        {{ i18n.t('sensorAdd') }}
+      </button>
+    </div>
+  </li>
+  }
+</ul>
+
+@if (unassigned().length > 0) {
+<div class="entry unassigned">
+  <div class="entry-name">{{ i18n.t('sensorsOutside') }}</div>
+  <div class="sensor-group">
+    @for (sensor of unassigned(); track sensor.id) {
+    <ofw-sensor-row
+      [sensor]="sensor"
+      [busy]="busy()"
+      (edit)="editSensor.emit($event)"
+      (retire)="retireSensor.emit($event)"
+    />
+    }
+  </div>
+</div>
+}

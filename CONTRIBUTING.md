@@ -39,6 +39,20 @@ cd backend && set -a && . ../.env && set +a && npm run test:e2e
 The suite creates its own isolated database and Redis logical DB, so it never
 touches your development data.
 
+The frontend has its own checks, which need nothing running:
+
+```bash
+cd frontend
+npm run lint   # OnPush on every component, ofw- prefixes, no floating promises
+npm test       # unit tests in headless Chrome
+```
+
+They cover the logic a browser check cannot reach cheaply: how a failed write
+is phrased at every status code, how a readiness line reads at every
+threshold, and the hand-off between a map gesture and the form waiting for it
+— which a refactor once broke silently. See
+[docs/frontend-architecture.md](docs/frontend-architecture.md).
+
 ## Conventions
 
 - **English everywhere** — code, comments, commit messages, documentation.

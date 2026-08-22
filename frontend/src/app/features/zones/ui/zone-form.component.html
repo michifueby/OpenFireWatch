@@ -1,0 +1,88 @@
+<!-- Drawing in progress -->
+@if (draw.drawing()) {
+<div class="drawing">
+  <p class="hint">{{ i18n.t('zonesDrawHint') }}</p>
+  <p class="counter">{{ draw.corners().length }} {{ i18n.t('zonesDrawPoints') }}</p>
+  <div class="row">
+    <button
+      type="button"
+      class="ghost"
+      (click)="draw.undo()"
+      [disabled]="draw.corners().length === 0"
+    >
+      ↶ {{ i18n.t('zonesUndo') }}
+    </button>
+    <button
+      type="button"
+      class="primary"
+      (click)="finishDrawing()"
+      [disabled]="draw.corners().length < 3"
+    >
+      ✓ {{ i18n.t('zonesFinish') }}
+    </button>
+  </div>
+  <button type="button" class="ghost wide" (click)="cancelDrawing()">
+    {{ i18n.t('zonesCancel') }}
+  </button>
+</div>
+}
+
+<!-- Outline captured → the form -->
+@else {
+<div class="form">
+  @if (draft().geometry; as geometry) {
+  <p class="outline-ok">
+    ✓ {{ cornerCount(geometry) }} {{ i18n.t('zonesDrawPoints') }}
+    <button type="button" class="link" (click)="redraw()">
+      {{ i18n.t('zonesRedraw') }}
+    </button>
+  </p>
+  }
+
+  <label class="field">
+    <span>{{ i18n.t('zonesNameDe') }}</span>
+    <input
+      type="text"
+      [ngModel]="draft().nameDe"
+      (ngModelChange)="setNameDe($event)"
+      name="nameDe"
+    />
+  </label>
+
+  <label class="field">
+    <span>{{ i18n.t('zonesNameEn') }}</span>
+    <input
+      type="text"
+      [ngModel]="draft().nameEn"
+      (ngModelChange)="setNameEn($event)"
+      name="nameEn"
+    />
+  </label>
+
+  <label class="field">
+    <span>{{ i18n.t('zonesHazard') }}</span>
+    <select
+      [ngModel]="draft().hazardType"
+      (ngModelChange)="setHazard($event)"
+      name="hazardType"
+    >
+      @for (option of hazardOptions; track option.value) {
+      <option [value]="option.value">{{ i18n.t(option.key) }}</option>
+      }
+    </select>
+  </label>
+
+  @if (localError() ?? error(); as message) {
+  <p class="error">{{ message }}</p>
+  }
+
+  <div class="row">
+    <button type="button" class="ghost" (click)="close()">
+      {{ i18n.t('zonesCancel') }}
+    </button>
+    <button type="button" class="primary" (click)="submit()" [disabled]="busy()">
+      {{ busy() ? i18n.t('zonesSaving') : i18n.t('zonesSave') }}
+    </button>
+  </div>
+</div>
+}

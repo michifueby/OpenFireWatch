@@ -1,0 +1,24 @@
+@if (forecast.forecast(); as f) {
+<section class="outlook">
+  <h3>{{ i18n.t('forecastTitle') }}</h3>
+
+  @if (!f.available) {
+  <p class="empty">{{ i18n.t('forecastUnavailable') }}</p>
+  } @else {
+  <ul class="outlook-list">
+    @for (z of f.zones; track z.zoneId) {
+    <li
+      [class.imminent]="isImminent(z)"
+      [class.upcoming]="!isImminent(z) && z.windows.length > 0"
+    >
+      <span class="o-name">{{ i18n.pick(z.name) }}</span>
+      <span class="o-state">{{ outlook(z) }}</span>
+      @if (z.windows[0]; as w) {
+      <span class="o-detail">{{ windowDetail(w) }}</span>
+      }
+    </li>
+    }
+  </ul>
+  }
+</section>
+}

@@ -1,0 +1,76 @@
+<div class="incidents-block">
+  <h3>{{ i18n.t('incidentsTitle') }}</h3>
+
+  @if (summary(); as sum) {
+    @if (sum.fires > 0) {
+    <p class="i-summary">{{ summaryLine(sum) }}</p>
+    }
+    @if (sum.alertsConfirmed + sum.alertsNothingFound > 0) {
+    <p class="i-summary">{{ outcomesLine(sum) }}</p>
+    }
+  }
+
+  @if (incidents().length === 0) {
+  <p class="hint">{{ i18n.t('incidentEmpty') }}</p>
+  }
+
+  <ul class="entry-list">
+    @for (inc of incidents(); track inc.id) {
+    <li class="entry incident">
+      <div class="entry-name">{{ inc.title }}</div>
+      <div class="entry-meta">
+        {{ kindLabel(inc.kind) }} · {{ inc.occurredAt | date: 'dd.MM.yyyy HH:mm' }}
+        @if (inc.zone) { · {{ i18n.pick(inc.zone.name) }} }
+      </div>
+
+      @if (inc.kind === 'fire') {
+      <div class="i-verdicts">
+        <span
+          class="i-verdict"
+          [class.hit]="inc.inIgnitionWindow === true"
+          [class.miss]="inc.inIgnitionWindow === false"
+          >{{ windowLabel(inc) }}</span
+        >
+        <span class="i-verdict" [class.hit]="inc.alertRaised" [class.miss]="!inc.alertRaised">
+          {{ i18n.t(inc.alertRaised ? 'incidentAlerted' : 'incidentNotAlerted') }}
+        </span>
+      </div>
+      }
+
+      @if (confirming() === inc.id) {
+      <div class="retire-confirm">
+        <p>{{ i18n.t('incidentDeleteConfirm') }}</p>
+        <div class="entry-actions">
+          <button type="button" class="ghost" (click)="confirming.set(null)">
+            {{ i18n.t('zonesCancel') }}
+          </button>
+          <button
+            type="button"
+            class="danger"
+            (click)="confirmRemove(inc)"
+            [disabled]="busy()"
+          >
+            {{ i18n.t('incidentDelete') }}
+          </button>
+        </div>
+      </div>
+      } @else {
+      <div class="entry-actions">
+        <button
+          type="button"
+          class="danger"
+          (click)="confirming.set(inc.id)"
+          [disabled]="busy()"
+        >
+          {{ i18n.t('incidentDelete') }}
+        </button>
+      </div>
+      }
+    </li>
+    }
+  </ul>
+
+  <button type="button" class="link add-sensor" (click)="add.emit()">
+    {{ i18n.t('incidentAdd') }}
+  </button>
+</div>

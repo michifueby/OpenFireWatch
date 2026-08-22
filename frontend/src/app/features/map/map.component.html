@@ -1,0 +1,25 @@
+<div #mapContainer class="map"></div>
+
+<!-- Basemap switcher. Bottom-left on a desktop, where it is out of the
+     way of both panels; the phone layout moves it (see the styles). -->
+<div class="basemaps" role="group" [attr.aria-label]="i18n.t('basemapAria')">
+  @for (option of basemaps; track option.id) {
+  <button
+    type="button"
+    [class.active]="option.id === basemap().id"
+    [attr.aria-pressed]="option.id === basemap().id"
+    [attr.title]="
+      option.austriaOnly ? i18n.t('basemapAustriaOnly') : null
+    "
+    (click)="selectBasemap(option)"
+  >
+    {{ i18n.t(option.labelKey) }}
+    <!-- Coverage is a property of the source, not a detail: outside
+         Austria these tiles are simply blank, and an operator should
+         learn that from the button rather than from an empty map. -->
+    @if (option.austriaOnly) {
+    <span class="coverage" aria-hidden="true">AT</span>
+    }
+  </button>
+  }
+</div>

@@ -1,0 +1,119 @@
+@use 'tokens' as *;
+
+.history-toggle {
+  padding: 0 0.6rem 0.6rem;
+
+  button {
+    width: 100%;
+    padding: 0.3rem;
+    border: 1px dashed rgba(230, 232, 238, 0.25);
+    border-radius: 4px;
+    background: transparent;
+    color: #8b95a7;
+    font-family: $font-mono;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+
+    &:hover {
+      border-color: $alert-red;
+      color: $alert-red;
+    }
+  }
+}
+
+.season {
+  padding: 0 0.6rem 0.7rem;
+
+  h3 {
+    margin: 0 0 0.4rem;
+    font-family: $font-mono;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    color: #8f99ab;
+  }
+}
+
+.season-zone {
+  margin-bottom: 0.7rem;
+}
+
+.s-zone-name {
+  font-size: 0.76rem;
+  color: #c6ccd6;
+}
+
+.s-average {
+  font-family: $font-mono;
+  font-size: 0.7rem;
+  color: #8f99ab;
+}
+
+.season-bars {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+  font-family: $font-mono;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+
+  li {
+    display: grid;
+    /* The day column fits "999 T" without clipping; at 2.6rem a
+       three-digit count lost its unit. */
+    grid-template-columns: 2.6rem 1fr 3.4rem;
+    align-items: center;
+    gap: 0.4rem;
+    color: #8f99ab;
+
+    /* The running year is not comparable with the closed ones beside
+       it — half a summer would otherwise read as a low year. */
+    &.current {
+      color: #c6ccd6;
+
+      .s-bar {
+        background: repeating-linear-gradient(
+          90deg,
+          #ffa023 0 4px,
+          transparent 4px 7px
+        );
+      }
+    }
+  }
+}
+
+.s-bar {
+  height: 0.5rem;
+  min-width: 1px;
+  border-radius: 2px;
+  background: #ffa023;
+}
+
+.s-days {
+  text-align: right;
+}
+
+.s-source {
+  margin: 0.4rem 0 0;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: #8f99ab;
+}
+
+.empty {
+  margin: 0;
+  padding: 1rem 0.9rem;
+  font-family: $font-mono;
+  font-size: 0.76rem;
+  color: #8f99ab;
+  text-align: center;
+}
+
+@media (max-width: $phone-max) {
+  .history-toggle button {
+    min-height: 2.75rem;
+    font-size: 0.72rem;
+  }
+}

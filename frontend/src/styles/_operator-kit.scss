@@ -1,0 +1,250 @@
+// The operator console's shared UI kit.
+//
+// Split out when the console became six components instead of one. These
+// rules describe a look — a dark tool panel with dense forms and rows of
+// records — and every section of the console wears it. Written as mixins
+// rather than as a stylesheet so each component pulls in only the part it
+// actually renders, and so there is one definition of what a "danger" button
+// looks like rather than six that drift.
+
+@use 'tokens' as *;
+
+/// Buttons, fields, hints and errors — everything a form in the console uses.
+@mixin form-controls {
+  .hint {
+    margin: 0;
+    color: $op-muted;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  .counter,
+  .outline-ok {
+    margin: 0;
+    font-family: $font-mono;
+    font-size: 0.78rem;
+    color: $op-amber;
+  }
+
+  .field {
+    display: grid;
+    gap: 0.25rem;
+
+    span {
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: $op-muted;
+    }
+
+    input,
+    select {
+      padding: 0.4rem 0.5rem;
+      border: 1px solid $op-border;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.35);
+      color: #e6e8ee;
+      font-family: inherit;
+      font-size: 0.82rem;
+
+      &:focus {
+        outline: none;
+        border-color: $op-amber;
+      }
+    }
+  }
+
+  button {
+    border-radius: 4px;
+    font-family: $font-mono;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
+  .primary {
+    border: 1px solid $op-amber;
+    background: rgba(255, 209, 102, 0.12);
+    color: $op-amber;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 209, 102, 0.22);
+    }
+  }
+
+  .ghost {
+    border: 1px solid $op-border;
+    background: transparent;
+    color: #e6e8ee;
+
+    &:hover:not(:disabled) {
+      border-color: $op-amber;
+      color: $op-amber;
+    }
+  }
+
+  .danger {
+    border: 1px solid rgba($alert-red, 0.5);
+    background: transparent;
+    color: #ff9d8f;
+
+    &:hover:not(:disabled) {
+      border-color: $alert-red;
+      color: $alert-red;
+    }
+  }
+
+  .link {
+    border: none;
+    background: none;
+    padding: 0;
+    color: $op-muted;
+    text-decoration: underline;
+
+    &:hover {
+      color: $op-amber;
+    }
+  }
+
+  .wide {
+    width: 100%;
+  }
+
+  .row {
+    display: flex;
+    gap: 0.4rem;
+
+    button {
+      flex: 1;
+    }
+  }
+
+  .error {
+    margin: 0;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(120, 12, 12, 0.5);
+    border: 1px solid rgba($alert-red, 0.5);
+    color: #ffd7d0;
+    font-size: 0.78rem;
+  }
+
+  .notice {
+    margin: 0;
+    color: #7ee2a8;
+    font-size: 0.78rem;
+  }
+
+  .drawing,
+  .form {
+    display: grid;
+    gap: 0.6rem;
+  }
+}
+
+/// A list of records: zones, sensors, incidents. `.entry` is the row.
+@mixin entity-list {
+  .entry-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .entry {
+    padding: 0.5rem 0.6rem;
+    border: 1px solid $op-border;
+    border-left: 3px solid $op-amber;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.25);
+  }
+
+  .entry-name {
+    font-size: 0.82rem;
+  }
+
+  .entry-meta {
+    margin-top: 0.15rem;
+    font-family: $font-mono;
+    font-size: 0.7rem;
+    color: $op-muted;
+  }
+
+  .entry-actions {
+    margin-top: 0.45rem;
+    display: flex;
+    gap: 0.35rem;
+  }
+
+  .retire-confirm {
+    margin-top: 0.45rem;
+
+    p {
+      margin: 0 0 0.4rem;
+      font-size: 0.76rem;
+      color: #ff9d8f;
+      line-height: 1.45;
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // Phone layout.
+  //
+  // The launcher stays a small button in the top-left corner, but the panel it
+  // opens becomes a bottom sheet: a 20rem panel anchored to the top-left of a
+  // 375px screen covers the map and leaves its own buttons within a thumb's
+  // reach only by accident.
+  // -----------------------------------------------------------------------------
+}
+
+/// Touch sizing for the kit above. Kept next to it so a control and the
+/// finger-sized version of that control can never be separated.
+@mixin form-controls-touch {
+  // Every control a finger has to hit, brought up to a reliable touch size.
+  button {
+    min-height: 2.75rem;
+    font-size: 0.72rem;
+  }
+
+  .link {
+    min-height: 0; // an inline text link, not a target in its own right
+  }
+
+  .header-actions button {
+    min-width: 2.75rem;
+  }
+
+  .field {
+    input,
+    select {
+      // Below 16px, iOS Safari zooms the whole page in on focus and never
+      // zooms back out — the map ends up scaled and off-centre after typing
+      // a single zone name.
+      font-size: 16px;
+      padding: 0.6rem 0.6rem;
+    }
+
+    span {
+      font-size: 0.68rem;
+    }
+  }
+
+  .hint,
+  .entry-name,
+  .body {
+    font-size: 0.85rem;
+  }
+
+  .entry-meta,
+  .counter,
+  .outline-ok {
+    font-size: 0.72rem;
+  }
+}

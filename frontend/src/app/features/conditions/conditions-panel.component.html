@@ -1,0 +1,57 @@
+@if (cond.conditions(); as c) {
+<section class="conditions">
+  <h3>{{ i18n.t('conditionsTitle') }}</h3>
+
+  @if (!c.available) {
+  <p class="empty">{{ i18n.t('conditionsUnavailable') }}</p>
+  } @else {
+  <!-- Same labelled layout as the alert cards: a bare "35.4 %" reads as
+       noise to anyone who did not build the system. -->
+  <dl class="cond-readings">
+    <div class="cond">
+      <dt>{{ i18n.t('conditionsTemp') }}</dt>
+      <dd class="c-temp">{{ c.temperatureC | number: '1.0-1' }}&nbsp;°C</dd>
+    </div>
+    <div class="cond">
+      <dt>{{ i18n.t('conditionsSoil') }}</dt>
+      <dd class="c-soil">{{ c.soilMoisturePct | number: '1.0-1' }}&nbsp;%</dd>
+    </div>
+    <div class="cond">
+      <dt>{{ i18n.t('conditionsHumidity') }}</dt>
+      <dd class="c-hum">{{ c.relativeHumidityPct | number: '1.0-0' }}&nbsp;%</dd>
+    </div>
+    <!-- Spread direction is what a responder wants wind FOR; the row
+         disappears when the station has no anemometer rather than showing a
+         dash pretending to be a reading. -->
+    @if (c.windSpeedKmh != null) {
+    <div class="cond">
+      <dt>{{ i18n.t('conditionsWind') }}</dt>
+      <dd class="c-wind">
+        {{ c.windSpeedKmh | number: '1.0-0' }}&nbsp;km/h
+        @if (c.windDirectionDeg != null) {
+        {{ windFrom(c.windDirectionDeg) }}
+        }
+      </dd>
+    </div>
+    }
+  </dl>
+  <p class="c-meta">
+    {{ i18n.t('conditionsStation') }} {{ c.stationId }} ·
+    {{ i18n.t('conditionsAsOf') }} {{ c.observedAt | date: 'HH:mm' }}
+  </p>
+
+  <ul class="readiness">
+    @for (z of c.zones; track z.id) {
+    <li
+      [class.armed]="z.gate === 'weather' && z.armed"
+      [class.partial]="z.gate === 'weather' && !z.armed && partiallyMet(z)"
+      [class.always]="z.gate === 'detection'"
+    >
+      <span class="r-name">{{ i18n.pick(z.name) }}</span>
+      <span class="r-state">{{ readiness(z) }}</span>
+    </li>
+    }
+  </ul>
+  }
+</section>
+}

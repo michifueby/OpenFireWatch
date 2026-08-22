@@ -1,0 +1,81 @@
+@use 'tokens' as *;
+
+.outlook {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid rgba(230, 232, 238, 0.12);
+
+  h3 {
+    margin: 0 0 0.4rem;
+    font-family: $font-mono;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    color: #8f99ab;
+  }
+}
+
+.outlook-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+
+  li {
+    padding-left: 0.5rem;
+    border-left: 2px solid #3a4560;
+    font-size: 0.74rem;
+    color: #9aa4b2;
+
+    /* A window inside three days is something to act on; one further
+       out is worth knowing but not worth alarming about. */
+    &.upcoming {
+      border-left-color: #ffa023;
+    }
+
+    &.imminent {
+      border-left-color: $alert-red;
+
+      .o-state {
+        color: $alert-red;
+      }
+    }
+  }
+}
+
+.o-name {
+  display: block;
+  color: #c6ccd6;
+}
+
+/*
+ * Neutral by default. "Escalates on detection" and "no window ahead"
+ * are not states to be alarmed about, and a coloured row that never
+ * changes teaches the eye to stop reading the colour — the same trap
+ * the conditions list fell into.
+ */
+
+.o-state {
+  font-family: $font-mono;
+  font-size: 0.7rem;
+  color: #8f99ab;
+}
+
+.outlook-list li.upcoming .o-state {
+  color: #ffa023;
+}
+
+.o-detail {
+  display: block;
+  font-family: $font-mono;
+  font-size: 0.68rem;
+  color: #8f99ab;
+}
+
+.empty {
+  margin: 0;
+  padding: 1rem 0.9rem;
+  font-family: $font-mono;
+  font-size: 0.76rem;
+  color: #8f99ab;
+  text-align: center;
+}

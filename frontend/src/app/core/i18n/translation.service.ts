@@ -44,9 +44,18 @@ export class TranslationService {
     });
   }
 
-  /** Translate a key in the active locale (typed: unknown keys don't compile). */
-  t(key: keyof TranslationDict): string {
-    return TRANSLATIONS[this.locale()][key];
+  /**
+   * Translate a key in the active locale (typed: unknown keys don't compile).
+   *
+   * Placeholders are filled by name: `t('seasonDays', { days: 18 })` turns
+   * "an {days} Tagen" into "an 18 Tagen". Twenty-two call sites used to chain
+   * `.replace('{days}', String(...))` by hand, which silently produced a
+   * sentence with a literal `{days}` in it whenever a name was mistyped —
+   * and produced it in front of whoever was reading the panel.
+   */
+  t(key: keyof TranslationDict, params?: Readonly<Record<string, unknown>>): string {
+    const text = TRANSLATIONS[this.locale()][key];
+    return params ? fill(text, params) : text;
   }
 
   /**
@@ -98,4 +107,17 @@ function resolveInitialLocale(): Locale {
   return browserLanguages.some((lang) => lang?.toLowerCase().startsWith('de'))
     ? 'de'
     : 'en';
+}
+
+/**
+ * Replace every `{name}` for which a value was supplied.
+ *
+ * An unknown placeholder is left standing rather than blanked: a visible
+ * `{days}` is a bug report from the panel itself, while an empty gap reads
+ * as a missing measurement.
+ */
+function fill(text: string, params: Readonly<Record<string, unknown>>): string {
+  return text.replace(/\{(\w+)\}/g, (placeholder, name: string) =>
+    name in params ? String(params[name]) : placeholder,
+  );
 }

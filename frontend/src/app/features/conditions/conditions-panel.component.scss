@@ -1,0 +1,131 @@
+@use 'tokens' as *;
+
+.conditions {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid rgba(230, 232, 238, 0.12);
+
+  h3 {
+    margin: 0 0 0.4rem;
+    font-family: $font-mono;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    color: #8f99ab;
+  }
+}
+
+.cond-readings {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: start;
+  gap: 0.45rem 1.1rem;
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+
+  dt {
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    color: #8f99ab;
+  }
+
+  dd {
+    margin: 0.1rem 0 0;
+    font-size: 0.78rem;
+  }
+
+  .c-temp {
+    color: #ff8b5e;
+  }
+  .c-soil {
+    color: #ffd166;
+  }
+  .c-hum {
+    color: #9aa4b2;
+  }
+}
+
+.c-meta {
+  margin: 0.35rem 0 0;
+  font-family: $font-mono;
+  font-size: 0.7rem;
+  color: #8f99ab;
+}
+
+.readiness {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+
+  li {
+    padding-left: 0.5rem;
+    border-left: 2px solid #3a4560;
+    font-size: 0.74rem;
+    color: #9aa4b2;
+
+    /*
+     * A detection-gated zone is armed by definition — it will look like
+     * this forever. Colouring it red would spend the alarm colour on a
+     * property rather than a state, and a row that is permanently red
+     * teaches people to stop noticing red.
+     */
+    &.always {
+      border-left-color: #3a4560;
+
+      .r-state {
+        color: #8b95a7;
+      }
+    }
+
+    &.partial {
+      border-left-color: #ffa023;
+
+      .r-state {
+        color: #ffa023;
+      }
+    }
+
+    &.armed {
+      border-left-color: $alert-red;
+
+      .r-state {
+        color: $alert-red;
+      }
+    }
+  }
+}
+
+.r-name {
+  display: block;
+  color: #c6ccd6;
+}
+
+.r-state {
+  font-family: $font-mono;
+  font-size: 0.7rem;
+  color: #8f99ab;
+}
+
+.empty {
+  margin: 0;
+  padding: 1rem 0.9rem;
+  font-family: $font-mono;
+  font-size: 0.76rem;
+  color: #8f99ab;
+  text-align: center;
+}
+
+@media (max-width: $phone-max) {
+  // Everything below was sized for a mouse pointer and a wide panel.
+  .r-state,
+  .cond-readings .c-hum,
+  .cond-readings .c-meta {
+    font-size: 0.7rem;
+  }
+
+  .readiness li {
+    padding: 0.15rem 0 0.15rem 0.5rem;
+    font-size: 0.76rem;
+  }
+}

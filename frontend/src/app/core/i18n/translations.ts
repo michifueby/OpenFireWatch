@@ -170,6 +170,7 @@ export interface TranslationDict {
   zonesSave: string;
   zonesSaving: string;
   zonesSaved: string;
+  zonesLoadFailed: string;
   zonesNeedGeometry: string;
   zonesNeedNames: string;
   // --- Sensor management (inside the zone editor) -------------------------------
@@ -365,6 +366,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     zonesSave: 'Save zone',
     zonesSaving: 'Saving…',
     zonesSaved: 'Zone saved.',
+    zonesLoadFailed: 'Could not load the zones.',
     zonesNeedGeometry: 'Draw an outline with at least 3 corners first.',
     zonesNeedNames: 'Both names are required.',
     sensorAdd: '+ Sensor',
@@ -562,6 +564,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     zonesSave: 'Zone speichern',
     zonesSaving: 'Wird gespeichert…',
     zonesSaved: 'Zone gespeichert.',
+    zonesLoadFailed: 'Die Zonen konnten nicht geladen werden.',
     zonesNeedGeometry: 'Zuerst einen Umriss mit mindestens 3 Eckpunkten zeichnen.',
     zonesNeedNames: 'Beide Namen sind erforderlich.',
     sensorAdd: '+ Sensor',

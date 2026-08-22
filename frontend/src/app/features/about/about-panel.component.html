@@ -1,0 +1,99 @@
+<!-- Expandable explainer for non-technical visitors. -->
+@if (open()) {
+<section class="about" [attr.aria-label]="i18n.t('aboutAria')">
+  <h2>
+    <!-- Decorative: the adjacent text already names the product, so the
+         image is hidden from screen readers to avoid a duplicate label. -->
+    <img
+      class="panel-logo"
+      src="logo.svg"
+      alt=""
+      aria-hidden="true"
+      width="28"
+      height="28"
+    />
+    OpenFireWatch
+  </h2>
+  <p class="lead">{{ i18n.t('aboutLead') }}</p>
+  <ol class="steps">
+    <li>
+      <strong>{{ i18n.t('aboutStep1Label') }}</strong> {{ i18n.t('aboutStep1') }}
+    </li>
+    <li>
+      <strong>{{ i18n.t('aboutStep2Label') }}</strong> {{ i18n.t('aboutStep2') }}
+    </li>
+    <li>
+      <strong>{{ i18n.t('aboutStep3Label') }}</strong> {{ i18n.t('aboutStep3') }}
+    </li>
+    <li>
+      <strong>{{ i18n.t('aboutStep4Label') }}</strong> {{ i18n.t('aboutStep4') }}
+    </li>
+  </ol>
+  <!-- The dated document for a meeting: same numbers as this screen,
+       generated fresh on every click. -->
+  <p class="report-line">
+    <a [href]="reportUrl()" download>{{ i18n.t('reportLink') }}</a>
+  </p>
+
+  <p class="credit-line">
+    <!-- Version first: it is the one line worth quoting back when
+         something looks wrong. -->
+    <span class="version">v{{ version }}</span> ·
+    {{ i18n.t('developedBy') }} <strong>Michael Fueby</strong> ·
+    <a
+      href="https://github.com/michifueby"
+      target="_blank"
+      rel="noopener noreferrer"
+      >github.com/michifueby</a
+    >
+    · {{ i18n.t('openSource') }}
+  </p>
+</section>
+}
+
+<!-- Always-visible credit bar: info toggle, credit, language switch. -->
+<footer class="bar">
+  <button
+    type="button"
+    class="info-toggle"
+    (click)="toggle()"
+    [attr.aria-expanded]="open()"
+    [attr.aria-label]="i18n.t('aboutInfoAria')"
+  >
+    {{ open() ? '✕' : 'ℹ' }}
+  </button>
+  <img
+    class="bar-logo"
+    src="logo.svg"
+    alt=""
+    aria-hidden="true"
+    width="20"
+    height="20"
+  />
+  <span class="credit">
+    OpenFireWatch — {{ i18n.t('developedBy').toLowerCase() }}
+    <a
+      href="https://github.com/michifueby"
+      target="_blank"
+      rel="noopener noreferrer"
+      >Michael Fueby</a
+    >
+  </span>
+  <span class="lang-switch" role="group" aria-label="Language / Sprache">
+    <button
+      type="button"
+      [class.active]="i18n.locale() === 'de'"
+      (click)="i18n.setLocale('de')"
+    >
+      DE
+    </button>
+    <span class="divider">|</span>
+    <button
+      type="button"
+      [class.active]="i18n.locale() === 'en'"
+      (click)="i18n.setLocale('en')"
+    >
+      EN
+    </button>
+  </span>
+</footer>

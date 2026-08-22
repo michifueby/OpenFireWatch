@@ -1,0 +1,36 @@
+<footer class="history-toggle">
+  <button type="button" (click)="toggle()">
+    {{ open() ? i18n.t('seasonHide') : i18n.t('seasonShow') }}
+  </button>
+</footer>
+
+@if (open()) {
+<section class="season">
+  <h3>{{ i18n.t('seasonTitle') }}</h3>
+
+  @if (zones().length === 0) {
+  <p class="empty">{{ i18n.t('seasonEmpty') }}</p>
+  }
+
+  @for (z of zones(); track z.zoneId) {
+  <div class="season-zone">
+    <div class="s-zone-name">{{ i18n.pick(z.name) }}</div>
+    @if (z.averageDaysPerYear !== null) {
+    <div class="s-average">{{ averageLabel(z) }}</div>
+    }
+
+    <ul class="season-bars">
+      @for (y of z.years; track y.year) {
+      <li [class.current]="isCurrentYear(y)">
+        <span class="s-year">{{ y.year }}</span>
+        <span class="s-bar" [style.width.%]="barWidth(y, z)"></span>
+        <span class="s-days">{{ daysLabel(y) }}</span>
+      </li>
+      }
+    </ul>
+
+    <p class="s-source">{{ i18n.t('seasonSource') }}</p>
+  </div>
+  }
+</section>
+}

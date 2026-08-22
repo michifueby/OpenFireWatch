@@ -46,6 +46,11 @@ OpenFireWatch is **fault-tolerant and event-driven by design**. Every layer is d
 > retry/dead-letter model, the data model, and the rationale behind each design
 > decision.
 >
+> 🖥️ **[Frontend architecture →](docs/frontend-architecture.md)** — how the
+> Angular application is laid out: feature folders that own both their data and
+> their screen, one HTTP door with the operator key attached in a single place,
+> and where signals end and event streams begin.
+>
 > 🗺️ **[Monitoring areas & risk zones →](docs/monitoring-areas.md)** — how to
 > enlarge or move the observed area, add further hazard zones, and verify the
 > change before trusting it.

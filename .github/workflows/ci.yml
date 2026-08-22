@@ -1,7 +1,7 @@
 # =============================================================================
 # OpenFireWatch — Continuous Integration
 #
-# Runs on every push and pull request targeting `main`. Two parallel jobs:
+# Runs on every push and pull request targeting `main`. Four parallel jobs:
 #
 #   e2e-tests   Boots REAL infrastructure as GitHub Actions service
 #               containers (PostGIS + Redis) and runs the NestJS end-to-end
@@ -11,6 +11,12 @@
 #
 #   build       Typechecks the workers and production-builds the Angular
 #               frontend, so compile errors in any package block the PR.
+#
+#   frontend-   Lints and unit-tests the Angular application. The unit suite
+#   tests       covers the logic a browser check cannot reach cheaply: how a
+#               failed write is phrased, how a readiness line reads at every
+#               threshold, and the map-gesture hand-off that a refactor
+#               silently broke once already.
 #
 #   version     Verifies that every copy of the version number still agrees
 #               with the root VERSION file. Without this the single source of
@@ -143,3 +149,34 @@ jobs:
         run: |
           npm ci
           npm run build
+
+  frontend-tests:
+    name: Frontend lint & unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # Rules, not taste: OnPush on every component, `ofw-` on every selector,
+      # no floating promise, no silently swallowed rejection.
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      # Karma drives the Chrome the runner already ships; the launcher in
+      # karma.conf.cjs passes --no-sandbox, which is what lets it start here.
+      - name: Unit tests
+        working-directory: frontend
+        run: npm test

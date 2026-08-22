@@ -1,0 +1,49 @@
+<section
+  class="panel ofw-sheet"
+  [class.sheet-open]="sheetOpen()"
+  [attr.aria-label]="i18n.t('dashboardAria')"
+>
+  <!-- Phone layout only (the desktop rules hide it): the grab bar that
+       collapses the panel down to one line of situation summary, so the map
+       underneath stays usable on a 375 px screen. -->
+  <button
+    type="button"
+    [class]="'sheet-handle tone-' + peek().tone"
+    (click)="sheetOpen.set(!sheetOpen())"
+    [attr.aria-expanded]="sheetOpen()"
+    aria-controls="ofw-sheet-body"
+    [attr.aria-label]="sheetOpen() ? i18n.t('sheetCollapse') : i18n.t('sheetExpand')"
+  >
+    <span class="peek">{{ peek().text }}</span>
+    <span class="chevron" aria-hidden="true">{{ sheetOpen() ? '▾' : '▴' }}</span>
+  </button>
+
+  <div class="sheet-body" id="ofw-sheet-body">
+    <div class="sheet-scroll">
+      <header class="panel-header">
+        <h2>
+          <ofw-icon name="dot" />
+          {{ i18n.t('dashboardTitle') }}
+        </h2>
+        <span
+          class="status"
+          [class.online]="alerts.connected()"
+          [attr.title]="
+            alerts.connected() ? i18n.t('gatewayConnected') : i18n.t('gatewayReconnecting')
+          "
+        >
+          {{ alerts.connected() ? i18n.t('live') : i18n.t('offline') }}
+        </span>
+      </header>
+
+      <!-- In the order the questions arrive: how close are we, when does it
+           get there, what is happening now, how often before, what did we
+           find last time. -->
+      <ofw-conditions-panel />
+      <ofw-forecast-panel />
+      <ofw-alert-list />
+      <ofw-season-panel />
+      <ofw-alert-history />
+    </div>
+  </div>
+</section>
