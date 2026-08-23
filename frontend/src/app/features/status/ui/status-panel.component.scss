@@ -23,6 +23,15 @@
   }
 }
 
+@media (max-width: $phone-max) {
+  // The other two toggles in this panel are finger-sized; this one was 28 px
+  // because its styles live here rather than in the shell.
+  .history-toggle button {
+    min-height: 2.75rem;
+    font-size: 0.72rem;
+  }
+}
+
 .status {
   padding: 0 0.9rem 0.8rem;
   display: grid;

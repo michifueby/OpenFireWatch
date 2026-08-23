@@ -118,6 +118,20 @@ still a question, not a commitment.
 
 ### Fixed
 
+- **Touch targets on a phone, measured rather than assumed.** A sweep at
+  375×812, 375×667, 320×568, landscape and tablet found four controls below
+  this application's own 44 px standard — two of them mine from today, two
+  older. The worst was `✓ Bestätigt` / `∅ Ohne Befund` at **19 px**: the half
+  of the validation loop a responder closes in the field, on the device they
+  are holding, and the smallest target in the application. Also `+ Sensor`
+  and `+ Ereignis` (14 px — styled as inline links, but they start something)
+  and the base-map switcher (36 px). All at 44 px now; the only small targets
+  left are MapLibre's attribution links, which are required text rather than
+  controls.
+- **The time-travel banner covered the base-map switcher** on every phone.
+  Fixing the switcher's own touch size then grew it into the banner again, so
+  the depth of the top row is now a named value (`--ofw-top-rail`) beside the
+  sheet height it mirrors — one place where raising it fixes both.
 - **The outlook repeated a zone's hazard type as it was up to an hour ago.**
   The forecast snapshot carries a copy of each zone's name and type, taken
   when the workers last ran. Convert a zone and the readiness line changed at

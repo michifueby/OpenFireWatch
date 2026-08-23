@@ -130,6 +130,22 @@
 }
 
 @media (max-width: $phone-max) {
+  // "Bestätigt" / "Ohne Befund" is the half of the validation loop a
+  // responder closes in the field, on the device they are holding. At 19 px
+  // it was the smallest target in the application and the most consequential
+  // one — every recorded outcome is what makes the thresholds testable.
+  .h-btn {
+    min-height: 2.75rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+  }
+
+  .h-outcome {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
   .history-list {
     font-size: 0.7rem;
   }

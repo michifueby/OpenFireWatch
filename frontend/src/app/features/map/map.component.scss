@@ -188,11 +188,18 @@
 }
 
 @media (max-width: $phone-max) {
-  // The phone's top edge belongs to the launcher and the credit bar, and its
-  // bottom to the situation sheet — so the control sits with the base maps
-  // and the banner tucks under the top row.
+  // The phone's top edge is already two rows deep: the operator launcher and
+  // the credit bar share the first, the base-map switcher has the second. The
+  // banner takes the third — at 3.6rem it sat squarely on top of the
+  // switcher and made it unusable.
   .time-banner {
-    top: calc(var(--ofw-safe-top) + 3.6rem);
+    top: calc(var(--ofw-safe-top) + var(--ofw-top-rail) + 0.5rem);
+    left: 0.75rem;
+    right: 0.75rem;
+    transform: none;
+    justify-content: center;
+    flex-wrap: wrap;
+    white-space: normal;
     font-size: 0.68rem;
   }
 
@@ -204,5 +211,20 @@
   .timetravel input {
     // Below 16px iOS zooms the page in on focus and never zooms back out.
     font-size: 16px;
+    min-height: 2.75rem;
+  }
+
+  // 36 px was usable and below this application's own standard everywhere
+  // else. A switcher that needs two attempts on a bumpy drive is a switcher
+  // nobody uses.
+  .basemaps button {
+    min-height: 2.75rem;
+  }
+
+  // Both ways back to live are things a finger has to hit.
+  .tb-live,
+  .tt-live {
+    min-height: 2.75rem;
+    padding: 0.35rem 0.8rem;
   }
 }

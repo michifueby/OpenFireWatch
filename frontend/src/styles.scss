@@ -43,6 +43,19 @@ $mobile: 640px;
   // above it instead of underneath — MapLibre positions its controls itself,
   // and this is the only hook we get.
   --ofw-sheet-peek: 3.25rem;
+
+  /**
+   * How deep the furniture along the top of a phone screen reaches: the
+   * operator launcher and credit bar share the first row, the base-map
+   * switcher has the second.
+   *
+   * Named for the same reason as the peek height below. The time-travel
+   * banner has to clear this, and the first attempt at that was a hard-coded
+   * 3.6rem — which stopped clearing anything the moment the switcher's
+   * buttons grew to a finger-sized 44px. A number that two rules depend on
+   * belongs in one place, where raising it fixes both.
+   */
+  --ofw-top-rail: 7.25rem;
   // Safe areas (notch, home indicator). Zero on everything else.
   --ofw-safe-top: env(safe-area-inset-top, 0px);
   --ofw-safe-bottom: env(safe-area-inset-bottom, 0px);

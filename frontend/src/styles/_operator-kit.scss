@@ -217,6 +217,14 @@
     min-height: 0; // an inline text link, not a target in its own right
   }
 
+  // ...except the ones that start something. "+ Sensor" and "+ Ereignis"
+  // look like links and behave like buttons; at 14 px they were the hardest
+  // thing in the panel to hit.
+  .link.add-sensor {
+    min-height: 2.75rem;
+    padding: 0.2rem 0.4rem;
+  }
+
   .header-actions button {
     min-width: 2.75rem;
   }
