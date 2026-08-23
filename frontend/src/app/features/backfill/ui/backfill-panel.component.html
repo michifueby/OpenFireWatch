@@ -49,6 +49,16 @@
         @if (run.finishedAt) { · {{ run.finishedAt | date: 'dd.MM.yyyy HH:mm' }} }
       </div>
 
+      @if (verdictLines(run).length > 0) {
+      <!-- The point of the replay: not how many passes, but what the rule
+           made of them. -->
+      <div class="run-verdicts">
+        @for (v of verdictLines(run); track v.label) {
+        <span [class.critical]="v.critical">{{ v.count }}× {{ v.label }}</span>
+        }
+      </div>
+      }
+
       @if (run.coverageGaps.length > 0) {
       <!-- A day no product covers is a gap in the record, not a quiet day;
            hiding it would let "no rows" pass as "no fires". -->

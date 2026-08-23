@@ -44,6 +44,19 @@ still a question, not a commitment.
   so a verdict reached today about a pass in 2019 counts for the 2019 fire.
 - The live map draws the last seven days of detections, like the history
   panel; the full table stays reachable through `/api/anomalies?since=`.
+- Each backfill run reports **what the rule made of the replayed passes**,
+  by alert level. "32 detections" says nothing on its own; "5 would have been
+  critical" is the answer the replay exists to give. Counted on read, so the
+  figure keeps up while the evaluation queue drains.
+
+### Fixed
+
+- The satellite backfill checked for the weather it needs by total hours over
+  the range, which a range ending near today passes with room to spare while
+  missing its last week entirely — the nightly weather job stops six days
+  short. Detections in that tail were then dropped for want of conditions.
+  Counted per day now: a run over 17–23 August fetched 168 hours per zone
+  where it previously fetched none.
 
 ## [0.10.1] — 2026-08-21
 

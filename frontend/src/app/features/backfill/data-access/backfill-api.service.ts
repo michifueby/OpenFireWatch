@@ -24,6 +24,8 @@ export interface BackfillRun {
   reportsQueued: number;
   /** Days inside the range no product covered — never "no fires". */
   coverageGaps: { from: string; to: string }[];
+  /** What the rule made of the replayed passes, by alert level. */
+  verdicts: Record<string, number>;
   error: string | null;
   createdAt: string;
   startedAt: string | null;

@@ -72,11 +72,26 @@ export async function backfillHistory(job: Job): Promise<void> {
   console.log(`[history] backfill complete, ${inserted} new hour(s) stored`);
 }
 
-/** Hours of weather a zone holds inside a date range (inclusive, UTC days). */
-export async function countWeatherHours(zoneId: number, from: string, to: string): Promise<number> {
+/**
+ * How many DAYS in the range this zone has usable weather for.
+ *
+ * Counted per day, not as a total of hours: a range can hold far more hours
+ * than a rough average demands and still be missing its last week entirely —
+ * which is exactly what the nightly backfill leaves behind, since it stops
+ * six days short of today. A satellite backfill that trusted the total would
+ * silently drop every detection in that tail for want of conditions.
+ */
+export async function countWeatherDays(zoneId: number, from: string, to: string): Promise<number> {
   const { rows } = await pool.query<{ n: string }>(
-    `SELECT count(*) AS n FROM zone_weather_history
-      WHERE zone_id = $1 AND observed_at >= $2::date AND observed_at < ($3::date + 1);`,
+    `SELECT count(*) AS n FROM (
+       SELECT (observed_at AT TIME ZONE 'Europe/Vienna')::date AS day
+         FROM zone_weather_history
+        WHERE zone_id = $1
+          AND observed_at >= $2::date
+          AND observed_at < ($3::date + 1)
+        GROUP BY 1
+       HAVING count(*) >= 20
+     ) full_days;`,
     [zoneId, from, to],
   );
   return Number(rows[0]?.n ?? 0);

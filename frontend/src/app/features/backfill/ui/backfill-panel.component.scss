@@ -88,6 +88,21 @@
   }
 }
 
+.run-verdicts {
+  margin-top: 0.3rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.45rem;
+  font-family: $font-mono;
+  font-size: 0.68rem;
+  color: $op-muted;
+
+  .critical {
+    color: $alert-red;
+    font-weight: 700;
+  }
+}
+
 .run-meta,
 .run-gaps {
   margin-top: 0.3rem;

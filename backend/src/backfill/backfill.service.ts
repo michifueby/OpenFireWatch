@@ -51,6 +51,18 @@ export interface BackfillRun {
   reportsQueued: number;
   /** Days inside the range that no product covered — never "no fires". */
   coverageGaps: Array<{ from: string; to: string }>;
+  /**
+   * What the rule made of the replayed passes, by alert level.
+   *
+   * Counted on read rather than stored: the workers publish the reports and
+   * the evaluation service reaches its verdicts afterwards, so at the moment
+   * a run finishes the answer does not exist yet. Reading it live also means
+   * the figure keeps up while the queue drains.
+   *
+   * Without this a run reports "32 detections" and an operator can learn
+   * nothing from them — the replay's whole purpose is the verdict.
+   */
+  verdicts: Record<string, number>;
   error: string | null;
   createdAt: string;
   startedAt: string | null;
@@ -81,7 +93,31 @@ export class BackfillService implements OnModuleInit, OnModuleDestroy {
     const { rows } = await this.db.query<Row>(
       `SELECT * FROM backfill_runs ORDER BY created_at DESC LIMIT 50;`,
     );
-    return rows.map(toRun);
+    const runs = rows.map(toRun);
+    await Promise.all(runs.map(async (run) => (run.verdicts = await this.verdicts(run))));
+    return runs;
+  }
+
+  /**
+   * Verdicts on the replayed passes of one run, by level.
+   *
+   * Keyed on ACQUISITION time and the backfilled flag rather than on a run
+   * id: a pass belongs to the day it was taken, and two runs whose ranges
+   * overlap describe the same passes. Storing an id per event would make the
+   * second run's rows invisible to the first.
+   */
+  private async verdicts(run: BackfillRun): Promise<Record<string, number>> {
+    const { rows } = await this.db.query<{ alert_level: string; n: string }>(
+      `SELECT ve.alert_level, count(*) AS n
+         FROM validated_events ve
+         JOIN thermal_anomalies a ON a.id = ve.anomaly_id
+        WHERE ve.backfilled
+          AND a.acquired_at >= $1::date
+          AND a.acquired_at < ($2::date + 1)
+        GROUP BY ve.alert_level;`,
+      [run.from, run.to],
+    );
+    return Object.fromEntries(rows.map((r) => [r.alert_level, Number(r.n)]));
   }
 
   /**
@@ -192,6 +228,8 @@ function toRun(row: Row): BackfillRun {
     detectionsFound: row.detections_found,
     reportsQueued: row.reports_queued,
     coverageGaps: row.coverage_gaps ?? [],
+    // Filled by list(); a run on its own carries no verdicts.
+    verdicts: {},
     error: row.error,
     createdAt: row.created_at.toISOString(),
     startedAt: row.started_at?.toISOString() ?? null,

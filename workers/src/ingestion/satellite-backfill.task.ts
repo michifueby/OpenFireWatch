@@ -41,7 +41,7 @@ import {
 import { listZonePoints, resolveMonitoringArea } from '../clients/monitoring-area';
 import { config } from '../config';
 import { DetectionReportDto } from '../dto/detection-report.dto';
-import { countWeatherHours, storeWeatherHours } from './history-backfill.task';
+import { countWeatherDays, storeWeatherHours } from './history-backfill.task';
 import { detectionReportsQueue } from './ingest.task';
 import {
   BackfillRequest,
@@ -73,8 +73,6 @@ const pool = new Pool({
  */
 const BACKFILL_REPORT_OPTIONS: JobsOptions = { priority: 10 };
 
-/** A zone-year of archive is ~8760 hours; below this the range is "missing". */
-const HOURS_PER_DAY_EXPECTED = 20;
 
 export async function backfillSatellite(job: Job<SatelliteBackfillJob>): Promise<void> {
   const { runId, from, to } = job.data;
@@ -140,15 +138,23 @@ export async function backfillSatellite(job: Job<SatelliteBackfillJob>): Promise
  */
 async function ensureWeatherHistory(from: string, to: string, job: Job): Promise<void> {
   const zones = await listZonePoints();
-  const expected = (daysBetween(from, to) + 1) * HOURS_PER_DAY_EXPECTED;
+  const days = daysBetween(from, to) + 1;
 
   for (const zone of zones) {
-    const have = await countWeatherHours(zone.id, from, to);
-    if (have >= expected) continue;
+    // Asked per day: the nightly history job stops six days short of today,
+    // so a range that ends recently is complete except for its tail — and a
+    // total-hours check passes that with room to spare. The refetch covers
+    // the whole range because the insert is idempotent; only the missing
+    // hours are actually written.
+    const covered = await countWeatherDays(zone.id, from, to);
+    if (covered >= days) continue;
+    await job.log(
+      `Weather for zone ${zone.id}: ${covered}/${days} day(s) on record — fetching ${from}–${to}`,
+    );
     try {
       const hours = await fetchArchive(zone.latitude, zone.longitude, from, to);
       const stored = await storeWeatherHours(zone.id, hours);
-      await job.log(`Weather for zone ${zone.id}: ${stored} hour(s) added for ${from}–${to}`);
+      await job.log(`Weather for zone ${zone.id}: ${stored} hour(s) added`);
     } catch (error) {
       // A zone without weather can still be replayed for detection-gated
       // hazards; the phosphorus rule will hold its verdicts back and say why.

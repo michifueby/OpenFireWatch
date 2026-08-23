@@ -92,6 +92,23 @@ export class BackfillPanelComponent implements OnInit {
     }
   }
 
+  /**
+   * The verdicts, worst first and named for a reader.
+   *
+   * This is what a replay is FOR: "32 detections" says nothing on its own,
+   * "3 would have been critical" is the answer the register was built to
+   * give.
+   */
+  verdictLines(run: BackfillRun): { label: string; count: number; critical: boolean }[] {
+    return Object.entries(run.verdicts)
+      .map(([level, count]) => ({
+        label: this.i18n.levelLabel(level),
+        count,
+        critical: level.startsWith('CRITICAL'),
+      }))
+      .sort((a, b) => Number(b.critical) - Number(a.critical) || b.count - a.count);
+  }
+
   progressPct(run: BackfillRun): number {
     if (!run.requestsTotal) return run.status === 'done' ? 100 : 0;
     return Math.round((run.requestsDone / run.requestsTotal) * 100);

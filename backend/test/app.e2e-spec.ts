@@ -274,6 +274,13 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     /** A pass in July 2019, well before this system existed. */
     const HISTORIC_AT = '2019-07-25T12:30:00Z';
 
+    // "One run at a time" is a real rule and it works — which means a test
+    // that starts one blocks every test after it. Closing them here keeps
+    // that gate honest without each test having to remember.
+    afterEach(async () => {
+      await db.query(`UPDATE backfill_runs SET status = 'done' WHERE status IN ('queued', 'running');`);
+    });
+
     afterAll(async () => {
       await db.query(`DELETE FROM incidents WHERE title LIKE 'E2E backfill%';`);
       await db.query(`DELETE FROM backfill_runs;`);
@@ -378,6 +385,49 @@ describe('OpenFireWatch pipeline (e2e)', () => {
         .get('/api/alerts?limit=100&sinceHours=1&criticalOnly=true&unacknowledgedOnly=true')
         .expect(200);
       expect(alerts.body.some((a: { acquiredAt: string }) => a.acquiredAt === HISTORIC_AT)).toBe(false);
+    });
+
+    it('reports what the rule made of the replayed passes', async () => {
+      // "32 detections" says nothing on its own; "would have been critical"
+      // is the answer the replay exists to give.
+      //
+      // Its own pass: the per-test TRUNCATE clears what the tests above left.
+      await reportsQueue.add('detection-report', {
+        detection: {
+          source: 'E2E_ARCHIVE_VERDICTS',
+          satellite: 'TEST',
+          latitude: DRILL_LAT,
+          longitude: DRILL_LON,
+          acquiredAt: HISTORIC_AT,
+          brightnessK: 345,
+          frpMw: 9,
+          confidence: 'h',
+        },
+        weather: { temperatureC: 34, soilMoisturePct: 9, observedAt: HISTORIC_AT },
+        ingestion: 'backfill',
+      });
+      await waitFor(
+        async () => {
+          const { rows } = await db.query<{ n: string }>(
+            `SELECT count(*) AS n FROM validated_events ve
+               JOIN thermal_anomalies a ON a.id = ve.anomaly_id
+              WHERE a.source = 'E2E_ARCHIVE_VERDICTS';`,
+          );
+          return Number(rows[0]!.n) > 0 ? true : undefined;
+        },
+        20_000,
+        'the replayed pass to be evaluated',
+      );
+
+      const run = await request(app.getHttpServer())
+        .post('/api/backfill/satellite')
+        .set('X-API-Key', OPERATOR_KEY)
+        .send({ from: HISTORIC_AT.slice(0, 10), to: HISTORIC_AT.slice(0, 10) })
+        .expect(202);
+
+      const list = await request(app.getHttpServer()).get('/api/backfill/satellite').expect(200);
+      const mine = list.body.find((r: { id: number }) => r.id === run.body.id);
+      expect(mine.verdicts).toEqual({ CRITICAL_PHOSPHORUS_FIRE: 1 });
     });
 
     it('lets the incident register see it — the reason the replay exists', async () => {
