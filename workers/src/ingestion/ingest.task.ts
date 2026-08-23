@@ -23,11 +23,11 @@ import { Job, JobsOptions, Queue } from 'bullmq';
 import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
-import { fetchFirmsDetections, RawDetection } from '../clients/firms.client';
+import { fetchFirmsArea, RawDetection } from '../clients/firms.client';
 import { fetchStationWeather } from '../clients/geosphere.client';
 import { resolveMonitoringArea } from '../clients/monitoring-area';
 import { fetchTopsoilMoisturePct } from '../clients/soil-moisture.client';
-import { BUS, config } from '../config';
+import { BUS, FIRMS_POLL_SOURCES, config } from '../config';
 import { DetectionReportDto } from '../dto/detection-report.dto';
 import { createRedisConnection } from '../redis';
 
@@ -83,11 +83,33 @@ export async function ingestDetections(job: Job): Promise<number> {
     cycleAt: new Date().toISOString(),
   });
 
-  // --- 3) Satellite hotspots (streamed CSV) ------------------------------------
-  const detections = await fetchFirmsDetections(area.bbox);
+  // --- 3) Satellite hotspots (streamed CSV), once per instrument ---------------
+  // Sequentially rather than in parallel: FIRMS meters by transactions, and
+  // three polite requests read better in a rate-limit log than three at once.
+  const detections: RawDetection[] = [];
+  const failures: string[] = [];
+  for (const source of FIRMS_POLL_SOURCES) {
+    try {
+      detections.push(
+        ...(await fetchFirmsArea(source, area.bbox, config.FIRMS_LOOKBACK_DAYS)),
+      );
+    } catch (error) {
+      // One instrument being unavailable must not blind the others.
+      failures.push(`${source}: ${(error as Error).message}`);
+      job.log(`Source ${source} failed: ${(error as Error).message}`);
+    }
+  }
+  // Every source failing is an outage, not an empty sky — fail into the retry
+  // path rather than reporting "no hotspots", which is this system's most
+  // dangerous possible lie.
+  if (failures.length === FIRMS_POLL_SOURCES.length) {
+    throw new Error(`No FIRMS source could be polled — ${failures.join('; ')}`);
+  }
+
   if (detections.length === 0) {
     console.log(
-      `[ingest] no hotspots in the monitored area — TL ${station.temperatureC}°C, ` +
+      `[ingest] no hotspots in the monitored area (${FIRMS_POLL_SOURCES.length} source(s), ` +
+        `${config.FIRMS_LOOKBACK_DAYS}d) — TL ${station.temperatureC}°C, ` +
         `RF ${station.relativeHumidityPct}%, soil ${soilMoisturePct}%`,
     );
     return 0;
@@ -138,10 +160,13 @@ export async function ingestDetections(job: Job): Promise<number> {
     })),
   );
 
+  // Most of these are passes seen on an earlier cycle; the queue's job ids
+  // and the database's unique constraint drop them, so the count below is
+  // what was OFFERED, not what was new.
   console.log(
     `[ingest] published ${validReports.length}/${detections.length} detection reports ` +
-      `(${skipped} skipped) — TL ${station.temperatureC}°C, RF ${station.relativeHumidityPct}%, ` +
-      `soil ${soilMoisturePct}%`,
+      `(${skipped} skipped) from ${FIRMS_POLL_SOURCES.length} source(s) — ` +
+      `TL ${station.temperatureC}°C, RF ${station.relativeHumidityPct}%, soil ${soilMoisturePct}%`,
   );
   return validReports.length;
 }

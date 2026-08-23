@@ -23,7 +23,7 @@ import 'reflect-metadata'; // required by class-transformer/class-validator
 
 import { Job, Queue, Worker } from 'bullmq';
 
-import { BUS, config } from './config';
+import { BUS, FIRMS_POLL_SOURCES, config } from './config';
 import {
   closeMonitoringAreaPool,
   resolveMonitoringArea,
@@ -162,7 +162,8 @@ async function main(): Promise<void> {
   });
   console.log(
     `OpenFireWatch workers v${APP_VERSION} (${GIT_REVISION}) up — ` +
-      `FIRMS ${config.FIRMS_SOURCE} every ${config.FIRMS_POLL_INTERVAL}s, ` +
+      `FIRMS [${FIRMS_POLL_SOURCES.join(', ')}] every ${config.FIRMS_POLL_INTERVAL}s ` +
+      `(${config.FIRMS_LOOKBACK_DAYS}d window), ` +
       `weather from TAWES station ${config.GEOSPHERE_STATION_ID}, ` +
       `ignition forecast every ${config.FORECAST_POLL_INTERVAL}s, ` +
       (area

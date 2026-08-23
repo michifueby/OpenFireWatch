@@ -38,13 +38,6 @@ export interface RawDetection {
  * adding satellite sources, or fanning out per-tile requests, multiplies it.
  * Keep this a single request per cycle.
  */
-export async function fetchFirmsDetections(bbox: string): Promise<RawDetection[]> {
-  // ".../{key}/{source}/{west,south,east,north}/1" — trailing 1 = last 24h.
-  // The bbox is resolved per cycle (see monitoring-area.ts), so a newly added
-  // hazard zone widens the polled area without any configuration change.
-  return fetchFirmsArea(config.FIRMS_SOURCE, bbox, 1);
-}
-
 
 /**
  * One FIRMS area request: a source, a box, a span of days, optionally a

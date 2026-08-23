@@ -59,6 +59,21 @@ still a question, not a commitment.
 
 ### Fixed
 
+- **The live cycle watched one satellite out of three.** VIIRS flies on Suomi
+  NPP, NOAA-20 and NOAA-21, about forty minutes apart on the same orbit —
+  each a separate look at the ground. The ingestion polled only Suomi NPP.
+  Over the Föhrenwald on 14 August 2026, NOAA-20 saw the fire at 10:41,
+  NOAA-21 at 11:25 and Suomi NPP at 12:00: **79 minutes of warning given
+  away**, and three quarters of the observations never fetched. All three are
+  polled now (`FIRMS_SOURCES`); the legacy `FIRMS_SOURCE` is merged in rather
+  than treated as an override, so a deployment carrying the old shipped
+  default gains the other two instead of being frozen on one.
+- **A pass published more than 24 hours late was missed for good.** Each
+  cycle asked FIRMS for the last day only, so a pass held up in processing
+  fell out of the window before the next cycle looked. The window is two days
+  now (`FIRMS_LOOKBACK_DAYS`); re-asking costs nothing, because job ids and
+  the database's unique constraint are both keyed on (source, pixel,
+  acquisition time).
 - The satellite backfill checked for the weather it needs by total hours over
   the range, which a range ending near today passes with room to spare while
   missing its last week entirely — the nightly weather job stops six days

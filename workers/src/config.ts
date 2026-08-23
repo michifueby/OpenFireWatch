@@ -8,6 +8,8 @@
 
 import { z } from 'zod';
 
+import { resolvePollSources } from './firms-sources';
+
 const EnvSchema = z.object({
   // --- Redis (event bus) ----------------------------------------------------
   REDIS_HOST: z.string().default('redis'),
@@ -18,8 +20,29 @@ const EnvSchema = z.object({
   // --- NASA FIRMS (LANCE near-real-time hotspots) -----------------------------
   /** NASA FIRMS map key — https://firms.modaps.eosdis.nasa.gov/api/map_key/ */
   FIRMS_MAP_KEY: z.string().min(1, 'FIRMS_MAP_KEY is required'),
-  /** Satellite source: VIIRS_SNPP_NRT | VIIRS_NOAA20_NRT | MODIS_NRT */
-  FIRMS_SOURCE: z.string().default('VIIRS_SNPP_NRT'),
+  /**
+   * Satellite products polled every cycle, comma-separated.
+   *
+   * ALL THREE VIIRS INSTRUMENTS BY DEFAULT, and that is the point. They fly
+   * the same orbit about forty minutes apart, so each is a separate look at
+   * the ground: on 14 August 2026 over the Föhrenwald, NOAA-20 saw the fire
+   * at 10:41, NOAA-21 at 11:25, Suomi NPP at 12:00 and NOAA-20 again at
+   * 12:19. A deployment polling only Suomi NPP — which is what this was —
+   * learns about that fire 79 minutes after it could have.
+   *
+   * Each source costs one FIRMS transaction per cycle. The budget is 5000 per
+   * ten minutes, so three sources on a five-minute cycle spends 36 an hour.
+   */
+  FIRMS_SOURCES: z
+    .string()
+    .default('VIIRS_SNPP_NRT,VIIRS_NOAA20_NRT,VIIRS_NOAA21_NRT'),
+
+  /**
+   * Superseded by FIRMS_SOURCES. Still read, and merged in rather than
+   * ignored: an operator who deliberately added MODIS keeps it. A deployment
+   * that only ever carried the old shipped default gains the other two.
+   */
+  FIRMS_SOURCE: z.string().optional(),
   /**
    * OPTIONAL override of the monitored bounding box ("west,south,east,north",
    * WGS84). Leave it EMPTY — the default — and the box is derived from the
@@ -58,6 +81,18 @@ const EnvSchema = z.object({
   /** Polling interval in seconds (FIRMS NRT updates every ~5–10 minutes). */
   FIRMS_POLL_INTERVAL: z.coerce.number().int().min(60).default(300),
   /**
+   * How many days back each cycle asks for. Two, not one.
+   *
+   * Near-real-time does not mean punctual: a pass is usually published within
+   * three hours, but a processing backlog can push it past twenty-four — and
+   * a one-day window misses such a pass FOREVER, because the next cycle asks
+   * about a window it has already left behind. Re-asking yesterday costs
+   * nothing: the queue's job ids and the database's unique constraint are
+   * both keyed on (source, pixel, acquisition time), so a pass already seen
+   * is silently ignored.
+   */
+  FIRMS_LOOKBACK_DAYS: z.coerce.number().int().min(1).max(5).default(2),
+  /**
    * How often the seven-day ignition forecast is refreshed. Hourly by
    * default: the forecast does not change meaningfully in between, and a
    * free service deserves not to be asked every five minutes.
@@ -85,7 +120,14 @@ const EnvSchema = z.object({
   GEOSPHERE_STATION_ID: z.string().default('11090'),
 });
 
-export const config = EnvSchema.parse(process.env);
+const parsed = EnvSchema.parse(process.env);
+
+export const FIRMS_POLL_SOURCES = resolvePollSources(
+  parsed.FIRMS_SOURCES,
+  parsed.FIRMS_SOURCE,
+);
+
+export const config = parsed;
 
 /**
  * Well-known event-bus names, shared by producers and consumers.
