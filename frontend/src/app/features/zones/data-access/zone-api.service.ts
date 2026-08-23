@@ -16,6 +16,8 @@ import { LocalizedName } from '@core/models/alert.model';
 
 export type HazardType =
   | 'white_phosphorus'
+  /** A forest that is also contaminated — both gates apply. */
+  | 'white_phosphorus_forest'
   | 'wildfire'
   | 'ammunition_depot'
   | 'generic';

@@ -40,6 +40,11 @@ export interface TranslationDict {
   conditionsStation: string;
   conditionsArmed: string;
   conditionsOnDetection: string;
+  conditionsDetectionWindowOpen: string;
+  conditionsDetectionWindowGap: string;
+  gapTempOnlyShort: string;
+  gapSoilOnlyShort: string;
+  gapBothShort: string;
   conditionsGap: string;
   conditionsGapTempOnly: string;
   conditionsGapSoilOnly: string;
@@ -222,6 +227,7 @@ export interface TranslationDict {
   sensorBattery: string;
 
   hazardWhitePhosphorus: string;
+  hazardWhitePhosphorusForest: string;
   hazardWildfire: string;
   hazardAmmunitionDepot: string;
   hazardGeneric: string;
@@ -256,6 +262,13 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsStation: 'station',
     conditionsArmed: 'ignition window OPEN',
     conditionsOnDetection: 'alarms on any detected heat source — regardless of weather',
+    conditionsDetectionWindowOpen:
+      'alarms on any detected heat source — and the phosphorus window is OPEN',
+    conditionsDetectionWindowGap:
+      'alarms on any detected heat source · phosphorus window {gap}',
+    gapTempOnlyShort: '{temp} °C away',
+    gapSoilOnlyShort: 'soil {soil} % away',
+    gapBothShort: '{temp} °C and {soil} % away',
     conditionsGap: '{temp} °C and {soil} % from the ignition window',
     conditionsGapTempOnly: 'soil already dry enough — {temp} °C short of ignition',
     conditionsGapSoilOnly: 'temperature reached — soil still {soil} % too moist',
@@ -449,6 +462,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     sensorBattery: 'Battery',
 
     hazardWhitePhosphorus: 'White phosphorus',
+    hazardWhitePhosphorusForest: 'Forest with phosphorus legacy',
     hazardWildfire: 'Wildfire',
     hazardAmmunitionDepot: 'Ammunition depot',
     hazardGeneric: 'General',
@@ -482,6 +496,13 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     conditionsStation: 'Station',
     conditionsArmed: 'Zündfenster OFFEN',
     conditionsOnDetection: 'Alarm bei jeder erkannten Hitzequelle — unabhängig vom Wetter',
+    conditionsDetectionWindowOpen:
+      'Alarm bei jeder erkannten Hitzequelle — Zündfenster ist OFFEN',
+    conditionsDetectionWindowGap:
+      'Alarm bei jeder erkannten Hitzequelle · Zündfenster {gap}',
+    gapTempOnlyShort: 'noch {temp} °C',
+    gapSoilOnlyShort: 'Boden noch {soil} %',
+    gapBothShort: 'noch {temp} °C und {soil} %',
     conditionsGap: '{temp} °C und {soil} % vom Zündfenster entfernt',
     conditionsGapTempOnly: 'Boden bereits trocken genug — nur noch {temp} °C bis zur Zündung',
     conditionsGapSoilOnly: 'Temperatur erreicht — Boden noch {soil} % zu feucht',
@@ -676,6 +697,7 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     sensorBattery: 'Akku',
 
     hazardWhitePhosphorus: 'Weißer Phosphor',
+    hazardWhitePhosphorusForest: 'Wald mit Phosphor-Altlast',
     hazardWildfire: 'Waldbrand',
     hazardAmmunitionDepot: 'Munitionsdepot',
     hazardGeneric: 'Allgemein',

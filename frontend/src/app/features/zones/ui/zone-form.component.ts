@@ -32,6 +32,7 @@ const HAZARD_OPTIONS: readonly {
   key: keyof TranslationDict;
 }[] = [
   { value: 'white_phosphorus', key: 'hazardWhitePhosphorus' },
+  { value: 'white_phosphorus_forest', key: 'hazardWhitePhosphorusForest' },
   { value: 'wildfire', key: 'hazardWildfire' },
   { value: 'ammunition_depot', key: 'hazardAmmunitionDepot' },
   { value: 'generic', key: 'hazardGeneric' },

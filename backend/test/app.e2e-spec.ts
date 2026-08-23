@@ -484,6 +484,113 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('a forest that is also contaminated', () => {
+    let zoneId: number;
+
+    beforeAll(async () => {
+      // The Föhrenwald's real shape: a pine forest standing on WWII white
+      // phosphorus. Both hazards, one zone.
+      // Buffered on the geography type so 800 m means 800 metres, not degrees.
+      const { rows } = await db.query<{ id: string }>(
+        `INSERT INTO high_risk_zones (name, name_de, name_en, hazard_type, geom, is_active)
+         VALUES ('e2e-both', 'Wald mit Altlast', 'Contaminated forest', 'white_phosphorus_forest',
+                 ST_Buffer(ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, 800)::geometry, TRUE)
+         RETURNING id;`,
+        [DRILL_LON, DRILL_LAT],
+      );
+      zoneId = Number(rows[0]!.id);
+      // It must win over the seeded demo zone for the drill coordinate.
+      await db.query(`UPDATE high_risk_zones SET is_active = FALSE WHERE id <> $1;`, [zoneId]);
+    });
+
+    afterAll(async () => {
+      await db.query(`DELETE FROM high_risk_zones WHERE id = $1;`, [zoneId]);
+      await db.query('UPDATE high_risk_zones SET is_active = TRUE;');
+    });
+
+    it('still escalates a credible detection on a cool, damp day', async () => {
+      // The whole reason this profile exists: converting the zone to plain
+      // white_phosphorus would have left this at ELEVATED — a real forest
+      // fire in April paging nobody.
+      await reportsQueue.add('detection-report', {
+        detection: {
+          source: 'E2E_BOTH_COOL', satellite: 'TEST',
+          latitude: DRILL_LAT, longitude: DRILL_LON,
+          acquiredAt: new Date().toISOString(),
+          brightnessK: 340, frpMw: 20, confidence: 'h',
+        },
+        weather: { temperatureC: 14, soilMoisturePct: 45, observedAt: new Date().toISOString() },
+      });
+
+      const level = await waitFor(
+        async () => {
+          const { rows } = await db.query<{ alert_level: string }>(
+            `SELECT ve.alert_level FROM validated_events ve
+               JOIN thermal_anomalies a ON a.id = ve.anomaly_id
+              WHERE a.source = 'E2E_BOTH_COOL';`,
+          );
+          return rows[0]?.alert_level;
+        },
+        20_000,
+        'the cool-day verdict',
+      );
+      expect(level).toBe('CRITICAL_WILDFIRE');
+    });
+
+    it('names the phosphorus mechanism once the window is open', async () => {
+      await reportsQueue.add('detection-report', {
+        detection: {
+          source: 'E2E_BOTH_HOT', satellite: 'TEST',
+          latitude: DRILL_LAT, longitude: DRILL_LON,
+          acquiredAt: new Date().toISOString(),
+          // Low confidence on purpose: a self-ignition looks weak from orbit,
+          // and an open window must stop the credibility gate from mattering.
+          brightnessK: 320, frpMw: 2, confidence: 'l',
+        },
+        weather: { temperatureC: 34, soilMoisturePct: 8, observedAt: new Date().toISOString() },
+      });
+
+      const level = await waitFor(
+        async () => {
+          const { rows } = await db.query<{ alert_level: string }>(
+            `SELECT ve.alert_level FROM validated_events ve
+               JOIN thermal_anomalies a ON a.id = ve.anomaly_id
+              WHERE a.source = 'E2E_BOTH_HOT';`,
+          );
+          return rows[0]?.alert_level;
+        },
+        20_000,
+        'the open-window verdict',
+      );
+      expect(level).toBe('CRITICAL_PHOSPHORUS_FIRE');
+    });
+
+    it('reports the ignition window on the panel even though detection is the gate', async () => {
+      await redis.set(
+        'conditions:current',
+        JSON.stringify({
+          observedAt: new Date().toISOString(),
+          cycleAt: new Date().toISOString(),
+          temperatureC: 21.4,
+          relativeHumidityPct: 40,
+          soilMoisturePct: 11,
+          stationId: '11090',
+          area: '16,47,17,48',
+        }),
+      );
+
+      const res = await request(app.getHttpServer()).get('/api/conditions').expect(200);
+      const zone = res.body.zones.find((z: { id: number }) => z.id === zoneId);
+      // Escalates on detection...
+      expect(zone.gate).toBe('detection');
+      expect(zone.armed).toBe(true);
+      // ...and still measures the distance to the phosphorus window, which is
+      // the number the ground sensors exist to improve.
+      expect(zone.temperatureGapC).toBeCloseTo(8.6, 1);
+      expect(zone.soilMoistureGapPct).toBeCloseTo(-9, 1);
+    });
+  });
+
   describe('fire danger (Canadian FWI)', () => {
     const snapshot = {
       generatedAt: new Date().toISOString(),

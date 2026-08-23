@@ -131,7 +131,9 @@ export class HistoryService implements OnModuleInit {
     hazardType: string,
   ): Promise<ZoneHistory> {
     const profile = HAZARD_PROFILES[hazardType] ?? HAZARD_PROFILES['generic']!;
-    const weatherGated = profile.requiresIgnitionWeather;
+    // Whether the ignition window is a meaningful question here — not
+    // whether it is what escalates. See HazardProfile.
+    const weatherGated = profile.tracksIgnitionWindow;
 
     const base = { zoneId, name, hazardType, weatherGated };
     if (!weatherGated) {
@@ -193,7 +195,7 @@ export class HistoryService implements OnModuleInit {
     for (const zone of zones) {
       const profile =
         HAZARD_PROFILES[zone.hazard_type ?? 'generic'] ?? HAZARD_PROFILES['generic']!;
-      if (!profile.requiresIgnitionWeather) continue;
+      if (!profile.tracksIgnitionWindow) continue;
 
       const { rows } = await this.db.query<{ day: string; hours: number }>(
         WINDOW_DAYS_SQL,

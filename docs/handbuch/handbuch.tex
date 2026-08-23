@@ -280,7 +280,23 @@ dessen Messwerte hier ein --- nicht mehr die Schätzung für die ganze Region
 
 Bei einer Zone, bei der \enquote{Alarm bei jeder erkannten Hitzequelle}
 steht, gibt es keinen Abstand zu berechnen: Sie ist dauerhaft scharf. Solche
-Zeilen bleiben deshalb bewusst grau. Rot ist einem tatsächlichen Zustand
+Zeilen bleiben deshalb bewusst grau.
+
+Ein Gelände kann allerdings \emph{beides} sein. Der Föhrenwald ist ein
+Kiefernwald --- und er steht auf vergrabenem Weißphosphor. Für solche Zonen
+gibt es den Typ \enquote{Wald mit Phosphor-Altlast}: Sie alarmieren bei jeder
+glaubwürdigen Detektion, wetterunabhängig wie ein Waldstück, \emph{und} sie
+führen zusätzlich das Zündfenster mit. Die Zeile sagt dann beides, etwa
+\enquote{Alarm bei jeder erkannten Hitzequelle · Zündfenster noch
+9{,}3\,\textdegree C}. Ist das Fenster offen, benennt das System auch den
+wahrscheinlicheren Mechanismus und meldet einen Phosphorbrand statt eines
+Waldbrands --- und die Bewertung des Satellitenpixels spielt dann keine Rolle
+mehr, weil eine Selbstentzündung aus dem Orbit schwach aussieht.
+
+Der Grund für diesen Typ ist eine unangenehme Wahl, die es vorher gab: Als
+reine Phosphorzone hätte ein echter Waldbrand an einem kühlen Apriltag
+niemanden alarmiert, als reine Waldzone wäre das Zündfenster nie berechnet
+worden --- und Bodensensoren hätten nichts zu beeinflussen gehabt. Rot ist einem tatsächlichen Zustand
 vorbehalten --- eine Zeile, die immer rot leuchtet, gewöhnt das Auge an Rot,
 und genau das wäre im Ernstfall gefährlich.
 

@@ -71,6 +71,13 @@ export const PHOSPHORUS_IGNITION = {
  * an ammunition site, any heat at all is an emergency regardless of weather.
  *
  * So each hazard type declares its own gate:
+ *   - `tracksIgnitionWindow` — whether the phosphorus ignition window is a
+ *     meaningful question for this zone AT ALL. Deliberately separate from
+ *     the gate below, because a site can carry two hazards at once: the
+ *     Föhrenwald is a pine forest AND contaminated with buried white
+ *     phosphorus. Tying "which window applies" to "what escalates" forced a
+ *     choice between them — and choosing the phosphorus gate for a forest
+ *     means a real fire on a cool April day never pages anybody.
  *   - `requiresIgnitionWeather` — the phosphorus mechanism is weather-driven,
  *     so it keeps the temperature/soil thresholds as a hard precondition.
  *   - `requiresCredibleDetection` — everything else escalates on the detection
@@ -87,6 +94,13 @@ export interface HazardProfile {
   criticalLevel: AlertLevel;
   /** Escalation additionally requires the phosphorus temperature/soil gate. */
   requiresIgnitionWeather: boolean;
+  /**
+   * Whether the 30 °C / 20 % ignition window is computed, shown and
+   * forecast for this zone. Implied by `requiresIgnitionWeather` — a gate
+   * cannot apply a window it does not track — but also true on its own for a
+   * zone that escalates on detection and still has phosphorus in the ground.
+   */
+  tracksIgnitionWindow: boolean;
   /** Escalation additionally requires a non-low satellite confidence rating. */
   requiresCredibleDetection: boolean;
 }
@@ -95,21 +109,47 @@ export const HAZARD_PROFILES: Record<string, HazardProfile> = {
   white_phosphorus: {
     criticalLevel: AlertLevel.CRITICAL_PHOSPHORUS_FIRE,
     requiresIgnitionWeather: true,
+    tracksIgnitionWindow: true,
     requiresCredibleDetection: false,
+  },
+  /**
+   * A forest that is also contaminated — the Föhrenwald, and every other
+   * WWII ordnance site that has since grown over.
+   *
+   * BOTH hazards, each with its own gate, the more specific one first:
+   *
+   *   window open   → CRITICAL_PHOSPHORUS_FIRE, whatever the satellite's
+   *                   confidence. A small self-ignition looks weak from
+   *                   orbit, and that is precisely what is expected here.
+   *   window closed → the forest rule: a credible detection escalates
+   *                   regardless of weather, because a hotspot under a
+   *                   canopy already IS a fire.
+   *
+   * So it never alarms less than a plain wildfire zone would, and it alarms
+   * more specifically when the phosphorus mechanism is actually plausible.
+   */
+  white_phosphorus_forest: {
+    criticalLevel: AlertLevel.CRITICAL_WILDFIRE,
+    requiresIgnitionWeather: false,
+    tracksIgnitionWindow: true,
+    requiresCredibleDetection: true,
   },
   wildfire: {
     criticalLevel: AlertLevel.CRITICAL_WILDFIRE,
     requiresIgnitionWeather: false,
+    tracksIgnitionWindow: false,
     requiresCredibleDetection: true,
   },
   ammunition_depot: {
     criticalLevel: AlertLevel.CRITICAL_ORDNANCE_HEAT,
     requiresIgnitionWeather: false,
+    tracksIgnitionWindow: false,
     requiresCredibleDetection: false,
   },
   generic: {
     criticalLevel: AlertLevel.CRITICAL_THERMAL_ANOMALY,
     requiresIgnitionWeather: false,
+    tracksIgnitionWindow: false,
     requiresCredibleDetection: true,
   },
 };

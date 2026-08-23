@@ -17,7 +17,7 @@ import {
   DangerClass,
   ZoneReadiness,
 } from './data-access/conditions.service';
-import { isPartiallyMet, readinessText, windFrom } from './readiness';
+import { isPartiallyMet, isWindowOpen, readinessText, windFrom } from './readiness';
 
 /** Danger class → the translation key that names it for a reader. */
 const DANGER_LABELS: Readonly<Record<DangerClass, keyof TranslationDict>> = {
@@ -49,6 +49,16 @@ export class ConditionsPanelComponent {
 
   partiallyMet(zone: ZoneReadiness): boolean {
     return isPartiallyMet(zone);
+  }
+
+  /** Red means the window is OPEN — never merely "this zone is armed". */
+  windowOpen(zone: ZoneReadiness): boolean {
+    return isWindowOpen(zone);
+  }
+
+  /** Grey: nothing to count down to, the zone simply escalates on detection. */
+  alwaysArmed(zone: ZoneReadiness): boolean {
+    return zone.gate === 'detection' && zone.temperatureGapC === undefined;
   }
 
   windFrom(degrees: number): string {

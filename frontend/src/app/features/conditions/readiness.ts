@@ -20,9 +20,28 @@ export type Translate = (
   params?: Readonly<Record<string, unknown>>,
 ) => string;
 
+/**
+ * Is the phosphorus ignition window open right now?
+ *
+ * Not the same as `armed`, and the difference is what keeps the panel
+ * readable: a detection-gated zone is ALWAYS armed, so colouring on `armed`
+ * would leave such a row permanently red — and a row that is always red
+ * teaches the eye to ignore red, which is the one thing this panel cannot
+ * afford.
+ */
+export function isWindowOpen(zone: ZoneReadiness): boolean {
+  if (zone.temperatureGapC === undefined && zone.soilMoistureGapPct === undefined) {
+    return false;
+  }
+  return (zone.temperatureGapC ?? 1) <= 0 && (zone.soilMoistureGapPct ?? 1) < 0;
+}
+
 /** One of the two weather conditions already satisfied — worth flagging. */
 export function isPartiallyMet(zone: ZoneReadiness): boolean {
-  if (zone.gate !== 'weather') return false;
+  // Applies wherever a window is tracked, whichever gate escalates.
+  if (zone.temperatureGapC === undefined && zone.soilMoistureGapPct === undefined) {
+    return false;
+  }
   return (zone.temperatureGapC ?? 1) <= 0 || (zone.soilMoistureGapPct ?? 1) < 0;
 }
 
@@ -31,7 +50,19 @@ export function isPartiallyMet(zone: ZoneReadiness): boolean {
  * conditions still are from its threshold.
  */
 export function readinessText(zone: ZoneReadiness, t: Translate): string {
-  if (zone.gate === 'detection') return t('conditionsOnDetection');
+  if (zone.gate === 'detection') {
+    // A forest with phosphorus in the ground carries both hazards: it alarms
+    // on any detection AND has an ignition window worth watching. Saying only
+    // the first would hide the number the ground sensors exist to measure.
+    if (zone.temperatureGapC === undefined && zone.soilMoistureGapPct === undefined) {
+      return t('conditionsOnDetection');
+    }
+    const windowOpen =
+      (zone.temperatureGapC ?? 1) <= 0 && (zone.soilMoistureGapPct ?? 1) < 0;
+    return windowOpen
+      ? t('conditionsDetectionWindowOpen')
+      : t('conditionsDetectionWindowGap', { gap: gapPhrase(zone, t) });
+  }
   if (zone.armed) return t('conditionsArmed');
 
   // Which of the two conditions is already satisfied matters: "one hot
@@ -47,6 +78,22 @@ export function readinessText(zone: ZoneReadiness, t: Translate): string {
     return t('conditionsGapSoilOnly', { soil: formatGap(zone.soilMoistureGapPct) });
   }
   return t('conditionsGap', {
+    temp: formatGap(zone.temperatureGapC),
+    soil: formatGap(zone.soilMoistureGapPct),
+  });
+}
+
+/** The distance to the window, without the sentence around it. */
+function gapPhrase(zone: ZoneReadiness, t: Translate): string {
+  const tempMet = (zone.temperatureGapC ?? 1) <= 0;
+  const soilMet = (zone.soilMoistureGapPct ?? 1) < 0;
+  if (soilMet && !tempMet) {
+    return t('gapTempOnlyShort', { temp: formatGap(zone.temperatureGapC) });
+  }
+  if (tempMet && !soilMet) {
+    return t('gapSoilOnlyShort', { soil: formatGap(zone.soilMoistureGapPct) });
+  }
+  return t('gapBothShort', {
     temp: formatGap(zone.temperatureGapC),
     soil: formatGap(zone.soilMoistureGapPct),
   });

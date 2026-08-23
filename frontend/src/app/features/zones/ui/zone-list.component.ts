@@ -29,6 +29,7 @@ import { HazardType, ZoneListItem } from '../data-access/zone-api.service';
 /** Hazard type → the translation key that names it for a reader. */
 const HAZARD_LABELS: Readonly<Record<HazardType, keyof TranslationDict>> = {
   white_phosphorus: 'hazardWhitePhosphorus',
+  white_phosphorus_forest: 'hazardWhitePhosphorusForest',
   wildfire: 'hazardWildfire',
   ammunition_depot: 'hazardAmmunitionDepot',
   generic: 'hazardGeneric',

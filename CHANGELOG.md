@@ -33,6 +33,17 @@ still a question, not a commitment.
 
 ### Added
 
+- **A hazard profile for a site that is two hazards at once**
+  (`white_phosphorus_forest`). The Föhrenwald is a pine forest standing on
+  WWII white phosphorus, and the model forced a choice between them: as
+  `wildfire` the ignition window was never computed, so ground sensors could
+  not influence anything; as `white_phosphorus` a real fire on a cool April
+  day would have stayed ELEVATED and paged nobody. The new profile escalates
+  on any credible detection like a forest, **and** tracks, shows and
+  forecasts the phosphorus window — naming the phosphorus mechanism, and
+  ignoring the satellite's confidence rating, whenever that window is open. A
+  self-ignition looks weak from orbit, which is exactly what is expected on
+  such ground.
 - **Satellite archive backfill.** An operator can replay any range of NASA
   FIRMS detections since 2012 through the live rule, against the weather of
   their own day. Replayed detections are stored and de-duplicated like any

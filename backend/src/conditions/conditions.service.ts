@@ -166,14 +166,21 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
       ...(fireDanger ? { fireDanger } : {}),
     };
 
-    if (!profile.requiresIgnitionWeather) {
-      // Wildfire, ordnance and generic zones do not wait for weather: a
-      // credible detection escalates whenever it arrives.
-      return { ...base, gate: 'detection', armed: true };
-    }
+    // `gate` says what ESCALATES; the gaps below say whether the phosphorus
+    // window is open. A forest with phosphorus in the ground has both, and
+    // the panel shows both — see readiness() in the frontend.
+    const gate: ZoneReadiness['gate'] = profile.requiresIgnitionWeather
+      ? 'weather'
+      : 'detection';
 
-    if (!snapshot) {
-      return { ...base, gate: 'weather', armed: false };
+    if (!snapshot || !profile.tracksIgnitionWindow) {
+      return {
+        ...base,
+        gate,
+        // A detection-gated zone is always ready; a weather-gated one with no
+        // reading cannot claim to be.
+        armed: gate === 'detection',
+      };
     }
 
     // Positive gap = still that far from the threshold; negative = passed it.
@@ -184,10 +191,14 @@ export class ConditionsService implements OnModuleInit, OnModuleDestroy {
       snapshot.soilMoisturePct - PHOSPHORUS_IGNITION.CRITICAL_SOIL_MOISTURE_PCT,
     );
 
+    const windowOpen = temperatureGapC <= 0 && soilMoistureGapPct < 0;
+
     return {
       ...base,
-      gate: 'weather',
-      armed: temperatureGapC <= 0 && soilMoistureGapPct < 0,
+      gate,
+      // Detection-gated zones escalate whenever a detection arrives; for them
+      // the window is extra information, not the condition.
+      armed: gate === 'detection' || windowOpen,
       temperatureGapC,
       soilMoistureGapPct,
     };

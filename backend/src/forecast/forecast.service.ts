@@ -131,7 +131,9 @@ export class ForecastService implements OnModuleDestroy {
 
   private evaluate(zone: RawForecast['zones'][number]): ZoneForecast {
     const profile = HAZARD_PROFILES[zone.hazardType] ?? HAZARD_PROFILES['generic']!;
-    const weatherGated = profile.requiresIgnitionWeather;
+    // Whether the ignition window is a meaningful question here — not
+    // whether it is what escalates. See HazardProfile.
+    const weatherGated = profile.tracksIgnitionWindow;
 
     const base = {
       zoneId: zone.zoneId,

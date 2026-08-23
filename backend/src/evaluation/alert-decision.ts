@@ -107,13 +107,27 @@ export function decide(input: DecisionInput): Decision {
 
   const profile: HazardProfile = profileFor(input.hazardType);
 
-  // Phosphorus gate — both conditions must hold SIMULTANEOUSLY. White
-  // phosphorus needs the ground dry enough to crack open and warm enough to
-  // reach its ignition point; either alone is not the mechanism.
-  const weatherOk =
-    !profile.requiresIgnitionWeather ||
-    (conditions.temperatureC >= PHOSPHORUS_IGNITION.IGNITION_TEMPERATURE_C &&
-      conditions.soilMoisturePct < PHOSPHORUS_IGNITION.CRITICAL_SOIL_MOISTURE_PCT);
+  // Is the phosphorus window open? Both conditions must hold SIMULTANEOUSLY:
+  // white phosphorus needs the ground dry enough to crack open AND warm
+  // enough to reach its ignition point. Either alone is not the mechanism.
+  const windowOpen =
+    conditions.temperatureC >= PHOSPHORUS_IGNITION.IGNITION_TEMPERATURE_C &&
+    conditions.soilMoisturePct < PHOSPHORUS_IGNITION.CRITICAL_SOIL_MOISTURE_PCT;
+
+  // A zone that carries BOTH hazards answers to the more specific one first.
+  // An open window makes the phosphorus mechanism the likely explanation, and
+  // the satellite's own confidence stops mattering: a small self-ignition
+  // looks weak from orbit, which is exactly what is expected here.
+  if (profile.tracksIgnitionWindow && !profile.requiresIgnitionWeather && windowOpen) {
+    return {
+      level: AlertLevel.CRITICAL_PHOSPHORUS_FIRE,
+      withheldBecause: null,
+      conditions,
+      groundSource,
+    };
+  }
+
+  const weatherOk = !profile.requiresIgnitionWeather || windowOpen;
 
   // Credibility gate — suppress pixels the satellite itself rates low.
   const credibilityOk =

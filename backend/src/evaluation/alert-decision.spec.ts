@@ -244,3 +244,50 @@ describe('decide — ground truth from a local sensor', () => {
     expect(verdict.conditions).toEqual({ temperatureC: 31, soilMoisturePct: 9 });
   });
 });
+
+describe('decide — a forest that is also contaminated', () => {
+  const forest = (regional: { temperatureC: number; soilMoisturePct: number }, confidence: string | null) =>
+    decide({ hazardType: 'white_phosphorus_forest', confidence, regional });
+
+  it('never alarms less than a plain wildfire zone would', () => {
+    // Cool, damp, credible detection: a hotspot under a canopy already IS a
+    // fire, and the phosphorus gate must not suppress it.
+    expect(forest(CALM, 'h').level).toBe(AlertLevel.CRITICAL_WILDFIRE);
+  });
+
+  it('names the phosphorus mechanism once its window is open', () => {
+    expect(forest(IGNITING, 'h').level).toBe(AlertLevel.CRITICAL_PHOSPHORUS_FIRE);
+  });
+
+  it('stops caring about satellite confidence while the window is open', () => {
+    // A self-ignition is small and looks weak from orbit — which is exactly
+    // what is expected on ground that holds buried phosphorus.
+    expect(forest(IGNITING, 'l').level).toBe(AlertLevel.CRITICAL_PHOSPHORUS_FIRE);
+  });
+
+  it('still applies the forest credibility gate with the window closed', () => {
+    const verdict = forest(CALM, 'l');
+    expect(verdict.level).toBe(AlertLevel.ELEVATED);
+    expect(verdict.withheldBecause).toContain('confidence');
+  });
+
+  it('needs BOTH conditions for the phosphorus verdict, not either', () => {
+    expect(forest({ temperatureC: 35, soilMoisturePct: 40 }, 'h').level).toBe(
+      AlertLevel.CRITICAL_WILDFIRE,
+    );
+    expect(forest({ temperatureC: 12, soilMoisturePct: 5 }, 'h').level).toBe(
+      AlertLevel.CRITICAL_WILDFIRE,
+    );
+  });
+
+  it('is outranked by persistence, like every other profile', () => {
+    expect(
+      decide({
+        hazardType: 'white_phosphorus_forest',
+        confidence: 'h',
+        regional: IGNITING,
+        smouldering: { passes: 3, windowHours: 72, peakFrpMw: 2.4 },
+      }).level,
+    ).toBe(AlertLevel.CRITICAL_SMOULDERING);
+  });
+});

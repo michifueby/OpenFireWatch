@@ -21,6 +21,8 @@ import {
 /** Hazard categories the UI offers; extend together with the frontend. */
 export const HAZARD_TYPES = [
   'white_phosphorus',
+  /** A forest that is also contaminated — both gates apply. See HazardProfile. */
+  'white_phosphorus_forest',
   'wildfire',
   'ammunition_depot',
   'generic',

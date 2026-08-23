@@ -5,7 +5,7 @@
  */
 
 import { ZoneReadiness } from './data-access/conditions.service';
-import { Translate, isPartiallyMet, readinessText, windFrom } from './readiness';
+import { Translate, isPartiallyMet, isWindowOpen, readinessText, windFrom } from './readiness';
 
 /** Echoes the key and its parameters, so a test asserts on wording choices. */
 const t: Translate = (key, params) =>
@@ -106,5 +106,69 @@ describe('windFrom', () => {
 
   it('rounds to the nearest of the eight points rather than truncating', () => {
     expect(windFrom(359, t, false)).toContain('"N"');
+  });
+});
+
+describe('readinessText — a forest that is also contaminated', () => {
+  // Escalates on detection (gate) AND tracks the phosphorus window (gaps).
+  const both = (over: Partial<ZoneReadiness>) =>
+    readinessText(zone({ gate: 'detection', armed: true, ...over }), t);
+
+  it('says both things: what alarms, and how far the window is', () => {
+    const text = both({ temperatureGapC: 8.6, soilMoistureGapPct: 4 });
+    expect(text).toContain('conditionsDetectionWindowGap');
+    expect(text).toContain('8.6');
+    expect(text).toContain('4');
+  });
+
+  it('says so plainly once the window is open', () => {
+    expect(both({ temperatureGapC: -2, soilMoistureGapPct: -5 })).toBe(
+      'conditionsDetectionWindowOpen',
+    );
+  });
+
+  it('names only the missing half when one condition is already met', () => {
+    expect(both({ temperatureGapC: 8.6, soilMoistureGapPct: -3 })).toContain(
+      'gapTempOnlyShort',
+    );
+    expect(both({ temperatureGapC: -1, soilMoistureGapPct: 4 })).toContain(
+      'gapSoilOnlyShort',
+    );
+  });
+
+  it('falls back to the plain sentence for a zone with no window at all', () => {
+    // A pure wildfire zone: no gaps, so nothing to add.
+    expect(both({})).toBe('conditionsOnDetection');
+  });
+
+  it('flags a half-met window on a detection-gated zone too', () => {
+    // isPartiallyMet used to return false for anything not weather-gated,
+    // which would have left this zone grey while the soil was already dry.
+    expect(
+      isPartiallyMet(zone({ gate: 'detection', temperatureGapC: 8, soilMoistureGapPct: -3 })),
+    ).toBeTrue();
+  });
+});
+
+describe('isWindowOpen — what may colour a row red', () => {
+  it('is false for a detection-gated zone with no window, however armed', () => {
+    // `armed` is always true for such a zone; colouring on it would leave the
+    // row permanently red and teach the eye to ignore red.
+    expect(isWindowOpen(zone({ gate: 'detection', armed: true }))).toBeFalse();
+  });
+
+  it('is false for a contaminated forest while the window is still closed', () => {
+    expect(
+      isWindowOpen(zone({ gate: 'detection', armed: true, temperatureGapC: 9.3, soilMoistureGapPct: -9 })),
+    ).toBeFalse();
+  });
+
+  it('is true once both conditions are met, whichever gate escalates', () => {
+    expect(
+      isWindowOpen(zone({ gate: 'detection', armed: true, temperatureGapC: -1, soilMoistureGapPct: -3 })),
+    ).toBeTrue();
+    expect(
+      isWindowOpen(zone({ gate: 'weather', armed: true, temperatureGapC: 0, soilMoistureGapPct: -0.1 })),
+    ).toBeTrue();
   });
 });
