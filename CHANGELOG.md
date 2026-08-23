@@ -49,6 +49,22 @@ still a question, not a commitment.
 
 ### Added
 
+- **A system-status section: "Schaut das System hin?"** Every feed reports
+  when it last delivered — each satellite product separately, the weather,
+  the forecast, the fire danger — plus what the record holds, how many
+  sensors are reporting, how many jobs failed, and how far the archive has
+  been replayed. It exists because on 14 August 2026 this deployment was
+  healthy by every measure it had while polling one satellite out of three;
+  the page is built around the distinction that hid it, that quiet is not the
+  same as not looking. `missing` and `stale` are therefore different words,
+  and a completed cycle that reached no instrument at all reads `blind`.
+  `GET /api/status`; collapsed by default and polled only while open.
+- **Time travel on the map.** A date field shows the detections of any past
+  day, which after an archive replay is the view worth showing a fire
+  brigade. A chosen day is a MODE, not a filter: the pulsing markers come off
+  (they mean "this needs somebody now"), the camera stops chasing new alerts,
+  and a banner says what is on screen. `GET /api/anomalies` gained an
+  exclusive `until` bound.
 - **A hazard profile for a site that is two hazards at once**
   (`white_phosphorus_forest`). The Föhrenwald is a pine forest standing on
   WWII white phosphorus, and the model forced a choice between them: as

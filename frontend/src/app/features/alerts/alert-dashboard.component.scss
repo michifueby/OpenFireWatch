@@ -2,6 +2,10 @@
 
 .panel {
   position: fixed;
+  // Above MapLibre's own controls: the panel can now be tall enough to reach
+  // the zoom buttons in the bottom-right corner, and they were painting over
+  // its text. See the layer table in styles.scss.
+  z-index: 3;
   top: 1rem;
   right: 1rem;
   width: 22rem;

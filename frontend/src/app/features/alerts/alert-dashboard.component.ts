@@ -30,6 +30,7 @@ import { ConditionsPanelComponent } from '@features/conditions/conditions-panel.
 import { isPartiallyMet, readinessText } from '@features/conditions/readiness';
 import { ForecastPanelComponent } from '@features/forecast/forecast-panel.component';
 import { SeasonPanelComponent } from '@features/history/season-panel.component';
+import { StatusPanelComponent } from '@features/status/ui/status-panel.component';
 import { IconComponent } from '@shared/ui/icon.component';
 
 import { AlertHistoryComponent } from './alert-history.component';
@@ -49,6 +50,7 @@ const SHEET_EXPANDED_CLASS = 'ofw-sheet-expanded';
     AlertListComponent,
     SeasonPanelComponent,
     AlertHistoryComponent,
+    StatusPanelComponent,
   ],
   templateUrl: './alert-dashboard.component.html',
   styleUrl: './alert-dashboard.component.scss',

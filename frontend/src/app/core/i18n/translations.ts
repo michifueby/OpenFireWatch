@@ -145,6 +145,44 @@ export interface TranslationDict {
 
   // --- Map (basemap switcher, marker, popup) -----------------------------------
   basemapAria: string;
+  mapShowDay: string;
+  mapViewingDay: string;
+  mapBackToLive: string;
+  mapDetections: string;
+  statusShow: string;
+  statusHide: string;
+  statusTitle: string;
+  statusLoading: string;
+  statusOverallOk: string;
+  statusOverallDegraded: string;
+  statusOverallBlind: string;
+  statusSatellites: string;
+  statusNoSources: string;
+  statusAnswered: string;
+  statusNoAnswer: string;
+  statusCycle: string;
+  statusLookback: string;
+  statusFeeds: string;
+  statusWeather: string;
+  statusForecast: string;
+  statusFireDanger: string;
+  statusZones: string;
+  statusFresh: string;
+  statusStale: string;
+  statusMissing: string;
+  statusNever: string;
+  statusJustNow: string;
+  statusMinutesAgo: string;
+  statusHoursAgo: string;
+  statusRecord: string;
+  statusDetections24h: string;
+  statusDetections7d: string;
+  statusDetectionsTotal: string;
+  statusSensors: string;
+  statusDeadLetters: string;
+  statusRecordReaches: string;
+  statusReplayedTo: string;
+  statusAsOf: string;
   basemapDark: string;
   basemapAerial: string;
   basemapTerrain: string;
@@ -367,6 +405,44 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     labelAcquired: 'ACQUIRED',
 
     basemapAria: 'Base map',
+    mapShowDay: 'Show a past day',
+    mapViewingDay: 'Viewing',
+    mapBackToLive: 'Back to live',
+    mapDetections: 'detections',
+    statusShow: 'Show system status',
+    statusHide: 'Hide system status',
+    statusTitle: 'IS THIS THING WATCHING?',
+    statusLoading: 'Asking…',
+    statusOverallOk: 'Every feed delivered on time.',
+    statusOverallDegraded: 'Working, but narrower than it should be — see below.',
+    statusOverallBlind: 'NOTHING IS ARRIVING. The map is a photograph, not a live picture.',
+    statusSatellites: 'Satellites asked last cycle',
+    statusNoSources: 'No cycle has reported yet.',
+    statusAnswered: 'answered',
+    statusNoAnswer: 'no answer',
+    statusCycle: 'Last complete cycle',
+    statusLookback: 'asking {days} days back',
+    statusFeeds: 'Other feeds',
+    statusWeather: 'Weather',
+    statusForecast: 'Ignition forecast',
+    statusFireDanger: 'Fire danger (FWI)',
+    statusZones: 'zones',
+    statusFresh: 'fresh',
+    statusStale: 'stale',
+    statusMissing: 'nothing arriving',
+    statusNever: 'never',
+    statusJustNow: 'just now',
+    statusMinutesAgo: '{minutes} min ago',
+    statusHoursAgo: '{hours} h ago',
+    statusRecord: 'What the record holds',
+    statusDetections24h: 'detections 24 h',
+    statusDetections7d: '7 days',
+    statusDetectionsTotal: 'total',
+    statusSensors: 'sensors reporting',
+    statusDeadLetters: 'failed jobs',
+    statusRecordReaches: 'Record reaches back to',
+    statusReplayedTo: 'archive replayed to',
+    statusAsOf: 'as of',
     basemapDark: 'Dark',
     basemapAerial: 'Aerial',
     basemapTerrain: 'Terrain',
@@ -601,6 +677,44 @@ export const TRANSLATIONS: Record<Locale, TranslationDict> = {
     labelAcquired: 'ERFASST',
 
     basemapAria: 'Kartenart',
+    mapShowDay: 'Vergangenen Tag anzeigen',
+    mapViewingDay: 'Ansicht',
+    mapBackToLive: 'Zurück zu live',
+    mapDetections: 'Detektionen',
+    statusShow: 'Systemzustand anzeigen',
+    statusHide: 'Systemzustand ausblenden',
+    statusTitle: 'SCHAUT DAS SYSTEM HIN?',
+    statusLoading: 'Wird abgefragt…',
+    statusOverallOk: 'Alle Quellen haben rechtzeitig geliefert.',
+    statusOverallDegraded: 'Läuft, aber schmaler als es sollte — siehe unten.',
+    statusOverallBlind: 'ES KOMMT NICHTS AN. Die Karte ist ein Foto, kein Live-Bild.',
+    statusSatellites: 'Im letzten Zyklus abgefragte Satelliten',
+    statusNoSources: 'Noch kein Zyklus hat berichtet.',
+    statusAnswered: 'geantwortet',
+    statusNoAnswer: 'keine Antwort',
+    statusCycle: 'Letzter vollständiger Zyklus',
+    statusLookback: 'fragt {days} Tage zurück',
+    statusFeeds: 'Weitere Quellen',
+    statusWeather: 'Wetter',
+    statusForecast: 'Zündfenster-Vorhersage',
+    statusFireDanger: 'Waldbrandgefahr (FWI)',
+    statusZones: 'Zonen',
+    statusFresh: 'frisch',
+    statusStale: 'veraltet',
+    statusMissing: 'kommt nichts an',
+    statusNever: 'nie',
+    statusJustNow: 'gerade eben',
+    statusMinutesAgo: 'vor {minutes} min',
+    statusHoursAgo: 'vor {hours} h',
+    statusRecord: 'Was der Bestand enthält',
+    statusDetections24h: 'Detektionen 24 h',
+    statusDetections7d: '7 Tage',
+    statusDetectionsTotal: 'gesamt',
+    statusSensors: 'Sonden melden',
+    statusDeadLetters: 'fehlgeschlagene Jobs',
+    statusRecordReaches: 'Bestand reicht zurück bis',
+    statusReplayedTo: 'Archiv nachgeladen bis',
+    statusAsOf: 'Stand',
     basemapDark: 'Dunkel',
     basemapAerial: 'Luftbild',
     basemapTerrain: 'Gelände',

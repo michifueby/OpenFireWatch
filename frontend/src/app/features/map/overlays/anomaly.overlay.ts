@@ -17,6 +17,9 @@ import { AnomalyAlert } from '@core/models/alert.model';
 
 const SOURCE = 'anomalies';
 
+/** How much of the past the live view shows, matching the history panel. */
+export const LIVE_WINDOW_DAYS = 7;
+
 @Injectable({ providedIn: 'root' })
 export class AnomalyOverlay {
   private readonly api = inject(ApiClient);
@@ -51,11 +54,11 @@ export class AnomalyOverlay {
    * Recent detections from the REST read model — the last week, like the
    * history panel. Bounded by date on purpose: the archive backfill can put
    * a decade of detections into the same table, and the live map is not the
-   * place to draw them. They are reachable through the API with `since`.
+   * place to draw them all at once.
    */
   async loadHistory(): Promise<void> {
+    const since = new Date(Date.now() - LIVE_WINDOW_DAYS * 86_400_000).toISOString();
     try {
-      const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
       const collection = await this.api.get<GeoJSON.FeatureCollection>(
         `/api/anomalies?limit=1000&since=${encodeURIComponent(since)}`,
       );
@@ -66,6 +69,48 @@ export class AnomalyOverlay {
     } catch {
       // History is a nice-to-have; live alerts still work without it.
     }
+  }
+
+  /**
+   * Show one calendar day instead of the live week.
+   *
+   * A REPLACEMENT, not an addition: the point of asking about 14 August is to
+   * see what happened on 14 August, and mixing in this week's detections
+   * would answer a question nobody asked. The live set is rebuilt from the
+   * API when the view returns to live, so nothing is lost by discarding it.
+   *
+   * Returns how many detections that day holds, so the control can say
+   * "nothing that day" rather than leaving an empty map to be read as an
+   * error.
+   */
+  async showDay(day: string): Promise<number> {
+    // Local midnight to local midnight: the operator picked a calendar day in
+    // the deployment's own zone, not a UTC one.
+    const from = new Date(`${day}T00:00:00`);
+    const to = new Date(from.getTime() + 86_400_000);
+
+    const collection = await this.api.get<GeoJSON.FeatureCollection>(
+      `/api/anomalies?limit=5000&since=${encodeURIComponent(from.toISOString())}` +
+        `&until=${encodeURIComponent(to.toISOString())}`,
+    );
+
+    this.replaceWith(collection.features);
+    return collection.features.length;
+  }
+
+  /** Back to the live week: forget the day, refetch, resume streaming. */
+  async showLive(): Promise<void> {
+    this.replaceWith([]);
+    await this.loadHistory();
+  }
+
+  private replaceWith(features: readonly GeoJSON.Feature[]): void {
+    this.features.length = 0;
+    this.plotted.clear();
+    for (const feature of features) {
+      this.remember(Number(feature.properties?.['id']), feature);
+    }
+    this.repaint();
   }
 
   /** One detection off the live stream. */

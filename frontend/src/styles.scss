@@ -26,9 +26,14 @@ $mobile: 640px;
 // does not hold: without these the map attribution paints on top of the
 // panels. Kept in one place because the values only make sense together.
 //
-//   2  MapLibre controls (attribution)  — MapLibre's own value
-//   3  situation sheet    (phone layout only; the desktop side panel stays
-//                          below the attribution, as it always has)
+//   2  MapLibre controls (attribution, zoom)  — MapLibre's own value
+//   3  situation sheet    (both layouts. The desktop panel used to sit below
+//                          MapLibre's own value, which was harmless only
+//                          while the panel was short enough to end above the
+//                          zoom control in the bottom-right corner. Adding
+//                          the system-status section made it long enough to
+//                          reach that corner, and the buttons painted over
+//                          the text.)
 //   4  zone editor        (a tool, over the situation it edits)
 //   5  about panel        (opened last, closes first)
 

@@ -654,6 +654,133 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('system status', () => {
+    afterEach(async () => {
+      await redis.del('ingest:sources');
+    });
+
+    it('says plainly that nothing is arriving when no cycle has run', async () => {
+      await redis.del('conditions:current');
+      await redis.del('ingest:sources');
+
+      const res = await request(app.getHttpServer()).get('/api/status').expect(200);
+      expect(res.body.overall).toBe('blind');
+      expect(res.body.ingestion.cycle.freshness).toBe('missing');
+      // "missing" and "stale" are different words on purpose.
+      expect(res.body.weather.freshness).toBe('missing');
+    });
+
+    it('reports each satellite separately — the failure that hid for weeks', async () => {
+      // A healthy-looking cycle that reached one instrument out of three.
+      await redis.set(
+        'conditions:current',
+        JSON.stringify({
+          observedAt: new Date().toISOString(),
+          cycleAt: new Date().toISOString(),
+          temperatureC: 21,
+          relativeHumidityPct: 40,
+          soilMoisturePct: 11,
+          stationId: '11090',
+        }),
+      );
+      await redis.set(
+        'ingest:sources',
+        JSON.stringify({
+          lookbackDays: 2,
+          sources: [
+            { source: 'VIIRS_SNPP_NRT', at: new Date().toISOString(), ok: true, detections: 0 },
+            { source: 'VIIRS_NOAA20_NRT', at: new Date().toISOString(), ok: false, detections: 0, error: 'HTTP 503' },
+            { source: 'VIIRS_NOAA21_NRT', at: new Date().toISOString(), ok: true, detections: 0 },
+          ],
+        }),
+      );
+
+      const res = await request(app.getHttpServer()).get('/api/status').expect(200);
+      expect(res.body.ingestion.sources).toHaveLength(3);
+      expect(res.body.ingestion.lookbackDays).toBe(2);
+      const failing = res.body.ingestion.sources.find(
+        (s: { source: string }) => s.source === 'VIIRS_NOAA20_NRT',
+      );
+      expect(failing.ok).toBe(false);
+      expect(failing.error).toBe('HTTP 503');
+      // One instrument down is narrower, not blind.
+      expect(res.body.overall).toBe('degraded');
+    });
+
+    it('is blind when a cycle ran and every instrument failed', async () => {
+      // The most dangerous shape: a completed cycle that reached nothing.
+      // "no hotspots in the monitored area" would be true and useless.
+      await redis.set(
+        'conditions:current',
+        JSON.stringify({ observedAt: new Date().toISOString(), cycleAt: new Date().toISOString(), temperatureC: 21, soilMoisturePct: 11 }),
+      );
+      await redis.set(
+        'ingest:sources',
+        JSON.stringify({
+          lookbackDays: 2,
+          sources: [{ source: 'VIIRS_SNPP_NRT', at: new Date().toISOString(), ok: false, detections: 0, error: 'timeout' }],
+        }),
+      );
+
+      const res = await request(app.getHttpServer()).get('/api/status').expect(200);
+      expect(res.body.overall).toBe('blind');
+    });
+
+    it('counts what the record holds, so "no detections" can be read', async () => {
+      const res = await request(app.getHttpServer()).get('/api/status').expect(200);
+      expect(typeof res.body.detections.last24h).toBe('number');
+      expect(typeof res.body.detections.total).toBe('number');
+      expect(res.body.sensors).toEqual(
+        expect.objectContaining({ registered: expect.any(Number), reporting: expect.any(Number) }),
+      );
+      expect(typeof res.body.queue.deadLetters).toBe('number');
+    });
+  });
+
+  describe('detections of one past day', () => {
+    const DAY = '2019-07-25';
+
+    it('serves a single calendar day, and nothing either side of it', async () => {
+      // The map asks this after an archive replay: what happened on that day.
+      const inside = `${DAY}T12:30:00Z`;
+      const after = `${DAY}T23:59:59Z`;
+      const nextDay = '2019-07-26T00:30:00Z';
+
+      for (const [source, at] of [
+        ['E2E_DAY_A', inside],
+        ['E2E_DAY_B', after],
+        ['E2E_DAY_C', nextDay],
+      ] as const) {
+        await db.query(
+          `INSERT INTO thermal_anomalies (source, geom, acquired_at, weather)
+           VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4, '{}'::jsonb)
+           ON CONFLICT DO NOTHING;`,
+          [source, DRILL_LON, DRILL_LAT, at],
+        );
+      }
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/anomalies?limit=500&since=${DAY}T00:00:00Z&until=2019-07-26T00:00:00Z`)
+        .expect(200);
+
+      const sources = res.body.features.map(
+        (f: { properties: { source: string } }) => f.properties.source,
+      );
+      expect(sources).toContain('E2E_DAY_A');
+      expect(sources).toContain('E2E_DAY_B');
+      // The bound is exclusive: the next day belongs to the next day.
+      expect(sources).not.toContain('E2E_DAY_C');
+    });
+
+    it('rejects a malformed bound rather than quietly ignoring it', async () => {
+      // Silently dropping it would show the whole archive on a map that
+      // asked for one day.
+      await request(app.getHttpServer())
+        .get('/api/anomalies?until=yesterday')
+        .expect(400);
+    });
+  });
+
   describe('fire danger (Canadian FWI)', () => {
     const snapshot = {
       generatedAt: new Date().toISOString(),

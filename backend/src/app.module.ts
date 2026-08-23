@@ -18,6 +18,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { ReportModule } from './report/report.module';
 import { RiskZonesModule } from './risk-zones/risk-zones.module';
 import { SensorsModule } from './sensors/sensors.module';
+import { StatusModule } from './status/status.module';
 import { SimulationModule } from './simulation/simulation.module';
 import { ShutdownService } from './shutdown.service';
 
@@ -56,6 +57,7 @@ import { ShutdownService } from './shutdown.service';
     SensorsModule, // ground sensor registry + LoRaWAN intake
     SimulationModule, // POST /api/simulate-fire end-to-end drill trigger
     BackfillModule, // operator-triggered replays of the satellite archive
+    StatusModule, // what every feed is actually doing, feed by feed
     ReportModule, // everything above, dated and on paper — the meeting document
     NotificationsModule, // relays critical alerts off the map, and watches
     // that ingestion is still running at all

@@ -1,5 +1,41 @@
 <div #mapContainer class="map"></div>
 
+<!-- Time travel. A past day is a MODE, not a filter, so it says so across
+     the top: nothing here updates, and the pulsing markers are gone because
+     they mean "this needs somebody now". -->
+@if (viewedDay(); as day) {
+<div class="time-banner" role="status">
+  <span class="tb-label">{{ i18n.t('mapViewingDay') }}</span>
+  <strong>{{ day | date: 'dd.MM.yyyy' }}</strong>
+  @if (viewedDayCount() !== null) {
+  <span class="tb-count">
+    · {{ viewedDayCount() }} {{ i18n.t('mapDetections') }}
+  </span>
+  }
+  <button type="button" class="tb-live" (click)="viewDay(null)">
+    {{ i18n.t('mapBackToLive') }}
+  </button>
+</div>
+}
+
+<div class="timetravel" [class.active]="!!viewedDay()">
+  <label class="tt-field">
+    <span class="tt-caption">{{ i18n.t('mapShowDay') }}</span>
+    <input
+      type="date"
+      [max]="today"
+      [value]="viewedDay() ?? ''"
+      [disabled]="dayLoading()"
+      (change)="viewDay($any($event.target).value || null)"
+    />
+  </label>
+  @if (viewedDay()) {
+  <button type="button" class="tt-live" (click)="viewDay(null)" [disabled]="dayLoading()">
+    {{ i18n.t('mapBackToLive') }}
+  </button>
+  }
+</div>
+
 <!-- Basemap switcher. Bottom-left on a desktop, where it is out of the
      way of both panels; the phone layout moves it (see the styles). -->
 <div class="basemaps" role="group" [attr.aria-label]="i18n.t('basemapAria')">

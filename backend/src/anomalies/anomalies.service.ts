@@ -57,6 +57,7 @@ export class AnomaliesService {
         WHERE ($1::boolean IS FALSE
                OR geom && ST_MakeEnvelope($2, $3, $4, $5, 4326))
           AND ($6::timestamptz IS NULL OR acquired_at >= $6)
+          AND ($8::timestamptz IS NULL OR acquired_at < $8)
         ORDER BY acquired_at DESC
         LIMIT $7
       ) a;
@@ -69,6 +70,7 @@ export class AnomaliesService {
         query.north ?? 0,
         query.since ?? null,
         query.limit,
+        query.until ?? null,
       ],
     );
 

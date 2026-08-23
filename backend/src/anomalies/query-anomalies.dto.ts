@@ -46,6 +46,22 @@ export class QueryAnomaliesDto {
   @IsISO8601()
   since?: string;
 
+  /**
+   * Upper bound on acquisition time, exclusive.
+   *
+   * Together with `since` this turns the feed into "show me one day", which
+   * is what an operator asks after replaying the archive: the detections of
+   * 14 August are in the table, and without a bound the map would have to
+   * choose between the last week and a decade.
+   */
+  @ApiPropertyOptional({
+    description: 'Only detections acquired BEFORE this instant (ISO-8601)',
+    example: '2026-08-15T00:00:00Z',
+  })
+  @IsOptional()
+  @IsISO8601()
+  until?: string;
+
   @ApiPropertyOptional({ description: 'Maximum number of features returned', default: 500 })
   @IsOptional()
   @Type(() => Number)

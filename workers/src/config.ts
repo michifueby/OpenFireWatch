@@ -174,4 +174,15 @@ export const BUS = {
    * ahead. Expires like the forecast.
    */
   FIRE_DANGER_KEY: 'fire-danger:current',
+  /**
+   * Per-source outcome of the last ingestion cycle: which satellite products
+   * were asked, whether each answered, and how many detections came back.
+   *
+   * The conditions key already proves that a cycle RAN. It cannot prove what
+   * the cycle asked — and a deployment can be entirely healthy while watching
+   * one satellite out of three, which is exactly how 79 minutes of warning
+   * went missing over the Föhrenwald on 14 August 2026. Expires like the
+   * conditions key, so its absence means the same thing.
+   */
+  INGEST_SOURCES_KEY: 'ingest:sources',
 } as const;

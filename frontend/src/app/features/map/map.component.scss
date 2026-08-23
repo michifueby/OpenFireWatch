@@ -88,3 +88,121 @@
   height: 100vh;
   height: 100dvh;
 }
+
+// --- Time travel ---------------------------------------------------------------
+// A past day is a mode, not a filter: the banner is deliberately loud, because
+// everything under it is a photograph and nothing on it updates.
+.time-banner {
+  position: fixed;
+  z-index: 4;
+  top: calc(var(--ofw-safe-top) + 0.75rem);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 209, 102, 0.55);
+  border-radius: 999px;
+  background: rgba(35, 26, 4, 0.92);
+  backdrop-filter: blur(6px);
+  color: #ffd166;
+  font-family: $font-mono;
+  font-size: 0.74rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tb-label {
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  opacity: 0.8;
+}
+
+.tb-count {
+  color: rgba(255, 209, 102, 0.75);
+}
+
+.tb-live,
+.tt-live {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  padding: 0.15rem 0.55rem;
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 209, 102, 0.16);
+  }
+}
+
+.timetravel {
+  position: fixed;
+  z-index: 3;
+  left: 1rem;
+  bottom: 7.5rem; // above the base-map switcher
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid rgba(230, 232, 238, 0.22);
+  border-radius: 8px;
+  background: rgba(7, 12, 20, 0.86);
+  backdrop-filter: blur(6px);
+  color: #e6e8ee;
+
+  &.active {
+    border-color: rgba(255, 209, 102, 0.5);
+  }
+}
+
+.tt-field {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.tt-caption {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: $text-muted;
+}
+
+.timetravel input {
+  padding: 0.25rem 0.4rem;
+  border: 1px solid rgba(230, 232, 238, 0.24);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #e6e8ee;
+  font-family: $font-mono;
+  font-size: 0.74rem;
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+@media (max-width: $phone-max) {
+  // The phone's top edge belongs to the launcher and the credit bar, and its
+  // bottom to the situation sheet — so the control sits with the base maps
+  // and the banner tucks under the top row.
+  .time-banner {
+    top: calc(var(--ofw-safe-top) + 3.6rem);
+    font-size: 0.68rem;
+  }
+
+  .timetravel {
+    bottom: calc(var(--ofw-sheet-peek) + var(--ofw-safe-bottom) + 3.6rem);
+    left: 0.75rem;
+  }
+
+  .timetravel input {
+    // Below 16px iOS zooms the page in on focus and never zooms back out.
+    font-size: 16px;
+  }
+}

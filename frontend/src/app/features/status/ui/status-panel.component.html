@@ -1,0 +1,112 @@
+<footer class="history-toggle">
+  <button type="button" (click)="toggle()">
+    {{ open() ? i18n.t('statusHide') : i18n.t('statusShow') }}
+  </button>
+</footer>
+
+@if (open()) {
+<section class="status">
+  <h3>{{ i18n.t('statusTitle') }}</h3>
+
+  @if (status.status(); as s) {
+  <p [class]="'overall tone-' + s.overall">{{ overallLabel() }}</p>
+
+  <!-- The instruments, one row each. This is the block that would have shown
+       the single-satellite blindness on its first day. -->
+  <div class="block">
+    <h4>{{ i18n.t('statusSatellites') }}</h4>
+    @if (s.ingestion.sources.length === 0) {
+    <p class="empty">{{ i18n.t('statusNoSources') }}</p>
+    } @else {
+    <ul class="rows">
+      @for (src of s.ingestion.sources; track src.source) {
+      <li [class.bad]="!src.ok">
+        <span class="r-name">{{ sourceLabel(src.source) }}</span>
+        <span class="r-state">
+          {{ src.ok ? i18n.t('statusAnswered') : i18n.t('statusNoAnswer') }}
+        </span>
+        <span class="r-detail">
+          @if (src.ok) { {{ src.detections }} {{ i18n.t('mapDetections') }} }
+          @else { {{ src.error }} }
+        </span>
+      </li>
+      }
+    </ul>
+    <p class="note">
+      {{ i18n.t('statusCycle') }}: {{ age(s.ingestion.cycle) }}
+      @if (s.ingestion.lookbackDays !== null) {
+      · {{ i18n.t('statusLookback', { days: s.ingestion.lookbackDays }) }}
+      }
+    </p>
+    }
+  </div>
+
+  <!-- Everything else that feeds a number on the panel. -->
+  <div class="block">
+    <h4>{{ i18n.t('statusFeeds') }}</h4>
+    <ul class="rows">
+      <li [class.bad]="s.weather.freshness === 'missing'" [class.warn]="s.weather.freshness === 'stale'">
+        <span class="r-name">{{ i18n.t('statusWeather') }}</span>
+        <span class="r-state">{{ freshnessLabel(s.weather.freshness) }}</span>
+        <span class="r-detail">
+          {{ age(s.weather) }}
+          @if (s.weather.stationId) { · {{ i18n.t('conditionsStation') }} {{ s.weather.stationId }} }
+        </span>
+      </li>
+      <li [class.bad]="s.forecast.freshness === 'missing'" [class.warn]="s.forecast.freshness === 'stale'">
+        <span class="r-name">{{ i18n.t('statusForecast') }}</span>
+        <span class="r-state">{{ freshnessLabel(s.forecast.freshness) }}</span>
+        <span class="r-detail">{{ age(s.forecast) }} · {{ s.forecast.zones }} {{ i18n.t('statusZones') }}</span>
+      </li>
+      <li [class.bad]="s.fireDanger.freshness === 'missing'" [class.warn]="s.fireDanger.freshness === 'stale'">
+        <span class="r-name">{{ i18n.t('statusFireDanger') }}</span>
+        <span class="r-state">{{ freshnessLabel(s.fireDanger.freshness) }}</span>
+        <span class="r-detail">{{ age(s.fireDanger) }} · {{ s.fireDanger.zones }} {{ i18n.t('statusZones') }}</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- What the record actually holds, so "no detections" can be read. -->
+  <div class="block">
+    <h4>{{ i18n.t('statusRecord') }}</h4>
+    <dl class="facts">
+      <div>
+        <dt>{{ i18n.t('statusDetections24h') }}</dt>
+        <dd>{{ s.detections.last24h }}</dd>
+      </div>
+      <div>
+        <dt>{{ i18n.t('statusDetections7d') }}</dt>
+        <dd>{{ s.detections.last7d }}</dd>
+      </div>
+      <div>
+        <dt>{{ i18n.t('statusDetectionsTotal') }}</dt>
+        <dd>{{ s.detections.total }}</dd>
+      </div>
+      <div>
+        <dt>{{ i18n.t('statusSensors') }}</dt>
+        <dd>{{ s.sensors.reporting }}/{{ s.sensors.registered }}</dd>
+      </div>
+      <div [class.bad]="s.queue.deadLetters > 0">
+        <dt>{{ i18n.t('statusDeadLetters') }}</dt>
+        <dd>{{ s.queue.deadLetters }}</dd>
+      </div>
+    </dl>
+    @if (s.detections.oldestAcquiredAt) {
+    <p class="note">
+      {{ i18n.t('statusRecordReaches') }}
+      {{ s.detections.oldestAcquiredAt | date: 'dd.MM.yyyy' }}
+      @if (s.archive.replayedTo) {
+      · {{ i18n.t('statusReplayedTo') }} {{ s.archive.replayedTo | date: 'dd.MM.yyyy' }}
+      }
+    </p>
+    }
+  </div>
+
+  <p class="note generated">
+    {{ i18n.t('statusAsOf') }} {{ s.generatedAt | date: 'HH:mm:ss' }}
+  </p>
+  } @else {
+  <p class="empty">{{ i18n.t('statusLoading') }}</p>
+  }
+</section>
+}

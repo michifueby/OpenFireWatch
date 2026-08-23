@@ -88,17 +88,31 @@ export async function ingestDetections(job: Job): Promise<number> {
   // three polite requests read better in a rate-limit log than three at once.
   const detections: RawDetection[] = [];
   const failures: string[] = [];
+  const outcomes: SourceOutcome[] = [];
+  const polledAt = new Date().toISOString();
+
   for (const source of FIRMS_POLL_SOURCES) {
     try {
-      detections.push(
-        ...(await fetchFirmsArea(source, area.bbox, config.FIRMS_LOOKBACK_DAYS)),
+      const fromSource = await fetchFirmsArea(
+        source,
+        area.bbox,
+        config.FIRMS_LOOKBACK_DAYS,
       );
+      detections.push(...fromSource);
+      outcomes.push({ source, at: polledAt, ok: true, detections: fromSource.length });
     } catch (error) {
       // One instrument being unavailable must not blind the others.
-      failures.push(`${source}: ${(error as Error).message}`);
-      job.log(`Source ${source} failed: ${(error as Error).message}`);
+      const message = (error as Error).message;
+      failures.push(`${source}: ${message}`);
+      outcomes.push({ source, at: polledAt, ok: false, detections: 0, error: message });
+      job.log(`Source ${source} failed: ${message}`);
     }
   }
+
+  // Published whatever happened, including a cycle where every source failed:
+  // "we asked and nobody answered" is the single most important thing this
+  // key can say, and it must not be lost to the throw below.
+  await publishSourceOutcomes(outcomes);
   // Every source failing is an outage, not an empty sky — fail into the retry
   // path rather than reporting "no hotspots", which is this system's most
   // dangerous possible lie.
@@ -171,8 +185,37 @@ export async function ingestDetections(job: Job): Promise<number> {
   return validReports.length;
 }
 
+/** One satellite product's result in the last cycle. */
+export interface SourceOutcome {
+  source: string;
+  at: string;
+  ok: boolean;
+  detections: number;
+  error?: string;
+}
+
 /** Shared Redis handle for the conditions snapshot. */
 const conditionsRedis = createRedisConnection();
+
+/**
+ * Record which instruments were asked and what they said.
+ *
+ * Same TTL as the conditions snapshot, and for the same reason: a key that
+ * outlives the process which writes it would report a healthy poll long after
+ * the polling stopped.
+ */
+async function publishSourceOutcomes(outcomes: SourceOutcome[]): Promise<void> {
+  try {
+    await conditionsRedis.set(
+      BUS.INGEST_SOURCES_KEY,
+      JSON.stringify({ lookbackDays: config.FIRMS_LOOKBACK_DAYS, sources: outcomes }),
+      'EX',
+      config.FIRMS_POLL_INTERVAL * 4,
+    );
+  } catch (error) {
+    console.warn(`[ingest] could not publish source status: ${(error as Error).message}`);
+  }
+}
 
 /**
  * Store the latest ground conditions for the API to serve.

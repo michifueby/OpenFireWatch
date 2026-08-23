@@ -1,0 +1,173 @@
+@use 'tokens' as *;
+
+.history-toggle {
+  margin: 0;
+  padding: 0.5rem 0.9rem 0.7rem;
+
+  button {
+    width: 100%;
+    padding: 0.4rem;
+    border: 1px dashed rgba(230, 232, 238, 0.25);
+    border-radius: 4px;
+    background: transparent;
+    color: $text-muted;
+    font-family: $font-mono;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+
+    &:hover {
+      color: #e6e8ee;
+      border-color: rgba(230, 232, 238, 0.45);
+    }
+  }
+}
+
+.status {
+  padding: 0 0.9rem 0.8rem;
+  display: grid;
+  gap: 0.7rem;
+
+  h3 {
+    margin: 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    color: $text-muted;
+  }
+
+  h4 {
+    margin: 0 0 0.3rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: $text-dim;
+  }
+}
+
+// The one-word verdict. Loud when it needs to be, quiet when it does not.
+.overall {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border-left: 3px solid;
+  border-radius: 0 4px 4px 0;
+  background: rgba(0, 0, 0, 0.25);
+  font-family: $font-mono;
+  font-size: 0.76rem;
+
+  &.tone-ok {
+    border-color: #2ea064;
+    color: #7ee2a8;
+  }
+
+  &.tone-degraded {
+    border-color: $warn-amber;
+    color: $warn-amber;
+  }
+
+  &.tone-blind {
+    border-color: $alert-red;
+    color: $alert-red;
+    font-weight: 700;
+  }
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+
+  li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0 0.5rem;
+    padding: 0.25rem 0 0.25rem 0.5rem;
+    border-left: 2px solid rgba(230, 232, 238, 0.2);
+    font-size: 0.74rem;
+
+    &.warn {
+      border-left-color: $warn-amber;
+    }
+
+    &.bad {
+      border-left-color: $alert-red;
+    }
+  }
+}
+
+.r-name {
+  font-family: $font-mono;
+}
+
+.r-state {
+  font-family: $font-mono;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $text-muted;
+}
+
+li.warn .r-state {
+  color: $warn-amber;
+}
+
+li.bad .r-state {
+  color: $alert-red;
+}
+
+.r-detail {
+  grid-column: 1 / -1;
+  font-family: $font-mono;
+  font-size: 0.66rem;
+  color: $text-dim;
+  word-break: break-word;
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  gap: 0.35rem 0.6rem;
+
+  div {
+    display: grid;
+    gap: 0.05rem;
+  }
+
+  dt {
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: $text-dim;
+  }
+
+  dd {
+    margin: 0;
+    font-family: $font-mono;
+    font-size: 0.86rem;
+  }
+
+  div.bad dd {
+    color: $alert-red;
+    font-weight: 700;
+  }
+}
+
+.note {
+  margin: 0;
+  font-family: $font-mono;
+  font-size: 0.66rem;
+  color: $text-dim;
+}
+
+.generated {
+  text-align: right;
+  opacity: 0.7;
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.74rem;
+  color: $text-muted;
+}

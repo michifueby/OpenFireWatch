@@ -20,6 +20,7 @@
  * `map.remove()` is called explicitly.
  */
 
+import { DatePipe } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -74,6 +75,7 @@ const INCIDENT_SCREEN_FRACTION = 0.2;
 @Component({
   selector: 'ofw-map',
   standalone: true,
+  imports: [DatePipe],
   templateUrl: './map.component.html',
   styleUrl: './map.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -100,6 +102,21 @@ export class MapComponent implements AfterViewInit, OnDestroy {
   private knownZoneIds = '';
 
   readonly basemaps = BASEMAPS;
+
+  /**
+   * The day being shown, or null for the live view.
+   *
+   * Time travel is a deliberate MODE, not a filter: while a past day is on
+   * screen the pulsing markers come off, because those mirror what is
+   * outstanding RIGHT NOW and would claim that a fire from 2021 still needs
+   * somebody. The camera stops chasing new alerts for the same reason.
+   */
+  readonly viewedDay = signal<string | null>(null);
+  /** How many detections that day holds — so an empty map can say why. */
+  readonly viewedDayCount = signal<number | null>(null);
+  readonly dayLoading = signal(false);
+  /** Today, in the local calendar, as the date input's upper bound. */
+  readonly today = new Date().toLocaleDateString('sv-SE');
   /** The basemap on screen; restored from the operator's last choice. */
   readonly basemap = signal<Basemap>(readStoredBasemap());
 
@@ -142,7 +159,40 @@ export class MapComponent implements AfterViewInit, OnDestroy {
     // Markers reflect what IS outstanding, so an effect. The camera below
     // stays a subscription, because it must react to an alert ARRIVING and
     // not to the fact that one exists.
-    effect(() => this.markers.sync(this.alerts.activeWarnings()));
+    //
+    // Suspended while a past day is on screen: a pulsing marker means "this
+    // needs somebody now", and nothing on 14 August 2021 does.
+    effect(() => {
+      const warnings = this.alerts.activeWarnings();
+      if (this.viewedDay()) return;
+      this.markers.sync(warnings);
+    });
+  }
+
+  /** Show one past day. Empty string or null returns to the live view. */
+  async viewDay(day: string | null): Promise<void> {
+    this.dayLoading.set(true);
+    try {
+      if (!day) {
+        this.viewedDay.set(null);
+        this.viewedDayCount.set(null);
+        await this.anomalies.showLive();
+        // The markers describe what is outstanding now, so they come back
+        // with the live view.
+        this.markers.sync(this.alerts.activeWarnings());
+        return;
+      }
+
+      const count = await this.anomalies.showDay(day);
+      this.viewedDay.set(day);
+      this.viewedDayCount.set(count);
+      this.markers.clear();
+    } catch {
+      // A failed lookup must not strand the map in a half-changed state.
+      this.viewedDayCount.set(null);
+    } finally {
+      this.dayLoading.set(false);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -250,14 +300,19 @@ export class MapComponent implements AfterViewInit, OnDestroy {
 
   private subscribeToRealtimeAlerts(): void {
     this.subscriptions.add(
-      this.alerts.anomalies$.subscribe((alert) => this.anomalies.add(alert)),
+      this.alerts.anomalies$.subscribe((alert) => {
+        // A live detection has no place on a map showing a past day.
+        if (!this.viewedDay()) this.anomalies.add(alert);
+      }),
     );
 
     // The camera reacts to news, not to state: flying on the warning list
     // would yank the view somewhere every time the history is restored or an
     // unrelated alarm is acknowledged.
     this.subscriptions.add(
-      this.alerts.criticalAlerts$.subscribe((alert) => this.flyToIncident(alert)),
+      this.alerts.criticalAlerts$.subscribe((alert) => {
+        if (!this.viewedDay()) this.flyToIncident(alert);
+      }),
     );
   }
 

@@ -582,6 +582,49 @@ Offset) wird beim Sensor hinterlegt und wirkt auch rückwirkend auf alle
 gespeicherten Messwerte, weil diese roh aufbewahrt werden.
 \end{hinweis}
 
+\subsection{Schaut das System hin?}\label{sec:zustand}
+
+Ganz unten im Lagepanel steht ein Umschalter \enquote{Systemzustand
+anzeigen}. Er beantwortet eine Frage, die keine andere Anzeige beantwortet:
+Ob das System gerade tatsächlich hinschaut --- und nicht bloß läuft.
+
+Der Unterschied ist keine Wortklauberei. Am 14.~August 2026 war diese
+Installation nach jedem verfügbaren Maßstab gesund: Der Dienst lief, jeder
+Zyklus wurde abgeschlossen, im Protokoll stand \enquote{keine Hitzepunkte im
+überwachten Gebiet}. Das stimmte --- und war wertlos, denn abgefragt wurde
+nur einer von drei Satelliten. Vier Überflüge sahen an jenem Tag ein Feuer
+über dem Föhrenwald; geholt wurde einer davon, 79~Minuten zu spät.
+
+Die Seite ist deshalb um genau diese Unterscheidung herum gebaut:
+\emph{ruhig} ist nicht dasselbe wie \emph{schaut nicht hin}. Jede Quelle
+nennt, wann sie zuletzt geliefert hat, nie bloß \enquote{in Ordnung}. Zu
+sehen sind: jedes Satellitenprodukt einzeln mit Antwort oder Fehlermeldung,
+das Alter von Wetter, Zündfenster-Vorhersage und Waldbrandgefahr, wie viele
+Detektionen der Bestand hält, wie viele Sonden melden, wie viele Aufträge
+fehlgeschlagen sind und wie weit das Archiv nachgeladen wurde.
+
+\begin{hinweis}
+Drei Zustände oben auf der Seite: \emph{Alle Quellen haben rechtzeitig
+geliefert}, \emph{Läuft, aber schmaler als es sollte} --- etwa wenn ein
+Satellit nicht antwortet --- und \emph{Es kommt nichts an}. Das Letzte
+bedeutet: Die Karte ist ein Foto, kein Live-Bild. Alles Mildere zu sagen
+hieße, jemanden weiter darauf vertrauen zu lassen.
+\end{hinweis}
+
+\subsection{Einen vergangenen Tag ansehen}\label{sec:zeitreise}
+
+Unten links auf der Karte, über dem Kartenartwechsler, steht ein Datumsfeld.
+Wählen Sie einen Tag, zeigt die Karte genau dessen Detektionen --- nach einem
+Archivnachlauf ist das die Ansicht, die man einer Feuerwehr vorlegt:
+\enquote{Das hat der Satellit an diesem Tag gesehen.}
+
+Ein vergangener Tag ist bewusst ein \emph{Zustand}, kein Filter. Solange er
+angezeigt wird, verschwinden die pulsierenden Marker --- sie bedeuten
+\enquote{das braucht jetzt jemanden}, und ein Brand von 2021 braucht das
+nicht. Die Karte springt auch nicht mehr zu neuen Alarmen. Ein Balken am
+oberen Rand nennt den angezeigten Tag und die Zahl der Detektionen; ein Klick
+auf \enquote{Zurück zu live} stellt die letzten sieben Tage wieder her.
+
 \subsection{Satellitenarchiv nachladen}\label{sec:archiv}
 
 Das Vorfallregister hält jeden eingetragenen Brand gegen zwei Fragen: Stand
