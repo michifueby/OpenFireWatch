@@ -591,6 +591,69 @@ describe('OpenFireWatch pipeline (e2e)', () => {
     });
   });
 
+  describe('the forecast follows a zone type change at once', () => {
+    it('does not repeat the hazard type the workers happened to see an hour ago', async () => {
+      // The snapshot carries a COPY of each zone's type. An operator who
+      // converts a zone sees the readiness line change immediately — it reads
+      // the database — while this list would keep insisting the ignition
+      // window does not apply, for up to an hour. One screen, two answers.
+      const { rows } = await db.query<{ id: string }>(
+        `SELECT id FROM high_risk_zones WHERE is_active ORDER BY id LIMIT 1;`,
+      );
+      const zoneId = Number(rows[0]!.id);
+      // Everything this test changes, so the finally can put ALL of it back —
+      // a leftover rename here failed a completely unrelated block below.
+      const before = await db.query<{ hazard_type: string; name_de: string | null }>(
+        `SELECT hazard_type, name_de FROM high_risk_zones WHERE id = $1;`,
+        [zoneId],
+      );
+
+      // A snapshot written while the zone was still a plain forest.
+      await redis.set(
+        'forecast:current',
+        JSON.stringify({
+          generatedAt: new Date().toISOString(),
+          zones: [
+            {
+              zoneId,
+              name: { de: 'Alt', en: 'Stale' },
+              hazardType: 'wildfire',
+              latitude: DRILL_LAT,
+              longitude: DRILL_LON,
+              hours: [
+                { at: '2099-07-01T13:00+02:00', temperatureC: 34, soilMoisturePct: 8 },
+                { at: '2099-07-01T14:00+02:00', temperatureC: 35, soilMoisturePct: 7 },
+              ],
+            },
+          ],
+        }),
+      );
+
+      try {
+        await db.query(
+          `UPDATE high_risk_zones SET hazard_type = 'white_phosphorus_forest', name_de = 'Neu'
+            WHERE id = $1;`,
+          [zoneId],
+        );
+
+        const res = await request(app.getHttpServer()).get('/api/forecast').expect(200);
+        const zone = res.body.zones.find((z: { zoneId: number }) => z.zoneId === zoneId);
+        expect(zone.hazardType).toBe('white_phosphorus_forest');
+        expect(zone.weatherGated).toBe(true);
+        // ...and the window in the snapshot's hours is now actually reported.
+        expect(zone.windows.length).toBeGreaterThan(0);
+        // A rename follows too, for the same reason.
+        expect(zone.name.de).toBe('Neu');
+      } finally {
+        await db.query(
+          `UPDATE high_risk_zones SET hazard_type = $2, name_de = $3 WHERE id = $1;`,
+          [zoneId, before.rows[0]!.hazard_type, before.rows[0]!.name_de],
+        );
+        await redis.del('forecast:current');
+      }
+    });
+  });
+
   describe('fire danger (Canadian FWI)', () => {
     const snapshot = {
       generatedAt: new Date().toISOString(),
@@ -1277,11 +1340,29 @@ describe('OpenFireWatch pipeline (e2e)', () => {
   });
 
   describe('ignition-window forecast', () => {
-    /** Publish a forecast as the workers would, so the API can be asked. */
+    // publishForecast() rewrites zone 1's hazard type; put it back so the
+    // blocks after this one see the zone they were written against.
+    afterAll(async () => {
+      await db.query(
+        `UPDATE high_risk_zones SET hazard_type = 'white_phosphorus' WHERE id = 1;`,
+      );
+    });
+
+    /**
+     * Publish a forecast snapshot for zone 1, as the workers would.
+     *
+     * `hazardType` is set in the DATABASE, not in the snapshot: the API reads
+     * the live type on purpose, so that an operator converting a zone sees
+     * the outlook follow at once instead of an hour later. Writing it into
+     * the snapshot here would test a path nothing uses.
+     */
     async function publishForecast(
       hours: { at: string; temperatureC: number; soilMoisturePct: number }[],
       hazardType = 'white_phosphorus',
     ): Promise<void> {
+      await db.query(`UPDATE high_risk_zones SET hazard_type = $1 WHERE id = 1;`, [
+        hazardType,
+      ]);
       await redis.set(
         'forecast:current',
         JSON.stringify({
@@ -1290,7 +1371,8 @@ describe('OpenFireWatch pipeline (e2e)', () => {
             {
               zoneId: 1,
               name: { de: 'Testzone', en: 'Test zone' },
-              hazardType,
+              // Deliberately wrong: the API must ignore it and read the row.
+              hazardType: 'generic',
               hours,
             },
           ],
@@ -1358,7 +1440,7 @@ describe('OpenFireWatch pipeline (e2e)', () => {
       expect(zone.hoursUntilNextWindow).toBeLessThanOrEqual(3);
     });
 
-    it('refuses to forecast a zone whose escalation does not depend on weather', async () => {
+    it('refuses to forecast a zone that does not track an ignition window', async () => {
       // Conditions that would be a window for phosphorus.
       await publishForecast(
         [{ at: hourAt(1), temperatureC: 35, soilMoisturePct: 5 }],
@@ -1368,10 +1450,25 @@ describe('OpenFireWatch pipeline (e2e)', () => {
       const res = await request(app.getHttpServer()).get('/api/forecast').expect(200);
       const zone = res.body.zones[0];
 
-      // Saying "no ignition window" about a wildfire zone would read as
+      // Saying "no ignition window" about a plain wildfire zone would read as
       // reassurance the system has no basis for.
       expect(zone.weatherGated).toBe(false);
       expect(zone.windows).toEqual([]);
+    });
+
+    it('forecasts for a contaminated forest, which escalates on detection anyway', async () => {
+      // The profile that carries both hazards: detection is the gate, and the
+      // ignition window is still a question worth answering.
+      await publishForecast(
+        [{ at: hourAt(1), temperatureC: 35, soilMoisturePct: 5 }],
+        'white_phosphorus_forest',
+      );
+
+      const res = await request(app.getHttpServer()).get('/api/forecast').expect(200);
+      const zone = res.body.zones[0];
+
+      expect(zone.weatherGated).toBe(true);
+      expect(zone.windows).toHaveLength(1);
     });
 
     it('uses the same thresholds as the live rule, not its own copy', async () => {

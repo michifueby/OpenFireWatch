@@ -86,6 +86,12 @@ still a question, not a commitment.
 
 ### Fixed
 
+- **The outlook repeated a zone's hazard type as it was up to an hour ago.**
+  The forecast snapshot carries a copy of each zone's name and type, taken
+  when the workers last ran. Convert a zone and the readiness line changed at
+  once — it reads the database — while the outlook kept insisting the
+  ignition window did not apply. The API now re-reads both from the database
+  and uses the snapshot only for the weather it was written to carry.
 - **The live cycle watched one satellite out of three.** VIIRS flies on Suomi
   NPP, NOAA-20 and NOAA-21, about forty minutes apart on the same orbit —
   each a separate look at the ground. The ingestion polled only Suomi NPP.
