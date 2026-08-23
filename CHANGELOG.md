@@ -13,6 +13,14 @@ still a question, not a commitment.
 
 ## [Unreleased]
 
+## [0.13.1] — 2026-08-23
+
+### Changed
+
+<!-- Written from commit subjects: no Unreleased notes existed at release
+     time. Worth rewriting for a reader who does not read diffs. -->
+- fix: the phone, measured across four screens instead of assumed
+
 ## [0.13.0] — 2026-08-23
 
 ### Changed
@@ -406,7 +414,8 @@ describes what that deployment does.
 - Critical markers were lost if an alert arrived while the map style was
   still loading, and were never restored after a reload.
 
-[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/michifueby/OpenFireWatch/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/michifueby/OpenFireWatch/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/michifueby/OpenFireWatch/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/michifueby/OpenFireWatch/compare/v0.11.2...v0.12.0
