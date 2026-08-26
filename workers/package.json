@@ -1,6 +1,6 @@
 {
   "name": "@openfirewatch/workers",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "private": true,
   "description": "OpenFireWatch data ingestion & persistence workers (Node.js + BullMQ)",
   "license": "MIT",
