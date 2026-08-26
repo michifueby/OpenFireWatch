@@ -61,9 +61,9 @@
 
   li {
     display: grid;
-    /* The day column fits "999 T" without clipping; at 2.6rem a
-       three-digit count lost its unit. */
-    grid-template-columns: 2.6rem 1fr 3.4rem;
+    /* The day column carries the unit spelled out — "29 Tage", not "29 T",
+       which nobody reads as days. 4.6rem fits three digits plus the word. */
+    grid-template-columns: 2.6rem 1fr 4.6rem;
     align-items: center;
     gap: 0.4rem;
     color: #8f99ab;
