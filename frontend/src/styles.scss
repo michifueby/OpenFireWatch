@@ -42,6 +42,17 @@ $mobile: 640px;
   // sheet. Published as a custom property so the map attribution can sit
   // above it instead of underneath — MapLibre positions its controls itself,
   // and this is the only hook we get.
+  /**
+   * This application is dark everywhere, and the browser has to be told so.
+   *
+   * Without it the browser renders its NATIVE parts for a light page: the
+   * calendar icon of a date field comes out near-black on a near-black
+   * background, and in Safari the "tt.mm.jjjj" placeholder does too — the
+   * field looks empty until a date has been picked, which is exactly what an
+   * operator reported. Also fixes scrollbars and autofill colours.
+   */
+  color-scheme: dark;
+
   --ofw-sheet-peek: 3.25rem;
 
   /**
@@ -237,5 +248,53 @@ body {
     width: 2.25rem;
     height: 2.25rem;
     font-size: 1.1rem;
+  }
+}
+
+/**
+ * Date and time fields, which every browser draws from its own parts.
+ *
+ * `color-scheme: dark` above does most of the work; these rules make the
+ * result explicit rather than trusting each engine to agree — the segments
+ * of an EMPTY field are drawn separately from its value, and a field whose
+ * placeholder is invisible reads as broken.
+ */
+input[type='date'],
+input[type='datetime-local'] {
+  color-scheme: dark;
+
+  &::-webkit-datetime-edit,
+  &::-webkit-datetime-edit-text,
+  &::-webkit-datetime-edit-day-field,
+  &::-webkit-datetime-edit-month-field,
+  &::-webkit-datetime-edit-year-field,
+  &::-webkit-datetime-edit-hour-field,
+  &::-webkit-datetime-edit-minute-field {
+    color: inherit;
+  }
+
+  /* The segments of an empty field, which are otherwise dimmed to the point
+     of invisibility on this background. */
+  &::-webkit-datetime-edit-day-field:not([aria-valuenow]),
+  &::-webkit-datetime-edit-month-field:not([aria-valuenow]),
+  &::-webkit-datetime-edit-year-field:not([aria-valuenow]),
+  &::-webkit-datetime-edit-hour-field:not([aria-valuenow]),
+  &::-webkit-datetime-edit-minute-field:not([aria-valuenow]) {
+    color: rgba(230, 232, 238, 0.55);
+  }
+
+  /* The calendar button.
+   *
+   * NOT inverted. `color-scheme: dark` already makes the browser draw this
+   * icon light, and an invert filter on top of that turns it black again —
+   * the two corrections cancelled, which is why the first attempt at this
+   * bug changed nothing at all. Only the resting opacity is ours. */
+  &::-webkit-calendar-picker-indicator {
+    opacity: 0.7;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 1;
+    }
   }
 }
